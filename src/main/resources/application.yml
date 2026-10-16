@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: premisave-developer-service
+  config:
+    # Reads a .env file from the folder the service is started in, if there is one. Real environment variables win over it.
+    import: optional:file:./.env[.properties]
   data:
     mongodb:
       auto-index-creation: true

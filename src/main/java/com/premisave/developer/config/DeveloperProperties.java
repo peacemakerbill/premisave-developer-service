@@ -42,7 +42,7 @@ public record DeveloperProperties(
     public record Jwt(String secret, String issuer, Integer accessTtlMinutes) {
         public Jwt {
             if (secret == null || secret.length() < 32) {
-                throw new IllegalStateException("developer.jwt.secret must be set and at least 32 characters long. Set the DEVELOPER_JWT_SECRET environment variable (the service does not read a .env file by itself)");
+                throw new IllegalStateException("developer.jwt.secret must be set and at least 32 characters long. Set DEVELOPER_JWT_SECRET in the .env file in the folder you start the service from, or as an environment variable");
             }
             if (issuer == null || issuer.isBlank()) issuer = "premisave-developer";
             if (accessTtlMinutes == null || accessTtlMinutes < 1) accessTtlMinutes = 60;
@@ -56,7 +56,7 @@ public record DeveloperProperties(
     public record Keys(String pepper, Integer maxActivePerApp, Integer rotationGraceHours) {
         public Keys {
             if (pepper == null || pepper.length() < 16) {
-                throw new IllegalStateException("developer.keys.pepper must be set and at least 16 characters long. Set the API_KEY_PEPPER environment variable (the service does not read a .env file by itself)");
+                throw new IllegalStateException("developer.keys.pepper must be set and at least 16 characters long. Set API_KEY_PEPPER in the .env file in the folder you start the service from, or as an environment variable");
             }
             if (maxActivePerApp == null || maxActivePerApp < 1) maxActivePerApp = 5;
             if (rotationGraceHours == null || rotationGraceHours < 0) rotationGraceHours = 24;

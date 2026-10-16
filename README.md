@@ -14,7 +14,15 @@ export WALLET_SERVICE_URL=http://localhost:8084
 mvn spring-boot:run
 ```
 
-All settings are in `.env.example` and `src/main/resources/application.yml`. The service does not read a `.env` file by itself, so set these as real environment variables (in IntelliJ: Run, Edit Configurations, Environment variables). It refuses to start without `DEVELOPER_JWT_SECRET` and `API_KEY_PEPPER`. Without `INTERNAL_API_KEY` it starts, but every call that needs the wallet fails.
+All settings are in `.env.example` and `src/main/resources/application.yml`. The service reads a file named `.env` from the folder it is started in (`spring.config.import` in `application.yml`), so copy `.env.example` to `.env` there and fill it in; `.env` holds secrets and must be in `.gitignore`. Real environment variables win over the file. Keep the file in plain `KEY=value` lines with no quotes; the mail settings in it use the dotted property names (`spring.mail.host`) because a file, unlike the environment, does not map `SPRING_MAIL_HOST`. It refuses to start without `DEVELOPER_JWT_SECRET` and `API_KEY_PEPPER`. Without `INTERNAL_API_KEY` it starts, but every call that needs the wallet fails.
+
+**Generating secrets.** `DEVELOPER_JWT_SECRET` (at least 32 characters), `API_KEY_PEPPER` (at least 16) and `DEVELOPER_INTERNAL_API_KEY` should be random. Make each one with:
+
+```bash
+openssl rand -base64 32
+```
+
+Run it once per secret and paste the output after the `=` in `.env`. Use a different value for each, and do not reuse them across environments. Changing `API_KEY_PEPPER` later invalidates every API key, and changing `DEVELOPER_JWT_SECRET` signs everyone out.
 
 ## Tests
 
