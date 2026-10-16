@@ -1,0 +1,86 @@
+package com.premisave.developer.app;
+
+import com.premisave.developer.common.ApiResponse;
+import com.premisave.developer.common.DeveloperException;
+import com.premisave.developer.common.PageViews;
+import com.premisave.developer.common.Responses;
+import com.premisave.developer.developer.Developer;
+import com.premisave.developer.enums.AppStatus;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Locale;
+import java.util.Map;
+
+/** Sandbox and production apps of the signed in developer. */
+@RestController("developerAppController")
+@RequestMapping("/api/v1/apps")
+public class AppController {
+
+    private final AppService apps;
+
+    public AppController(AppService apps) {
+        this.apps = apps;
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute("developer") Developer developer,
+                                                                   @Valid @RequestBody CreateAppRequest req) {
+        AppService.Created created = apps.create(developer, req);
+        return Responses.created("App created", AppService.withKey(created.app(), created.key()));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<Map<String, Object>>> list(
+            @RequestAttribute("developer") Developer developer,
+            @RequestParam(required = false) String environment,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        AppStatus appStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                appStatus = AppStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw DeveloperException.validation("status", "must be ACTIVE or SUSPENDED");
+            }
+        }
+        return Responses.page("Apps retrieved",
+                apps.list(developer, environment, appStatus, PageViews.pageable(page, size)), AppViews::app);
+    }
+
+    @GetMapping("/{appId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> get(@RequestAttribute("developer") Developer developer,
+                                                                @PathVariable String appId) {
+        return Responses.ok("App retrieved", AppViews.app(apps.get(developer, appId)));
+    }
+
+    @PutMapping("/{appId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> update(@RequestAttribute("developer") Developer developer,
+                                                                   @PathVariable String appId,
+                                                                   @Valid @RequestBody UpdateAppRequest req) {
+        return Responses.ok("App updated", AppViews.app(apps.update(developer, appId, req)));
+    }
+
+    @PostMapping("/{appId}/suspend")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> suspend(@RequestAttribute("developer") Developer developer,
+                                                                    @PathVariable String appId,
+                                                                    @Valid @RequestBody(required = false) ReasonRequest req) {
+        return Responses.ok("App suspended", AppViews.app(apps.suspend(developer, appId, req == null ? null : req.reason())));
+    }
+
+    @PostMapping("/{appId}/reactivate")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@RequestAttribute("developer") Developer developer,
+                                                                       @PathVariable String appId) {
+        return Responses.ok("App reactivated", AppViews.app(apps.reactivate(developer, appId)));
+    }
+}

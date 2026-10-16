@@ -1,0 +1,46 @@
+package com.premisave.developer.enums;
+
+/** Stable machine readable codes carried in data.code of every error response. */
+public enum ErrorCode {
+    VALIDATION_FAILED(400),
+    ENVIRONMENT_MISMATCH(403),
+    UNAUTHENTICATED(401),
+    INVALID_TOKEN(400),
+    EMAIL_NOT_VERIFIED(403),
+    OAUTH_NOT_CONFIGURED(404),
+    OAUTH_FAILED(401),
+    OAUTH_EMAIL_REQUIRED(422),
+    ACCOUNT_EXISTS(409),
+    INVALID_CREDENTIALS(401),
+    INVALID_API_KEY(401),
+    ACCOUNT_DISABLED(403),
+    ACCOUNT_LOCKED(423),
+    FORBIDDEN(403),
+    APP_SUSPENDED(403),
+    MERCHANT_SUSPENDED(403),
+    LIVE_NOT_ENABLED(403),
+    NOT_FOUND(404),
+    APP_NOT_FOUND(404),
+    KEY_NOT_FOUND(404),
+    MERCHANT_NOT_FOUND(404),
+    WALLET_NOT_FOUND(404),
+    EMAIL_TAKEN(409),
+    MERCHANT_EXISTS(409),
+    MERCHANT_REQUIRED(409),
+    WALLET_ALREADY_LINKED(409),
+    INVALID_STATE(409),
+    DUPLICATE_REQUEST(409),
+    PAYLOAD_TOO_LARGE(413),
+    WALLET_NOT_USABLE(422),
+    LIMIT_REACHED(422),
+    RATE_LIMITED(429),
+    INTERNAL_ERROR(500),
+    UPSTREAM_UNAVAILABLE(503),
+    UPSTREAM_TIMEOUT(504);
+
+    private final int httpStatus;
+
+    ErrorCode(int httpStatus) { this.httpStatus = httpStatus; }
+
+    public int httpStatus() { return httpStatus; }
+}

@@ -1,0 +1,83 @@
+server:
+  port: ${SERVER_PORT:8091}
+
+spring:
+  application:
+    name: premisave-developer-service
+  data:
+    mongodb:
+      auto-index-creation: true
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developer}
+
+developer:
+  jwt:
+    secret: ${DEVELOPER_JWT_SECRET}
+    issuer: premisave-developer
+    access-ttl-minutes: 60
+  keys:
+    pepper: ${API_KEY_PEPPER}
+    max-active-per-app: 5
+    rotation-grace-hours: 24
+  wallet:
+    base-url: ${WALLET_SERVICE_URL:http://localhost:8084}
+    # live-url and sandbox-url are only needed if the two environments run as separate wallet deployments
+    api-key: ${INTERNAL_API_KEY}
+    # Set the same value in the wallet service's commercial.signing.secrets when request signing is on there
+    signing-secret: ${WALLET_SIGNING_SECRET:}
+    timeout-seconds: 30
+  proxy:
+    rate-limit-per-minute: 600
+    max-body-bytes: 1048576
+    max-upload-bytes: 12582912
+  apps:
+    max-per-environment: 10
+    sync-interval-ms: 30000
+    test-merchant-numbers:
+      - PRM-TEST-0001
+      - PRM-TEST-0002
+      - PRM-TEST-0003
+      - PRM-TEST-0004
+      - PRM-TEST-0005
+  security:
+    max-failed-logins: 5
+    lock-minutes: 15
+    password-min-length: 10
+    pbkdf2-iterations: 210000
+  internal:
+    api-key: ${DEVELOPER_INTERNAL_API_KEY:}
+  cors:
+    allowed-origins: ${DEVELOPER_PORTAL_ORIGINS:}
+  mail:
+    # Sender address on verification and reset emails. When empty the mail server decides (usually the login user).
+    from: ${DEVELOPER_MAIL_FROM:}
+    # Where the portal runs. Emails link to {portal-base-url}/verify-email?token=... and /reset-password?token=...
+    portal-base-url: ${DEVELOPER_PORTAL_URL:http://localhost:3000}
+    verification-ttl-hours: 24
+    reset-ttl-minutes: 60
+    resend-cooldown-seconds: 60
+    max-per-hour: 5
+    # A developer must confirm their email before creating a business
+    require-verified-for-business: true
+    # Development only: write the links to the log when no mail server is set. Never enable in production.
+    log-links: ${DEVELOPER_MAIL_LOG_LINKS:false}
+  oauth:
+    # Exact portal addresses a provider may send people back to. Empty turns social sign in off for every provider.
+    allowed-redirect-uris: ${DEVELOPER_OAUTH_REDIRECT_URIS:}
+    state-ttl-minutes: 10
+    # A provider is on when it has both a client id and a secret. The endpoint addresses default to the
+    # provider's standard ones; override them only to pin a version (for example Facebook's Graph API version).
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    facebook:
+      client-id: ${FACEBOOK_CLIENT_ID:}
+      client-secret: ${FACEBOOK_CLIENT_SECRET:}
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+
+# The mail server is not configured here on purpose: any spring.mail.host value, even an empty one, switches
+# mail sending on. Set SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD (and
+# SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true, SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true as needed)
+# in the environment. Without a host, no email is sent and the account endpoints still answer normally.
