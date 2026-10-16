@@ -2,6 +2,8 @@ package com.premisave.developer.oauth;
 
 import com.premisave.developer.common.ApiResponse;
 import com.premisave.developer.common.Responses;
+import com.premisave.developer.common.ClientInfo;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,7 +43,9 @@ public class OAuthController {
 
     @PostMapping("/{provider}/callback")
     public ResponseEntity<ApiResponse<Map<String, Object>>> callback(@PathVariable String provider,
-                                                                     @Valid @RequestBody OAuthCallbackRequest req) {
-        return Responses.ok("Signed in", oauth.callback(provider, req.code(), req.state(), req.redirectUri()));
+                                                                     @Valid @RequestBody OAuthCallbackRequest req,
+                                                                     HttpServletRequest http) {
+        return Responses.ok("Signed in", oauth.callback(provider, req.code(), req.state(), req.redirectUri(),
+                ClientInfo.of(http)));
     }
 }

@@ -5,6 +5,8 @@ import com.premisave.developer.TestRepos;
 import com.premisave.developer.auth.AccountEmailService;
 import com.premisave.developer.auth.EmailTokenService;
 import com.premisave.developer.auth.MailService;
+import com.premisave.developer.config.DeveloperProperties;
+import com.premisave.developer.common.ClientInfo;
 import com.premisave.developer.common.DeveloperException;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.enums.ErrorCode;
@@ -49,7 +51,7 @@ class DeveloperServiceTest {
     private final DeveloperService service = new DeveloperService(repo.repo, hasher, jwt, TestProps.fastSecurity(), revoked.repo, accountEmail, clock);
 
     private static SignupRequest signup(String email, String password) {
-        return new SignupRequest(email, "Jane Doe", password);
+        return new SignupRequest(email, "Jane Doe", password, "ke", null, null, true, null);
     }
 
     private Map<String, Object> signedUp() {
@@ -74,6 +76,57 @@ class DeveloperServiceTest {
         assertTrue(d.getDeveloperId().startsWith("dev_"));
         assertNull(d.getMerchantId());
         assertFalse(developerOf(s).containsKey("passwordHash"));
+    }
+
+    @Test
+    void signupKeepsTheExtraDetailsTidied() {
+        Map<String, Object> s = service.signup(new SignupRequest("jane@example.com", " Jane Doe ", "a long password 1",
+                " ke ", "+254 (700) 123-456", "  Acme Ltd ", true, true));
+        Developer d = repo.store.values().iterator().next();
+        assertEquals("Jane Doe", d.getFullName());
+        assertEquals("KE", d.getCountry());
+        assertEquals("+254700123456", d.getPhoneNumber());
+        assertEquals("Acme Ltd", d.getCompanyName());
+        assertEquals(T0, d.getTermsAcceptedAt());
+        assertTrue(d.isMarketingOptIn());
+        Map<String, Object> view = developerOf(s);
+        assertEquals("KE", view.get("country"));
+        assertEquals("+254700123456", view.get("phoneNumber"));
+        assertEquals("Acme Ltd", view.get("companyName"));
+        assertEquals(true, view.get("marketingOptIn"));
+        assertEquals(true, view.get("profileComplete"));
+        assertEquals(T0.toString(), view.get("termsAcceptedAt"));
+    }
+
+    @Test
+    void phoneAndCompanyAreOptionalAndMarketingDefaultsToOff() {
+        signedUp();
+        Developer d = repo.store.values().iterator().next();
+        assertNull(d.getPhoneNumber());
+        assertNull(d.getCompanyName());
+        assertFalse(d.isMarketingOptIn());
+        Map<String, Object> blank = service.signup(new SignupRequest("b@example.com", "Bob Doe", "a long password 1",
+                "UG", "   ", "   ", true, false));
+        assertNull(developerOf(blank).get("phoneNumber"));
+        assertNull(developerOf(blank).get("companyName"));
+    }
+
+    @Test
+    void signupNeedsTheTermsAcceptedAndAValidCountryAndPhone() {
+        Object[][] bad = {
+                {"acceptTerms", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KE", null, null, false, null)},
+                {"acceptTerms", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KE", null, null, null, null)},
+                {"country", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "K3", null, null, true, null)},
+                {"country", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KEN", null, null, true, null)},
+                {"phoneNumber", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KE", "12345", null, true, null)},
+                {"phoneNumber", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KE", "+2547abc12345", null, true, null)},
+                {"companyName", new SignupRequest("x@example.com", "Jane Doe", "a long password 1", "KE", null, "x".repeat(161), true, null)},
+        };
+        for (Object[] c : bad) {
+            DeveloperException e = assertThrows(DeveloperException.class, () -> service.signup((SignupRequest) c[1]));
+            assertEquals(ErrorCode.VALIDATION_FAILED, e.code(), (String) c[0]);
+        }
+        assertTrue(repo.store.isEmpty());
     }
 
     @Test
@@ -206,6 +259,83 @@ class DeveloperServiceTest {
         assertEquals(1, mailer.sent.size());
         assertEquals("jane@example.com", mailer.sent.get(0).to());
         assertTrue(mailer.lastLink("https://portal.example.com/verify-email?token=").length() > 60);
+    }
+
+    @Test
+    void signingInSendsANoticeWithTheDeviceAndAddress() {
+        signedUp();
+        mailer.sent.clear();
+        now = T0.plusSeconds(300);
+        service.login(new LoginRequest("jane@example.com", "a long password 1"),
+                new ClientInfo("203.0.113.9", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36"));
+        assertEquals(1, mailer.sent.size());
+        TestRepos.RecordingMailer.Sent m = mailer.sent.get(0);
+        assertEquals("jane@example.com", m.to());
+        assertEquals("New sign in to your Premisave developer account", m.subject());
+        assertTrue(m.html().contains("Chrome on Windows"));
+        assertTrue(m.html().contains("203.0.113.9"));
+        assertTrue(m.html().contains("16 Oct 2026, 08:05 UTC"));
+    }
+
+    @Test
+    void aFailedSignInSendsNoNotice() {
+        signedUp();
+        mailer.sent.clear();
+        assertThrows(DeveloperException.class, () -> service.login(new LoginRequest("jane@example.com", "wrong password 9")));
+        assertThrows(DeveloperException.class, () -> service.login(new LoginRequest("nobody@example.com", "wrong password 9")));
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    @Test
+    void signInNoticesCanBeSwitchedOff() {
+        DeveloperProperties.Mail quiet = new DeveloperProperties.Mail(null, "https://portal.example.com", null, null, 60, 5, true, false, false);
+        AccountEmailService quietEmail = new AccountEmailService(repo.repo, tokens, mail, hasher, quiet, 10, clock);
+        DeveloperService quietService = new DeveloperService(repo.repo, hasher, jwt, TestProps.fastSecurity(), revoked.repo, quietEmail, clock);
+        quietService.signup(signup("jane@example.com", "a long password 1"));
+        mailer.sent.clear();
+        quietService.login(new LoginRequest("jane@example.com", "a long password 1"));
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    @Test
+    void profileUpdatesChangeOnlyWhatIsSent() {
+        Map<String, Object> s = service.signup(new SignupRequest("jane@example.com", "Jane Doe", "a long password 1",
+                "KE", "+254700123456", "Acme Ltd", true, false));
+        Developer d = repo.store.values().iterator().next();
+        now = T0.plusSeconds(10);
+        Map<String, Object> out = service.updateProfile(d, new UpdateProfileRequest(null, "tz", null, null, true));
+        assertEquals("TZ", out.get("country"));
+        assertEquals("Jane Doe", out.get("fullName"));
+        assertEquals("+254700123456", out.get("phoneNumber"));
+        assertEquals("Acme Ltd", out.get("companyName"));
+        assertEquals(true, out.get("marketingOptIn"));
+        assertEquals(T0.plusSeconds(10), d.getUpdatedAt());
+        assertNotNull(s.get("accessToken"));
+    }
+
+    @Test
+    void profileFieldsCanBeClearedWithAnEmptyString() {
+        signedUp();
+        Developer d = repo.store.values().iterator().next();
+        service.updateProfile(d, new UpdateProfileRequest(null, null, "0700123456", "Acme", null));
+        assertEquals("0700123456", d.getPhoneNumber());
+        service.updateProfile(d, new UpdateProfileRequest(null, null, "", " ", null));
+        assertNull(d.getPhoneNumber());
+        assertNull(d.getCompanyName());
+    }
+
+    @Test
+    void badProfileInputIsRefusedAndNothingChanges() {
+        signedUp();
+        Developer d = repo.store.values().iterator().next();
+        for (UpdateProfileRequest bad : new UpdateProfileRequest[] {
+                new UpdateProfileRequest(" a ", null, null, null, null),
+                new UpdateProfileRequest(null, "1X", null, null, null),
+                new UpdateProfileRequest(null, null, "abc", null, null)}) {
+            assertEquals(ErrorCode.VALIDATION_FAILED, assertThrows(DeveloperException.class, () -> service.updateProfile(d, bad)).code());
+        }
+        assertEquals("Jane Doe", d.getFullName());
+        assertEquals("KE", d.getCountry());
     }
 
     @Test

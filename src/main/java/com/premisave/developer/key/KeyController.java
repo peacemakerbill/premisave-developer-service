@@ -33,7 +33,7 @@ public class KeyController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> list(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> list(@RequestAttribute Developer developer,
                                                                  @PathVariable String appId) {
         DeveloperApp app = apps.get(developer, appId);
         Map<String, Object> m = new LinkedHashMap<>();
@@ -42,7 +42,7 @@ public class KeyController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute Developer developer,
                                                                    @PathVariable String appId,
                                                                    @Valid @RequestBody(required = false) CreateKeyRequest req) {
         DeveloperApp app = apps.get(developer, appId);
@@ -50,14 +50,14 @@ public class KeyController {
     }
 
     @PostMapping("/{key}/rotate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> rotate(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> rotate(@RequestAttribute Developer developer,
                                                                    @PathVariable String appId, @PathVariable String key) {
         DeveloperApp app = apps.get(developer, appId);
         return Responses.created("Key rotated", KeyViews.issued(keys.rotate(app, key)));
     }
 
     @DeleteMapping("/{key}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> revoke(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> revoke(@RequestAttribute Developer developer,
                                                                    @PathVariable String appId, @PathVariable String key) {
         DeveloperApp app = apps.get(developer, appId);
         return Responses.ok("Key revoked", KeyViews.key(keys.revoke(app, key)));

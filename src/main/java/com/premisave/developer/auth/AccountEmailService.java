@@ -1,5 +1,6 @@
 package com.premisave.developer.auth;
 
+import com.premisave.developer.common.ClientInfo;
 import com.premisave.developer.common.DeveloperException;
 import com.premisave.developer.config.DeveloperProperties;
 import com.premisave.developer.developer.Developer;
@@ -61,7 +62,7 @@ public class AccountEmailService {
             if (d.isEmailVerified() || tokens.waitSeconds(d, EmailTokenType.VERIFY_EMAIL).isPresent()) return;
             EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.VERIFY_EMAIL);
             String link = config.portalBaseUrl() + "/verify-email?token=" + issued.token();
-            EmailTemplates.Message m = EmailTemplates.verify(d.getFullName(), link, config.verificationTtlHours());
+            EmailTemplates.Message m = EmailTemplates.verify(d.getFullName(), link, config.verificationTtlHours(), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), link);
         } catch (RuntimeException e) {
             log.warn("Could not send a confirmation link to developer {}: {}", d.getDeveloperId(), e.toString());
@@ -102,6 +103,7 @@ public class AccountEmailService {
             d.setEmailVerifiedAt(now);
             d.setUpdatedAt(now);
             developers.save(d);
+            sendWelcome(d);
         }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("emailVerified", true);
@@ -118,7 +120,7 @@ public class AccountEmailService {
             if (tokens.waitSeconds(d, EmailTokenType.RESET_PASSWORD).isPresent()) return;
             EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.RESET_PASSWORD);
             String link = config.portalBaseUrl() + "/reset-password?token=" + issued.token();
-            EmailTemplates.Message m = EmailTemplates.reset(d.getFullName(), link, config.resetTtlMinutes());
+            EmailTemplates.Message m = EmailTemplates.reset(d.getFullName(), link, config.resetTtlMinutes(), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), link);
         } catch (RuntimeException e) {
             log.warn("Could not send a password reset link: {}", e.toString());
@@ -156,10 +158,36 @@ public class AccountEmailService {
     /** Tells the owner that the password changed. Never throws. */
     public void sendPasswordChanged(Developer d) {
         try {
-            EmailTemplates.Message m = EmailTemplates.passwordChanged(d.getFullName());
+            EmailTemplates.Message m = EmailTemplates.passwordChanged(d.getFullName(), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
         } catch (RuntimeException e) {
             log.warn("Could not send the password change notice to developer {}: {}", d.getDeveloperId(), e.toString());
+        }
+    }
+
+    /** Sent once the address is confirmed: what to do next. Never throws. */
+    public void sendWelcome(Developer d) {
+        try {
+            EmailTemplates.Message m = EmailTemplates.welcome(d.getFullName(), config.portalBaseUrl());
+            mail.send(d.getEmail(), m.subject(), m.html(), null);
+        } catch (RuntimeException e) {
+            log.warn("Could not send the welcome email to developer {}: {}", d.getDeveloperId(), e.toString());
+        }
+    }
+
+    /**
+     * Tells the owner about a successful sign in, with the time, method, device and network address, so a sign in they
+     * did not make stands out. Off when developer.mail.notify-sign-in is false. Never throws.
+     */
+    public void sendSignInAlert(Developer d, ClientInfo client, String method, Instant at) {
+        if (!config.notifySignIn()) return;
+        try {
+            ClientInfo c = client == null ? ClientInfo.UNKNOWN : client;
+            EmailTemplates.Message m = EmailTemplates.signIn(d.getFullName(), method, c.device(), c.ipText(), at,
+                    config.portalBaseUrl());
+            mail.send(d.getEmail(), m.subject(), m.html(), null);
+        } catch (RuntimeException e) {
+            log.warn("Could not send the sign in notice to developer {}: {}", d.getDeveloperId(), e.toString());
         }
     }
 

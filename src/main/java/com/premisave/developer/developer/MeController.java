@@ -35,44 +35,50 @@ public class MeController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> me(@RequestAttribute("developer") Developer developer) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> me(@RequestAttribute Developer developer) {
         return Responses.ok("Account retrieved", DeveloperViews.developer(developer));
     }
 
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateProfile(@RequestAttribute Developer developer,
+                                                                          @Valid @RequestBody UpdateProfileRequest req) {
+        return Responses.ok("Profile updated", developers.updateProfile(developer, req));
+    }
+
     @PutMapping("/me/password")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> password(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> password(@RequestAttribute Developer developer,
                                                                       @Valid @RequestBody ChangePasswordRequest req) {
         return Responses.ok("Password changed", developers.changePassword(developer, req));
     }
 
     @PostMapping("/me/logout")
     public ResponseEntity<ApiResponse<Map<String, Object>>> logout(
-            @RequestAttribute("developer") Developer developer,
-            @RequestAttribute("tokenClaims") com.premisave.developer.security.JwtService.Claims claims) {
-        developers.logout(developer, claims);
+            @RequestAttribute Developer developer,
+            @RequestAttribute com.premisave.developer.security.JwtService.Claims tokenClaims) {
+        developers.logout(developer, tokenClaims);
         return Responses.ok("Signed out", Map.of());
     }
 
     @PostMapping("/me/logout-all")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> logoutAll(@RequestAttribute("developer") Developer developer) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> logoutAll(@RequestAttribute Developer developer) {
         developers.logoutEverywhere(developer);
         return Responses.ok("Signed out everywhere", Map.of());
     }
 
     @PostMapping("/me/resend-verification")
     public ResponseEntity<ApiResponse<Map<String, Object>>> resendVerification(
-            @RequestAttribute("developer") Developer developer) {
+            @RequestAttribute Developer developer) {
         return Responses.ok("Confirmation link sent", accountEmail.resendVerification(developer));
     }
 
     @PostMapping("/merchant")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> createBusiness(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createBusiness(@RequestAttribute Developer developer,
                                                                            @Valid @RequestBody CreateBusinessRequest req) {
         return Responses.created("Business created", merchants.create(developer, req));
     }
 
     @GetMapping("/merchant")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> business(@RequestAttribute("developer") Developer developer) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> business(@RequestAttribute Developer developer) {
         return Responses.ok("Business retrieved", merchants.view(developer));
     }
 

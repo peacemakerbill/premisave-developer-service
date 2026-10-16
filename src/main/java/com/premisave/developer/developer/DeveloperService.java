@@ -3,6 +3,7 @@ package com.premisave.developer.developer;
 import com.premisave.developer.auth.AccountEmailService;
 import com.premisave.developer.auth.RevokedToken;
 import com.premisave.developer.auth.RevokedTokenRepository;
+import com.premisave.developer.common.ClientInfo;
 import com.premisave.developer.common.DeveloperException;
 import com.premisave.developer.common.Ids;
 import com.premisave.developer.config.DeveloperProperties;
@@ -63,6 +64,12 @@ public class DeveloperService {
     public Map<String, Object> signup(SignupRequest req) {
         String email = normaliseEmail(req.email());
         checkPassword(req.password(), email);
+        if (!Boolean.TRUE.equals(req.acceptTerms())) {
+            throw DeveloperException.validation("acceptTerms", "must be accepted to create an account");
+        }
+        String country = country(req.country());
+        String phone = phone(req.phoneNumber());
+        String company = optionalText("companyName", req.companyName(), 160);
         if (developers.findByEmail(email).isPresent()) throw emailTaken();
 
         Instant now = clock.instant();
@@ -71,6 +78,11 @@ public class DeveloperService {
         d.setEmail(email);
         d.setFullName(req.fullName().trim());
         d.setPasswordHash(hasher.hash(req.password()));
+        d.setCountry(country);
+        d.setPhoneNumber(phone);
+        d.setCompanyName(company);
+        d.setTermsAcceptedAt(now);
+        d.setMarketingOptIn(Boolean.TRUE.equals(req.marketingOptIn()));
         d.setStatus(DeveloperStatus.ACTIVE);
         d.setCreatedAt(now);
         d.setUpdatedAt(now);
@@ -84,6 +96,10 @@ public class DeveloperService {
     }
 
     public Map<String, Object> login(LoginRequest req) {
+        return login(req, ClientInfo.UNKNOWN);
+    }
+
+    public Map<String, Object> login(LoginRequest req, ClientInfo client) {
         String email = normaliseEmail(req.email());
         Instant now = clock.instant();
         Developer d = developers.findByEmail(email).orElse(null);
@@ -122,7 +138,24 @@ public class DeveloperService {
         d.setLastLoginAt(now);
         if (hasher.needsRehash(d.getPasswordHash())) d.setPasswordHash(hasher.hash(req.password()));
         developers.save(d);
+        accountEmail.sendSignInAlert(d, client, "Email and password", now);
         return session(d);
+    }
+
+    /** Updates the profile. Only the fields that are sent change. */
+    public Map<String, Object> updateProfile(Developer d, UpdateProfileRequest req) {
+        if (req.fullName() != null) {
+            String name = req.fullName().trim();
+            if (name.length() < 2) throw DeveloperException.validation("fullName", "must be at least 2 characters");
+            d.setFullName(name);
+        }
+        if (req.country() != null) d.setCountry(country(req.country()));
+        if (req.phoneNumber() != null) d.setPhoneNumber(phone(req.phoneNumber()));
+        if (req.companyName() != null) d.setCompanyName(optionalText("companyName", req.companyName(), 160));
+        if (req.marketingOptIn() != null) d.setMarketingOptIn(req.marketingOptIn());
+        d.setUpdatedAt(clock.instant());
+        developers.save(d);
+        return DeveloperViews.developer(d);
     }
 
     /**
@@ -205,6 +238,30 @@ public class DeveloperService {
         String e = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
         if (!EMAIL.matcher(e).matches()) throw DeveloperException.validation("email", "is not a valid email address");
         return e;
+    }
+
+    /** A 2 letter country code, upper case. */
+    static String country(String value) {
+        String c = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        if (!c.matches("[A-Z]{2}")) throw DeveloperException.validation("country", "must be a 2 letter country code");
+        return c;
+    }
+
+    /** Digits with an optional leading plus, 7 to 15 of them, after spaces, dots, dashes and brackets are removed. Blank means none. */
+    static String phone(String value) {
+        if (value == null || value.isBlank()) return null;
+        String p = value.replaceAll("[\\s.\\-()]", "");
+        if (!p.matches("\\+?[0-9]{7,15}")) {
+            throw DeveloperException.validation("phoneNumber", "must be 7 to 15 digits, optionally starting with +");
+        }
+        return p;
+    }
+
+    private static String optionalText(String field, String value, int max) {
+        if (value == null || value.isBlank()) return null;
+        String t = value.trim();
+        if (t.length() > max) throw DeveloperException.validation(field, "must be at most " + max + " characters");
+        return t;
     }
 
     private void checkPassword(String password, String email) {

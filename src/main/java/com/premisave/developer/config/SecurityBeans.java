@@ -13,12 +13,12 @@ import org.springframework.context.annotation.Configuration;
 public class SecurityBeans {
 
     @Bean("developerPasswordHasher")
-    public PasswordHasher passwordHasher(DeveloperProperties props) {
+    PasswordHasher passwordHasher(DeveloperProperties props) {
         return new PasswordHasher(props.security().pbkdf2Iterations());
     }
 
     @Bean("developerJwtService")
-    public JwtService jwtService(DeveloperProperties props) {
+    JwtService jwtService(DeveloperProperties props) {
         return new JwtService(props.jwt().secret(), props.jwt().issuer(), props.jwt().accessTtlMinutes());
     }
 }

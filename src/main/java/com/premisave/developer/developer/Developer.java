@@ -23,6 +23,13 @@ public class Developer {
     /** Null for an account created through a sign in provider that has not set a password. */
     private String passwordHash;
 
+    /** Given at sign up. Null for accounts created through a sign in provider until the profile is completed. */
+    private String country;
+    private String phoneNumber;
+    private String companyName;
+    private Instant termsAcceptedAt;
+    private boolean marketingOptIn;
+
     private boolean emailVerified;
     private Instant emailVerifiedAt;
 
@@ -54,6 +61,16 @@ public class Developer {
     public void setFullName(String v) { this.fullName = v; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String v) { this.passwordHash = v; }
+    public String getCountry() { return country; }
+    public void setCountry(String v) { this.country = v; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String v) { this.phoneNumber = v; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String v) { this.companyName = v; }
+    public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
+    public void setTermsAcceptedAt(Instant v) { this.termsAcceptedAt = v; }
+    public boolean isMarketingOptIn() { return marketingOptIn; }
+    public void setMarketingOptIn(boolean v) { this.marketingOptIn = v; }
     public boolean isEmailVerified() { return emailVerified; }
     public void setEmailVerified(boolean v) { this.emailVerified = v; }
     public Instant getEmailVerifiedAt() { return emailVerifiedAt; }

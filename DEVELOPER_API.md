@@ -1,6 +1,6 @@
 # Premisave Developer Service API
 
-Three surfaces on one service (default port 8090):
+Three surfaces on one service (default port 8091):
 
 | Surface | Path | Who calls it | Authentication |
 |:-|:-|:-|:-|
@@ -31,21 +31,38 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 `POST /api/v1/auth/signup`
 
 ```json
-{ "email": "dev@example.com", "fullName": "Wanjiku Kamau", "password": "a long passphrase" }
+{ "email": "dev@example.com", "fullName": "Wanjiku Kamau", "password": "a long passphrase",
+  "country": "KE", "phoneNumber": "+254 700 123 456", "companyName": "Kamau Ventures Ltd",
+  "acceptTerms": true, "marketingOptIn": false }
 ```
 
-Password: at least 10 characters (`developer.security.password-min-length`), and it may not equal the email. Returns `201` with:
+| Field | Required | Rules |
+|---|---|---|
+| `email` | yes | Valid address, up to 160 characters. Stored in lower case. |
+| `fullName` | yes | 2 to 120 characters. |
+| `password` | yes | At least 10 characters (`developer.security.password-min-length`), and it may not equal the email. |
+| `country` | yes | 2 letter country code, stored in upper case. |
+| `phoneNumber` | no | 7 to 15 digits with an optional leading `+`. Spaces, dots, dashes and brackets are removed. Blank means none. |
+| `companyName` | no | Up to 160 characters. |
+| `acceptTerms` | yes | Must be `true`. The time is stored as `termsAcceptedAt`. |
+| `marketingOptIn` | no | Defaults to `false`. |
+
+Returns `201` with:
 
 ```json
 { "accessToken": "eyJ...", "tokenType": "Bearer", "expiresIn": 3600,
   "developer": { "developerId": "dev_...", "email": "dev@example.com", "fullName": "Wanjiku Kamau",
+                 "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
+                 "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
                  "status": "ACTIVE", "merchantId": null, "emailVerified": false, "hasPassword": true,
                  "providers": [], "createdAt": "...", "lastLoginAt": null } }
 ```
 
 `emailVerified` is false until the developer uses the link in the confirmation email that sign up sends (section 1.7). `hasPassword` is false for an account created through Google, Facebook or GitHub that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
 
-Errors: `400 VALIDATION_FAILED`, `409 EMAIL_TAKEN`. Sign up never fails because the confirmation email could not be sent.
+`profileComplete` is false for an account created through Google, Facebook or GitHub until it has a country; complete it with `PUT /api/v1/me` (section 1.3).
+
+Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `acceptTerms` or `country`), `409 EMAIL_TAKEN`. Sign up never fails because the confirmation email could not be sent.
 
 ### 1.2 Sign in
 
@@ -56,6 +73,7 @@ Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong passwo
 ### 1.3 Me
 
 * `GET /api/v1/me` returns the developer object above.
+* `PUT /api/v1/me` updates the profile. Body, every field optional and only the ones sent change: `fullName`, `country`, `phoneNumber`, `companyName`, `marketingOptIn`. Send an empty string for `phoneNumber` or `companyName` to clear it. The email address cannot be changed here. Same rules as sign up; returns the developer object. Error `400 VALIDATION_FAILED`.
 * `PUT /api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
 
 ### 1.4 Business
@@ -127,6 +145,22 @@ Errors: `400 VALIDATION_FAILED` (redirect address), `401 OAUTH_FAILED` (bad or r
 * Registers each callback address with the provider (Google Cloud console, Facebook developer app, GitHub OAuth app) exactly as listed in `developer.oauth.allowed-redirect-uris`.
 * Keeps the access token in memory or in a cookie of its own choosing; this service only reads the `Authorization: Bearer` header.
 
+### 1.11 The emails the service sends
+
+Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all five are in `email-previews/`; open them in a browser.
+
+| Email | When | Contains a link |
+|---|---|---|
+| Confirm your Premisave developer account | Sign up with email and password, a social sign up whose address the provider did not vouch for, and every resend | Yes, single use, 24 hours |
+| Welcome to Premisave | The moment the address becomes confirmed (using the link, or a social sign up whose address the provider vouched for) | Portal address only |
+| New sign in to your account | Every successful sign in, by password or by a provider, except the one that creates the account. Shows time (UTC), method, device and network address. Off with `developer.mail.notify-sign-in=false` | Portal "secure my account" address only, never a sign in link |
+| Reset your password | `forgot-password` for an active account | Yes, single use, 60 minutes |
+| Your password was changed | After a password change or a reset | Portal "reset my password" address only |
+
+The device is read from the `User-Agent` header and the address from the connection; neither is stored. Behind a reverse proxy set `server.forward-headers-strategy=native` so the address is the caller's and not the proxy's. A missing or odd header reads as "Unknown device".
+
+Values put into a page are HTML escaped, so a name such as `<script>` cannot inject markup. To change the wording or the look, edit the files; placeholders are written `{{name}}`. The pages use tables and inline styles because mail programs ignore most other CSS, and load no images or scripts. They carry no plain text part, and the brand is text only: add a logo by putting an `<img>` with an absolute `https` address in `layout.html`.
+
 ## 2. Apps (portal API)
 
 An app belongs to one environment, `sandbox` or `production`, and has its own keys.
@@ -190,6 +224,8 @@ Each change reaches the wallet within the 30 second sync interval at the latest,
 ## 4. Public API
 
 `/v1/live/**` and `/v1/sandbox/**`. Everything after the environment is the wallet's commercial API.
+
+Methods accepted: GET, POST, PUT, PATCH and DELETE. Other methods (OPTIONS, TRACE) are not forwarded to the wallet; the same list applies to `/api/v1/merchant/application/**`.
 
 Authenticate with either:
 

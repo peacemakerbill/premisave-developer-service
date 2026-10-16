@@ -2,10 +2,10 @@
 
 The commercial API is now two services.
 
-* **premisave-developer-service** (new, port 8090) owns developers, apps in sandbox and production, API keys and secrets, and the public `/v1` entry that merchants call.
+* **premisave-developer-service** (new, port 8091) owns developers, apps in sandbox and production, API keys and secrets, and the public `/v1` entry that merchants call.
 * **premisave-wallet-service** keeps merchants, onboarding, the ledger, the payment rails and everything that moves money. It no longer manages apps.
 
-Status of this delivery: both services were compiled with `javac` against hand written stubs of Spring, Jackson and the Mongo types. The developer service has 190 tests and the wallet has 457, all passing in that setup. Maven was not run (Maven Central is not reachable from where this was built), and nothing ran against a real MongoDB, a real SMTP server, a real wallet instance or a real Google, Facebook or GitHub. Run `mvn clean test` in both projects before relying on it.
+Status of this delivery: both services were compiled with `javac` against hand written stubs of Spring, Jackson and the Mongo types. The developer service has 215 tests and the wallet has 457, all passing in that setup. Maven was not run (Maven Central is not reachable from where this was built), and nothing ran against a real MongoDB, a real SMTP server, a real wallet instance or a real Google, Facebook or GitHub. Run `mvn clean test` in both projects before relying on it.
 
 ## 1. Who owns what
 
@@ -126,11 +126,12 @@ Developer service (`developer.*`):
 | `mail.resend-cooldown-seconds`, `max-per-hour` | none | 60, 5 | Per account and link kind |
 | `mail.require-verified-for-business` | none | true | Confirmed email needed to create a business |
 | `mail.log-links` | `DEVELOPER_MAIL_LOG_LINKS` | false | Development only, links are credentials |
+| `mail.notify-sign-in` | `DEVELOPER_MAIL_NOTIFY_SIGN_IN` | true | Email the owner on every successful sign in |
 | `spring.mail.*` | `SPRING_MAIL_HOST` and the rest | unset | No host means no email is sent. Not set in `application.yml` on purpose |
 | `oauth.allowed-redirect-uris` | `DEVELOPER_OAUTH_REDIRECT_URIS` | empty | Exact portal callback addresses. Empty turns social sign in off |
 | `oauth.state-ttl-minutes` | none | 10 | |
 | `oauth.google`, `facebook`, `github` `.client-id`, `.client-secret` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_*`, `GITHUB_*` | empty | A provider is on with both set. `authorize-url`, `token-url`, `user-info-url` (and `emails-url` for GitHub) can be overridden |
-| server port | `SERVER_PORT` | 8090 | |
+| server port | `SERVER_PORT` | 8091 | |
 | database | `MONGODB_URI` | `mongodb://localhost:27017/premisave_developer` | A separate database from the wallet |
 
 Wallet: the `commercial.merchants` block is removed. Nothing is added. Keep `commercial.events.developer-service-url` (`DEVELOPER_SERVICE_URL`) empty for now (section 9).
@@ -153,7 +154,7 @@ Existing merchants in the wallet have no developer account. A developer who sign
 
 Added after the first cut of the split. Endpoint details are in `DEVELOPER_API.md` sections 1.6 to 1.10.
 
-New collections in the developer database: `email_tokens` (confirmation and reset links, hashed), `revoked_tokens` (signed out tokens, removed by a TTL index when the token would have expired anyway) and `oauth_identities` (one row per provider account, `_id` is `provider:subject`). The `developers` document gains `emailVerified`, `emailVerifiedAt` and `authProviders`; `passwordHash` may now be empty for an account created through a provider. Documents written before this change have no `emailVerified`, which reads as false: existing developers must confirm their address (or the gate can be switched off) before they can create a business.
+New collections in the developer database: `email_tokens` (confirmation and reset links, hashed), `revoked_tokens` (signed out tokens, removed by a TTL index when the token would have expired anyway) and `oauth_identities` (one row per provider account, `_id` is `provider:subject`). The `developers` document gains `emailVerified`, `emailVerifiedAt`, `authProviders` and the sign up details `country`, `phoneNumber`, `companyName`, `termsAcceptedAt` and `marketingOptIn` (accounts made before this have none of them, and `profileComplete` reads false until a country is set with `PUT /api/v1/me`); `passwordHash` may now be empty for an account created through a provider. Documents written before this change have no `emailVerified`, which reads as false: existing developers must confirm their address (or the gate can be switched off) before they can create a business.
 
 How it works:
 
@@ -171,7 +172,7 @@ Known gaps:
 * Links carry the token in the query string. The portal must remove it from the address bar and send `Referrer-Policy: no-referrer` (`DEVELOPER_API.md` 1.10).
 * A provider cannot be linked from inside a signed in account. A Facebook address that matches an existing account is refused instead of linked, and the developer signs in the old way. Linking from account settings would fix that.
 * The state is not tied to the browser by a cookie; the portal must compare it with the value it stored. No PKCE.
-* Emails are plain HTML written in code. There is no template engine or localisation.
+* Emails are HTML files under `src/main/resources/email/` filled by a small placeholder replacer (escaped values, one pass). There is no template engine, no localisation and no plain text alternative part.
 * Facebook's Graph API version is pinned in the default endpoint addresses (`v21.0`). I could not confirm that this is Facebook's current version, so check it and override the three addresses if needed.
 
 ## 11. Security notes

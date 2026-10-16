@@ -60,7 +60,7 @@ class DeveloperPropertiesTest {
 
     @Test
     void mailDefaultsAreSafeAndTheLinkBaseLosesTrailingSlashes() {
-        DeveloperProperties.Mail m = new DeveloperProperties.Mail(" ", " https://portal.example.com// ", null, 1, -1, 0, null, null);
+        DeveloperProperties.Mail m = new DeveloperProperties.Mail(" ", " https://portal.example.com// ", null, 1, -1, 0, null, null, null);
         assertNull(m.from());
         assertEquals("https://portal.example.com", m.portalBaseUrl());
         assertEquals(24, m.verificationTtlHours());
@@ -69,8 +69,10 @@ class DeveloperPropertiesTest {
         assertEquals(5, m.maxPerHour());
         assertTrue(m.requireVerifiedForBusiness());
         assertFalse(m.logLinks());
-        assertEquals("http://localhost:3000", new DeveloperProperties.Mail(null, null, null, null, null, null, null, null).portalBaseUrl());
-        assertEquals(0, new DeveloperProperties.Mail(null, null, null, null, 0, null, null, null).resendCooldownSeconds());
+        assertEquals("http://localhost:3000", new DeveloperProperties.Mail(null, null, null, null, null, null, null, null, null).portalBaseUrl());
+        assertEquals(0, new DeveloperProperties.Mail(null, null, null, null, 0, null, null, null, null).resendCooldownSeconds());
+        assertTrue(new DeveloperProperties.Mail(null, null, null, null, null, null, null, null, null).notifySignIn());
+        assertFalse(new DeveloperProperties.Mail(null, null, null, null, null, null, null, null, false).notifySignIn());
     }
 
     @Test
@@ -113,5 +115,13 @@ class DeveloperPropertiesTest {
         assertFalse(o.isAllowedRedirect("https://portal.example.com/cb/"));
         assertFalse(o.isAllowedRedirect("https://portal.example.com/CB"));
         assertFalse(o.isAllowedRedirect(null));
+    }
+
+    @Test
+    void anUnsetEnvironmentVariableIsNotTakenForTheWalletKey() {
+        DeveloperProperties.Wallet w = new DeveloperProperties.Wallet("http://wallet:8084", null, null, "${INTERNAL_API_KEY}", null, null);
+        assertNull(w.apiKey());
+        assertFalse(w.configured());
+        assertTrue(new DeveloperProperties.Wallet("http://wallet:8084", null, null, "real-key-value", null, null).configured());
     }
 }

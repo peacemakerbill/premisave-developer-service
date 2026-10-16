@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -26,8 +27,9 @@ public class PortalApplicationController {
         this.proxy = proxy;
     }
 
-    @RequestMapping("/api/v1/merchant/application/**")
-    public ResponseEntity<byte[]> handle(@RequestAttribute("developer") Developer developer, HttpServletRequest request)
+    @RequestMapping(value = "/api/v1/merchant/application/**",
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
+    public ResponseEntity<byte[]> handle(@RequestAttribute Developer developer, HttpServletRequest request)
             throws IOException {
         String merchantId = MerchantLinkService.requireMerchantId(developer);
         String uri = request.getRequestURI();

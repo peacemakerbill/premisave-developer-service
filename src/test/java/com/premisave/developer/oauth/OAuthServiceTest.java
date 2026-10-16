@@ -155,7 +155,24 @@ class OAuthServiceTest {
         assertEquals(java.util.List.of("google"), dev.get("providers"));
         assertTrue(ids.store.containsKey("google:g-1"));
         assertEquals("dev_", ((String) dev.get("developerId")).substring(0, 4));
-        assertTrue(mailer.sent.isEmpty());
+        // A confirmed address gets the welcome email at once, and no confirmation link.
+        assertEquals(1, mailer.sent.size());
+        assertEquals("Welcome to Premisave", mailer.sent.get(0).subject());
+        assertEquals("jane@gmail.com", mailer.sent.get(0).to());
+        assertFalse(mailer.sent.get(0).html().contains("verify-email"));
+        assertEquals(false, dev.get("profileComplete"));
+    }
+
+    @Test
+    void comingBackThroughAProviderSendsASignInNoticeNamingTheProvider() {
+        google("g-1", "jane@gmail.com", true, "Jane Doe");
+        signIn("google");
+        mailer.sent.clear();
+        Map<String, Object> again = signIn("google");
+        assertEquals(false, again.get("newAccount"));
+        assertEquals(1, mailer.sent.size());
+        assertEquals("New sign in to your Premisave developer account", mailer.sent.get(0).subject());
+        assertTrue(mailer.sent.get(0).html().contains("Google"));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.premisave.developer.common.RequestIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -18,7 +19,8 @@ public class PublicApiController {
         this.proxy = proxy;
     }
 
-    @RequestMapping("/v1/**")
+    @RequestMapping(value = "/v1/**",
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE})
     public ResponseEntity<byte[]> handle(HttpServletRequest request) throws IOException {
         byte[] body = ProxyService.readBody(request.getInputStream(), proxy.maxBodyBytes());
         return proxy.handlePublic(request.getMethod(), request.getRequestURI(), request.getQueryString(),

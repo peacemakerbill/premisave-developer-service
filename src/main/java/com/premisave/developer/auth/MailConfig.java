@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 public class MailConfig {
 
     @Bean("developerMailService")
-    public MailService mailService(Optional<JavaMailSender> sender, DeveloperProperties props) {
+    MailService mailService(Optional<JavaMailSender> sender, DeveloperProperties props) {
         ThreadPoolExecutor pool = new ThreadPoolExecutor(2, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(500),
                 r -> {
                     Thread t = new Thread(r, "developer-mail");

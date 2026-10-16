@@ -13,6 +13,12 @@ public final class DeveloperViews {
         m.put("developerId", d.getDeveloperId());
         m.put("email", d.getEmail());
         m.put("fullName", d.getFullName());
+        m.put("country", d.getCountry());
+        m.put("phoneNumber", d.getPhoneNumber());
+        m.put("companyName", d.getCompanyName());
+        m.put("marketingOptIn", d.isMarketingOptIn());
+        m.put("termsAcceptedAt", iso(d.getTermsAcceptedAt()));
+        m.put("profileComplete", d.getCountry() != null);
         m.put("emailVerified", d.isEmailVerified());
         m.put("hasPassword", d.getPasswordHash() != null);
         m.put("providers", d.getAuthProviders().stream().sorted().toList());

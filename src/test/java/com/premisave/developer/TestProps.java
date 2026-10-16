@@ -12,7 +12,7 @@ public final class TestProps {
     public static final String PEPPER = "test-pepper-0123456789";
 
     public static DeveloperProperties.Mail mail() {
-        return new DeveloperProperties.Mail(null, "https://portal.example.com", null, null, 60, 5, true, false);
+        return new DeveloperProperties.Mail(null, "https://portal.example.com", null, null, 60, 5, true, false, true);
     }
 
     public static DeveloperProperties.Keys keys() {

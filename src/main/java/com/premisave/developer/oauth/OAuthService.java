@@ -1,6 +1,7 @@
 package com.premisave.developer.oauth;
 
 import com.premisave.developer.auth.AccountEmailService;
+import com.premisave.developer.common.ClientInfo;
 import com.premisave.developer.common.DeveloperException;
 import com.premisave.developer.common.Ids;
 import com.premisave.developer.config.DeveloperProperties;
@@ -88,6 +89,11 @@ public class OAuthService {
 
     /** Finishes the flow: checks the state, reads the profile, and signs the person in or up. */
     public Map<String, Object> callback(String providerName, String code, String state, String redirectUri) {
+        return callback(providerName, code, state, redirectUri, ClientInfo.UNKNOWN);
+    }
+
+    public Map<String, Object> callback(String providerName, String code, String state, String redirectUri,
+                                        ClientInfo caller) {
         OAuthProvider p = enabled(providerName);
         String uri = allowedRedirect(redirectUri);
         states.verify(state, p, uri);
@@ -97,7 +103,7 @@ public class OAuthService {
         }
         for (int attempt = 0; ; attempt++) {
             try {
-                return signInOrUp(profile);
+                return signInOrUp(profile, caller);
             } catch (DuplicateKeyException raced) {
                 // Two sign ins for a new person arrived together. The second finds the account the first made.
                 if (attempt >= 1) throw new DeveloperException(ErrorCode.OAUTH_FAILED, "Sign in did not complete. Try again.");
@@ -105,7 +111,7 @@ public class OAuthService {
         }
     }
 
-    private Map<String, Object> signInOrUp(OAuthProfile profile) {
+    private Map<String, Object> signInOrUp(OAuthProfile profile, ClientInfo caller) {
         Instant now = clock.instant();
         String identityId = OAuthIdentity.idOf(profile.provider(), profile.subject());
 
@@ -113,7 +119,7 @@ public class OAuthService {
         if (known.isPresent()) {
             Developer d = developers.findById(known.get().getDeveloperId())
                     .orElseThrow(() -> new DeveloperException(ErrorCode.OAUTH_FAILED, "That account no longer exists."));
-            return finish(d, false, profile, now);
+            return finish(d, false, profile, now, caller);
         }
 
         String email = null;
@@ -150,7 +156,7 @@ public class OAuthService {
                 d.setEmailVerifiedAt(now);
             }
             link(d, profile, email, now);
-            return finish(d, false, profile, now);
+            return finish(d, false, profile, now, caller);
         }
 
         Developer d = new Developer();
@@ -167,7 +173,7 @@ public class OAuthService {
         developers.insert(d);
         saveIdentity(d, profile, email, now);
         if (!d.isEmailVerified()) accountEmail.sendVerification(d);
-        return finish(d, true, profile, now);
+        return finish(d, true, profile, now, caller);
     }
 
     private void link(Developer d, OAuthProfile profile, String email, Instant now) {
@@ -187,7 +193,7 @@ public class OAuthService {
         identities.insert(id);
     }
 
-    private Map<String, Object> finish(Developer d, boolean created, OAuthProfile profile, Instant now) {
+    private Map<String, Object> finish(Developer d, boolean created, OAuthProfile profile, Instant now, ClientInfo caller) {
         if (d.getStatus() == DeveloperStatus.DISABLED) {
             throw new DeveloperException(ErrorCode.ACCOUNT_DISABLED, "This account has been disabled");
         }
@@ -195,6 +201,11 @@ public class OAuthService {
         d.setFailedLogins(0);
         d.setLockedUntil(null);
         developers.save(d);
+        if (created) {
+            if (d.isEmailVerified()) accountEmail.sendWelcome(d);
+        } else {
+            accountEmail.sendSignInAlert(d, caller, OAuthClient.label(profile.provider()), now);
+        }
         Map<String, Object> m = new LinkedHashMap<>(accounts.session(d));
         m.put("newAccount", created);
         m.put("provider", profile.provider().key());

@@ -34,7 +34,7 @@ public record DeveloperProperties(
         if (security == null) security = new Security(null, null, null, null);
         if (internal == null) internal = new Internal(null);
         if (cors == null) cors = new Cors(null);
-        if (mail == null) mail = new Mail(null, null, null, null, null, null, null, null);
+        if (mail == null) mail = new Mail(null, null, null, null, null, null, null, null, null);
         if (oauth == null) oauth = new OAuth(null, null, null, null, null);
     }
 
@@ -42,7 +42,7 @@ public record DeveloperProperties(
     public record Jwt(String secret, String issuer, Integer accessTtlMinutes) {
         public Jwt {
             if (secret == null || secret.length() < 32) {
-                throw new IllegalStateException("developer.jwt.secret must be set and at least 32 characters long");
+                throw new IllegalStateException("developer.jwt.secret must be set and at least 32 characters long. Set the DEVELOPER_JWT_SECRET environment variable (the service does not read a .env file by itself)");
             }
             if (issuer == null || issuer.isBlank()) issuer = "premisave-developer";
             if (accessTtlMinutes == null || accessTtlMinutes < 1) accessTtlMinutes = 60;
@@ -56,7 +56,7 @@ public record DeveloperProperties(
     public record Keys(String pepper, Integer maxActivePerApp, Integer rotationGraceHours) {
         public Keys {
             if (pepper == null || pepper.length() < 16) {
-                throw new IllegalStateException("developer.keys.pepper must be set and at least 16 characters long");
+                throw new IllegalStateException("developer.keys.pepper must be set and at least 16 characters long. Set the API_KEY_PEPPER environment variable (the service does not read a .env file by itself)");
             }
             if (maxActivePerApp == null || maxActivePerApp < 1) maxActivePerApp = 5;
             if (rotationGraceHours == null || rotationGraceHours < 0) rotationGraceHours = 24;
@@ -74,6 +74,8 @@ public record DeveloperProperties(
             liveUrl = trimSlash(liveUrl);
             sandboxUrl = trimSlash(sandboxUrl);
             if (signingSecret != null && signingSecret.isBlank()) signingSecret = null;
+            // An environment variable that is not set leaves the text ${NAME} behind; that is not a key.
+            if (apiKey != null && (apiKey.isBlank() || apiKey.trim().startsWith("${"))) apiKey = null;
             if (timeoutSeconds == null || timeoutSeconds < 1) timeoutSeconds = 30;
         }
 
@@ -170,10 +172,11 @@ public record DeveloperProperties(
      * Email for verification and password reset links. portalBaseUrl is where the developer portal lives: links are
      * built as portalBaseUrl plus /verify-email?token=... and /reset-password?token=.... With no mail server configured
      * (spring.mail.host) nothing can be sent; logLinks then writes the link to the log instead, for local work only.
+     * notifySignIn sends the owner a notice for every successful sign in, with the time, device and network address.
      */
     public record Mail(String from, String portalBaseUrl, Integer verificationTtlHours, Integer resetTtlMinutes,
                        Integer resendCooldownSeconds, Integer maxPerHour, Boolean requireVerifiedForBusiness,
-                       Boolean logLinks) {
+                       Boolean logLinks, Boolean notifySignIn) {
         public Mail {
             if (from != null && from.isBlank()) from = null;
             if (portalBaseUrl == null || portalBaseUrl.isBlank()) portalBaseUrl = "http://localhost:3000";
@@ -185,6 +188,7 @@ public record DeveloperProperties(
             if (maxPerHour == null || maxPerHour < 1) maxPerHour = 5;
             if (requireVerifiedForBusiness == null) requireVerifiedForBusiness = Boolean.TRUE;
             if (logLinks == null) logLinks = Boolean.FALSE;
+            if (notifySignIn == null) notifySignIn = Boolean.TRUE;
         }
     }
 

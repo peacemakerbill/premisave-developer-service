@@ -33,7 +33,7 @@ public class AppController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute Developer developer,
                                                                    @Valid @RequestBody CreateAppRequest req) {
         AppService.Created created = apps.create(developer, req);
         return Responses.created("App created", AppService.withKey(created.app(), created.key()));
@@ -41,7 +41,7 @@ public class AppController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> list(
-            @RequestAttribute("developer") Developer developer,
+            @RequestAttribute Developer developer,
             @RequestParam(required = false) String environment,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
@@ -59,27 +59,27 @@ public class AppController {
     }
 
     @GetMapping("/{appId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> get(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> get(@RequestAttribute Developer developer,
                                                                 @PathVariable String appId) {
         return Responses.ok("App retrieved", AppViews.app(apps.get(developer, appId)));
     }
 
     @PutMapping("/{appId}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> update(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> update(@RequestAttribute Developer developer,
                                                                    @PathVariable String appId,
                                                                    @Valid @RequestBody UpdateAppRequest req) {
         return Responses.ok("App updated", AppViews.app(apps.update(developer, appId, req)));
     }
 
     @PostMapping("/{appId}/suspend")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> suspend(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> suspend(@RequestAttribute Developer developer,
                                                                     @PathVariable String appId,
                                                                     @Valid @RequestBody(required = false) ReasonRequest req) {
         return Responses.ok("App suspended", AppViews.app(apps.suspend(developer, appId, req == null ? null : req.reason())));
     }
 
     @PostMapping("/{appId}/reactivate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@RequestAttribute("developer") Developer developer,
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reactivate(@RequestAttribute Developer developer,
                                                                        @PathVariable String appId) {
         return Responses.ok("App reactivated", AppViews.app(apps.reactivate(developer, appId)));
     }

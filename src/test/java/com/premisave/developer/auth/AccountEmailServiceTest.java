@@ -57,6 +57,35 @@ class AccountEmailServiceTest {
         return link.substring(prefix.length());
     }
 
+    // ---- welcome and sign in notice
+
+    @Test
+    void confirmingAnAddressSendsTheWelcomeEmailOnce() {
+        Developer d = developer();
+        service.sendVerification(d);
+        String token = tokenIn(mailer.lastLink(PREFIX_VERIFY), PREFIX_VERIFY);
+        mailer.sent.clear();
+        service.verifyEmail(token);
+        assertEquals(1, mailer.sent.size());
+        assertEquals("Welcome to Premisave", mailer.sent.get(0).subject());
+        assertEquals("jane@example.com", mailer.sent.get(0).to());
+        assertTrue(mailer.sent.get(0).html().contains("Jane &lt;Doe&gt;"));
+    }
+
+    @Test
+    void theSignInNoticeGoesToTheOwnerAndNeverFailsTheCaller() {
+        Developer d = developer();
+        service.sendSignInAlert(d, new com.premisave.developer.common.ClientInfo("198.51.100.4", "curl/8.5.0"), "Google", now);
+        assertEquals(1, mailer.sent.size());
+        assertTrue(mailer.sent.get(0).html().contains("curl"));
+        assertTrue(mailer.sent.get(0).html().contains("Google"));
+        assertTrue(mailer.sent.get(0).html().contains("198.51.100.4"));
+        mailer.fail = true;
+        service.sendSignInAlert(d, null, "Email and password", now);
+        service.sendWelcome(d);
+        assertEquals(1, mailer.sent.size());
+    }
+
     // ---- confirming an address
 
     @Test

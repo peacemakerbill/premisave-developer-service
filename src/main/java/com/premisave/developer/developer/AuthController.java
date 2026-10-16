@@ -3,6 +3,8 @@ package com.premisave.developer.developer;
 import com.premisave.developer.auth.AccountEmailService;
 import com.premisave.developer.common.ApiResponse;
 import com.premisave.developer.common.Responses;
+import com.premisave.developer.common.ClientInfo;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,8 +33,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody LoginRequest req) {
-        return Responses.ok("Signed in", developers.login(req));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@Valid @RequestBody LoginRequest req,
+                                                                  HttpServletRequest http) {
+        return Responses.ok("Signed in", developers.login(req, ClientInfo.of(http)));
     }
 
     @PostMapping("/verify-email")
