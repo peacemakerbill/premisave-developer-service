@@ -51,20 +51,23 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 
 Names may contain letters from any alphabet, spaces, hyphens, apostrophes and full stops (Anne-Marie, O'Brien, van der Merwe). Digits, symbols and markup are refused. There is no username field: one is generated (section 1.3) and the developer changes it on the profile.
 
-Returns `201` with:
+Returns `201` with no token. Sign up only creates the account; the developer signs in on the next screen (section 1.2), and sign in does not wait for the email address to be confirmed. The portal shows `data.message` and sends the developer to the sign in page.
 
 ```json
-{ "accessToken": "eyJ...", "tokenType": "Bearer", "expiresIn": 3600,
-  "developer": { "developerId": "dev_...", "email": "dev@example.com", "username": "wanjiku.kamau",
+{ "success": true, "message": "Your account has been created. Sign in to continue. We sent a confirmation link to dev@example.com. Confirm it before you create your business.",
+  "data": { "message": "Your account has been created. Sign in to continue. We sent a confirmation link to dev@example.com. Confirm it before you create your business.",
+            "next": "SIGN_IN", "confirmationEmailSent": true,
+            "developer": { "developerId": "dev_...", "email": "dev@example.com", "username": "wanjiku.kamau",
                  "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau", "fullName": "Wanjiku Grace Kamau",
                  "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
                  "addressLine1": null, "addressLine2": null, "city": null, "stateOrRegion": null,
                  "postalCode": null, "timezone": null, "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
                  "status": "ACTIVE", "merchantId": null, "emailVerified": false, "hasPassword": true,
-                 "providers": [], "createdAt": "...", "lastLoginAt": null } }
+                 "providers": [], "createdAt": "...", "lastLoginAt": null } },
+  "timestamp": "..." }
 ```
 
-`emailVerified` is false until the developer uses the link in the confirmation email that sign up sends (section 1.7). `hasPassword` is false for an account created through Google, Facebook or GitHub that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
+`next` is always `SIGN_IN`. `confirmationEmailSent` is true when the service has a mail server and handed the confirmation email to it, and false when no mail server is configured (the message then does not mention an email). It is not a delivery guarantee: sending happens in the background and a failure never fails sign up. `emailVerified` is false until the developer uses the link in the confirmation email (section 1.7). `hasPassword` is false for an account created through Google, Facebook or GitHub that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
 
 `profileComplete` is false until the account has a first name, a last name and a country, which an account created through Google, Facebook or GitHub may lack; complete it with `PUT /api/v1/me` (section 1.3).
 
@@ -72,7 +75,7 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
 
 ### 1.2 Sign in
 
-`POST /api/v1/auth/login` with `{ "email", "password" }`. Same response as sign up, `200`.
+`POST /api/v1/auth/login` with `{ "email", "password" }`. Returns `200` with the session: `accessToken`, `tokenType`, `expiresIn` and the `developer` object. Sign up issues no token, so this is where the portal gets the first one after sign up.
 
 Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong password and an account that has no password because it was created through a provider), `403 ACCOUNT_DISABLED`, `423 ACCOUNT_LOCKED` after 5 failed attempts, for 15 minutes. An unconfirmed email does not stop sign in; it stops creating a business (section 1.4).
 
@@ -147,7 +150,7 @@ Authorization code flow. The portal never handles a provider secret; this servic
 1. `GET /api/v1/auth/oauth/providers` returns `{ "providers": ["google", "github"] }`, the providers that are configured. Use it to decide which buttons to show.
 2. `GET /api/v1/auth/oauth/{provider}/authorize?redirectUri=<portal callback address>` returns `{ "provider", "authorizationUrl", "state" }`. `provider` is `google`, `facebook` or `github`. The portal stores `state` (for example in session storage) and sends the browser to `authorizationUrl`.
 3. The provider sends the browser back to `redirectUri` with `code` and `state` in the query string. The portal checks that `state` equals the stored one, then:
-4. `POST /api/v1/auth/oauth/{provider}/callback` with `{ "code", "state", "redirectUri" }`. `redirectUri` must be exactly the value used in step 2. The response is the sign in session of section 1.1 plus `newAccount` (true when this call created the account) and `provider`.
+4. `POST /api/v1/auth/oauth/{provider}/callback` with `{ "code", "state", "redirectUri" }`. `redirectUri` must be exactly the value used in step 2. The response is the sign in session of section 1.2 plus `newAccount` (true when this call created the account) and `provider`.
 
 `redirectUri` must appear in `developer.oauth.allowed-redirect-uris` (exact match, no wildcards); otherwise `400 VALIDATION_FAILED`. The state is signed by this service, expires after 10 minutes and is bound to the provider and the redirect address, so a state from one provider or address is refused for another (`401 OAUTH_FAILED`).
 
@@ -171,6 +174,7 @@ Errors: `400 VALIDATION_FAILED` (redirect address), `401 OAUTH_FAILED` (bad or r
 * Routes `/verify-email` and `/reset-password` read `token` from the query string, immediately remove it from the address bar (`history.replaceState`) so it does not stay in history or leak through a Referer header, then POST it. Serve those pages with `Referrer-Policy: no-referrer`.
 * Keeps the OAuth `state` from step 2 and compares it with the one the provider returns before calling the callback endpoint.
 * Registers each callback address with the provider (Google Cloud console, Facebook developer app, GitHub OAuth app) exactly as listed in `developer.oauth.allowed-redirect-uris`.
+* After sign up, shows `data.message` and goes to the sign in page, because sign up issues no token. The developer can sign in at once, before confirming the email.
 * Keeps the access token in memory or in a cookie of its own choosing; this service only reads the `Authorization: Bearer` header.
 
 ### 1.11 The emails the service sends

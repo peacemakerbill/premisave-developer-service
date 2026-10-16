@@ -58,18 +58,24 @@ class DeveloperServiceTest {
         return service.signup(signup("Jane@Example.com ", "a long password 1"));
     }
 
+    /** Signs up and then signs in, because sign up itself issues no token. */
+    private String signedInToken() {
+        signedUp();
+        return (String) service.login(new LoginRequest("jane@example.com", "a long password 1")).get("accessToken");
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, Object> developerOf(Map<String, Object> session) {
         return (Map<String, Object>) session.get("developer");
     }
 
     @Test
-    void signupStoresALowercaseEmailAndAHashedPasswordAndReturnsASession() {
+    void signupStoresALowercaseEmailAndAHashedPasswordAndIssuesNoToken() {
         Map<String, Object> s = signedUp();
         assertEquals("jane@example.com", developerOf(s).get("email"));
-        assertEquals("Bearer", s.get("tokenType"));
-        assertEquals(3600L, s.get("expiresIn"));
-        assertNotNull(s.get("accessToken"));
+        assertFalse(s.containsKey("accessToken"));
+        assertFalse(s.containsKey("tokenType"));
+        assertFalse(s.containsKey("expiresIn"));
         Developer d = repo.store.values().iterator().next();
         assertTrue(d.getPasswordHash().startsWith("pbkdf2-sha256$"));
         assertFalse(d.getPasswordHash().contains("a long password"));
@@ -222,7 +228,7 @@ class DeveloperServiceTest {
     void aSignUpThatLosesARaceForTheUsernameTriesAgain() {
         repo.duplicateOnInsert = 1;
         Map<String, Object> s = signedUp();
-        assertNotNull(s.get("accessToken"));
+        assertNotNull(s.get("developer"));
         assertEquals(1, repo.store.size());
     }
 
@@ -431,7 +437,7 @@ class DeveloperServiceTest {
 
     @Test
     void aTokenIdentifiesTheDeveloperUntilTheAccountIsDisabled() {
-        String token = (String) signedUp().get("accessToken");
+        String token = signedInToken();
         Developer d = service.authenticate(token);
         assertEquals("jane@example.com", d.getEmail());
         service.setStatus(d.getDeveloperId(), DeveloperStatus.DISABLED);
@@ -447,7 +453,7 @@ class DeveloperServiceTest {
 
     @Test
     void changingThePasswordEndsEveryOlderToken() {
-        String oldToken = (String) signedUp().get("accessToken");
+        String oldToken = signedInToken();
         Developer d = service.authenticate(oldToken);
         Map<String, Object> fresh = service.changePassword(d, new ChangePasswordRequest("a long password 1", "a brand new password 3"));
         assertEquals(ErrorCode.UNAUTHENTICATED, assertThrows(DeveloperException.class, () -> service.authenticate(oldToken)).code());
@@ -458,7 +464,7 @@ class DeveloperServiceTest {
 
     @Test
     void changingThePasswordNeedsTheCurrentOne() {
-        Developer d = service.authenticate((String) signedUp().get("accessToken"));
+        Developer d = service.authenticate(signedInToken());
         DeveloperException e = assertThrows(DeveloperException.class,
                 () -> service.changePassword(d, new ChangePasswordRequest("not my password", "a brand new password 3")));
         assertEquals(ErrorCode.INVALID_CREDENTIALS, e.code());
@@ -539,7 +545,7 @@ class DeveloperServiceTest {
         assertEquals("Acme Ltd", out.get("companyName"));
         assertEquals(true, out.get("marketingOptIn"));
         assertEquals(T0.plusSeconds(10), d.getUpdatedAt());
-        assertNotNull(s.get("accessToken"));
+        assertNotNull(s.get("developer"));
     }
 
     @Test
@@ -640,13 +646,14 @@ class DeveloperServiceTest {
     void aMailServerThatIsDownDoesNotStopSignUp() {
         mailer.fail = true;
         Map<String, Object> s = signedUp();
-        assertNotNull(s.get("accessToken"));
+        assertNotNull(s.get("developer"));
         assertEquals(1, repo.store.size());
     }
 
     @Test
     void everyTokenCarriesItsOwnId() {
-        Map<String, Object> a = signedUp();
+        signedUp();
+        Map<String, Object> a = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> b = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         JwtService.Claims ca = jwt.verify(tokenOf(a)).orElseThrow();
         JwtService.Claims cb = jwt.verify(tokenOf(b)).orElseThrow();
@@ -656,7 +663,8 @@ class DeveloperServiceTest {
 
     @Test
     void logoutEndsOnlyTheTokenUsed() {
-        Map<String, Object> first = signedUp();
+        signedUp();
+        Map<String, Object> first = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> second = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         DeveloperService.Authenticated who = service.authenticateToken(tokenOf(first));
         service.logout(who.developer(), who.claims());
@@ -669,7 +677,8 @@ class DeveloperServiceTest {
 
     @Test
     void logoutEverywhereEndsEveryToken() {
-        Map<String, Object> first = signedUp();
+        signedUp();
+        Map<String, Object> first = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> second = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         service.logoutEverywhere(service.authenticate(tokenOf(first)));
         assertThrows(DeveloperException.class, () -> service.authenticate(tokenOf(first)));
@@ -711,5 +720,39 @@ class DeveloperServiceTest {
         service.changePassword(d, new ChangePasswordRequest("a long password 1", "a brand new password 2"));
         assertEquals(1, mailer.sent.size());
         assertTrue(mailer.sent.get(0).subject().contains("password was changed"));
+    }
+
+    // ---- sign up answers with a message, not a token
+
+    @Test
+    void signupAnswersWithAMessageAndTheNextStep() {
+        Map<String, Object> s = signedUp();
+        assertEquals("SIGN_IN", s.get("next"));
+        assertEquals(true, s.get("confirmationEmailSent"));
+        String message = (String) s.get("message");
+        assertTrue(message.startsWith("Your account has been created. Sign in to continue."));
+        assertTrue(message.contains("jane@example.com"));
+        assertEquals(null, developerOf(s).get("lastLoginAt"));
+    }
+
+    @Test
+    void signupWithoutAMailServerSaysNothingAboutAnEmail() {
+        MailService noMail = new MailService(null, Runnable::run, false);
+        AccountEmailService quietEmail = new AccountEmailService(repo.repo, tokens, noMail, hasher, TestProps.mail(), 10, clock);
+        DeveloperService quietService = new DeveloperService(repo.repo, hasher, jwt, TestProps.fastSecurity(), revoked.repo, quietEmail, clock);
+        Map<String, Object> s = quietService.signup(signup("jane@example.com", "a long password 1"));
+        assertEquals("Your account has been created. Sign in to continue.", s.get("message"));
+        assertEquals(false, s.get("confirmationEmailSent"));
+        assertEquals("SIGN_IN", s.get("next"));
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    @Test
+    void signingInWorksStraightAfterSignupBeforeTheEmailIsConfirmed() {
+        signedUp();
+        Map<String, Object> in = service.login(new LoginRequest("jane@example.com", "a long password 1"));
+        assertNotNull(in.get("accessToken"));
+        assertEquals(false, developerOf(in).get("emailVerified"));
+        assertEquals(now, repo.store.values().iterator().next().getLastLoginAt());
     }
 }

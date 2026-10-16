@@ -1,6 +1,7 @@
 package com.premisave.developer.auth;
 
 import com.premisave.developer.config.DeveloperProperties;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,6 +14,12 @@ import java.util.concurrent.TimeUnit;
 /** Wires the mail service. The mail server comes from spring.mail.*; without spring.mail.host nothing is sent. */
 @Configuration("developerMailConfig")
 public class MailConfig {
+
+    /** Removes pasted quotes and App Password spaces from the mail login before the mail sender is used. */
+    @Bean
+    static BeanPostProcessor developerMailCredentialsCleaner() {
+        return new MailCredentialsCleaner();
+    }
 
     @Bean("developerMailService")
     MailService mailService(Optional<JavaMailSender> sender, DeveloperProperties props) {

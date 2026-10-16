@@ -107,7 +107,25 @@ public class DeveloperService {
             }
         }
         accountEmail.sendVerification(d);
-        return session(d);
+        return signupResult(d);
+    }
+
+    /**
+     * What sign up answers: a message the portal can show, the next step, and the new account. No token is issued here.
+     * The developer signs in on the next screen, and sign in does not wait for the email address to be confirmed.
+     */
+    private Map<String, Object> signupResult(Developer d) {
+        boolean emailed = accountEmail.canSendEmail();
+        String message = emailed
+                ? "Your account has been created. Sign in to continue. We sent a confirmation link to " + d.getEmail()
+                  + ". Confirm it before you create your business."
+                : "Your account has been created. Sign in to continue.";
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("message", message);
+        m.put("next", "SIGN_IN");
+        m.put("confirmationEmailSent", emailed);
+        m.put("developer", DeveloperViews.developer(d));
+        return m;
     }
 
     public Map<String, Object> login(LoginRequest req) {

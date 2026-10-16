@@ -85,7 +85,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 ## Features
 
 **Accounts and Authentication**
-- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record
+- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record. Sign up returns a message and the next step (`SIGN_IN`) and issues no token, so the portal sends the developer to the sign in page. Sign in does not wait for the email to be confirmed
 - Sign in with Google, Facebook or GitHub through the authorization code flow, so the portal never handles a provider secret
 - Stateless HS256 JWT access tokens (`jti`, token version) with real revocation: sign out one device, or sign out everywhere
 - Email confirmation and forgot password, using single-use links that are stored only as keyed hashes
@@ -193,7 +193,7 @@ sequenceDiagram
         S->>M: Save developer (emailVerified = false)
         S->>M: Save confirmation token (hash only, 24 hours)
         S-->>E: Send confirmation email (background)
-        S-->>P: 201 session and developer
+        S-->>P: 201 message, next = SIGN_IN and developer (no token)
     end
     E-->>D: Confirmation email delivered
     D->>P: Open the link in the email
@@ -208,7 +208,7 @@ sequenceDiagram
     end
 ```
 
-Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
+Sign up issues no token. The portal shows `data.message` and sends the developer to the sign in page, where sign in works before the email is confirmed. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
 
 ### Sign In
 
@@ -403,7 +403,7 @@ Every response uses the same envelope, and every response carries an `X-Request-
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/v1/auth/signup` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Create an account |
+| POST | `/api/v1/auth/signup` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Create an account (no token, sign in next) |
 | POST | `/api/v1/auth/login` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Email and password sign in |
 | POST | `/api/v1/auth/verify-email` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Confirm an email with the emailed token |
 | POST | `/api/v1/auth/resend-verification` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Ask for a new confirmation email |
@@ -580,6 +580,7 @@ Email is optional and off until a mail server is configured. With no host, no em
 Things to know:
 
 - `spring.mail.host` is the server name, never an email address.
+- A password pasted as `' yyyy nnnn bbbb kkkk'` still works: the service removes one pair of matching quotes and the spaces of a Google App Password before it logs in (and says so in the log, without showing the password). Any other password is used exactly as written. Plain `yyyynnnnbbbbkkkk` is still the clean form.
 - Inside `.env` the mail settings use the dotted names above, because a file, unlike the environment, does not map `SPRING_MAIL_HOST`. If you set real environment variables instead, use `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH` and `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE`.
 - Do not put `spring.mail.host` in `application.yml` with an empty value. Any value, even an empty one, switches mail on.
 - Gmail sends as the signed-in account whatever `From` says, so keep `DEVELOPER_MAIL_FROM` equal to the username.

@@ -29,7 +29,8 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<Map<String, Object>>> signup(@Valid @RequestBody SignupRequest req) {
-        return Responses.created("Account created", developers.signup(req));
+        Map<String, Object> result = developers.signup(req);
+        return Responses.created((String) result.get("message"), result);
     }
 
     @PostMapping("/login")

@@ -56,6 +56,11 @@ public class AccountEmailService {
         this.clock = clock;
     }
 
+    /** Whether this service has a mail server to send through. False means no email leaves, whatever else happens. */
+    public boolean canSendEmail() {
+        return mail.canSend();
+    }
+
     /** Sends the confirmation link for a new account. Never throws: sign up must not fail because email did. */
     public void sendVerification(Developer d) {
         try {
