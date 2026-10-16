@@ -50,11 +50,29 @@ public final class TestRepos {
 
     public static final class Developers {
         public final Map<String, Developer> store = new LinkedHashMap<>();
+        /** Makes the next insert calls fail as if another request had just taken the same unique value. */
+        public int duplicateOnInsert;
+        /** Runs when an insert fails that way, to model what the other request stored. */
+        public Runnable onDuplicate;
+        /** Makes save fail the same way. */
+        public boolean duplicateOnSave;
         public final DeveloperRepository repo = Fake.of(DeveloperRepository.class, Map.of(
                 "findById", a -> Optional.ofNullable(store.get((String) a[0])),
                 "findByEmail", a -> store.values().stream().filter(d -> d.getEmail().equals(a[0])).findFirst(),
-                "insert", a -> put((Developer) a[0]),
-                "save", a -> put((Developer) a[0])));
+                "findByUsername", a -> store.values().stream().filter(d -> a[0].equals(d.getUsername())).findFirst(),
+                "existsByUsername", a -> store.values().stream().anyMatch(d -> a[0].equals(d.getUsername())),
+                "insert", a -> {
+                    if (duplicateOnInsert > 0) {
+                        duplicateOnInsert--;
+                        if (onDuplicate != null) onDuplicate.run();
+                        throw new org.springframework.dao.DuplicateKeyException("duplicate key");
+                    }
+                    return put((Developer) a[0]);
+                },
+                "save", a -> {
+                    if (duplicateOnSave) throw new org.springframework.dao.DuplicateKeyException("duplicate key");
+                    return put((Developer) a[0]);
+                }));
 
         private Developer put(Developer d) {
             store.put(d.getDeveloperId(), d);

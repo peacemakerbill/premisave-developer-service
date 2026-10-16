@@ -8,6 +8,7 @@ import com.premisave.developer.config.DeveloperProperties;
 import com.premisave.developer.developer.Developer;
 import com.premisave.developer.developer.DeveloperRepository;
 import com.premisave.developer.developer.DeveloperService;
+import com.premisave.developer.developer.PersonNames;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.enums.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -163,6 +164,11 @@ public class OAuthService {
         d.setDeveloperId(Ids.next("dev"));
         d.setEmail(email);
         d.setFullName(displayName(profile.name(), email));
+        PersonNames.Parts names = PersonNames.split(d.getFullName());
+        d.setFirstName(names.first());
+        d.setMiddleName(names.middle());
+        d.setLastName(names.last());
+        d.setUsername(accounts.generateUsername(names.first(), names.last(), email));
         d.setPasswordHash(null);
         d.setStatus(DeveloperStatus.ACTIVE);
         d.setEmailVerified(profile.emailVerified());
@@ -198,6 +204,7 @@ public class OAuthService {
             throw new DeveloperException(ErrorCode.ACCOUNT_DISABLED, "This account has been disabled");
         }
         d.setLastLoginAt(now);
+        accounts.fillMissingProfile(d);
         d.setFailedLogins(0);
         d.setLockedUntil(null);
         developers.save(d);

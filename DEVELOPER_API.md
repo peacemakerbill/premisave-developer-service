@@ -31,15 +31,17 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 `POST /api/v1/auth/signup`
 
 ```json
-{ "email": "dev@example.com", "fullName": "Wanjiku Kamau", "password": "a long passphrase",
-  "country": "KE", "phoneNumber": "+254 700 123 456", "companyName": "Kamau Ventures Ltd",
+{ "email": "dev@example.com", "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau",
+  "password": "a long passphrase", "country": "KE", "phoneNumber": "+254 700 123 456", "companyName": "Kamau Ventures Ltd",
   "acceptTerms": true, "marketingOptIn": false }
 ```
 
 | Field | Required | Rules |
 |---|---|---|
 | `email` | yes | Valid address, up to 160 characters. Stored in lower case. |
-| `fullName` | yes | 2 to 120 characters. |
+| `firstName` | yes | Up to 60 characters. |
+| `middleName` | no | Up to 60 characters. Blank means none. |
+| `lastName` | yes | Up to 60 characters. |
 | `password` | yes | At least 10 characters (`developer.security.password-min-length`), and it may not equal the email. |
 | `country` | yes | 2 letter country code, stored in upper case. |
 | `phoneNumber` | no | 7 to 15 digits with an optional leading `+`. Spaces, dots, dashes and brackets are removed. Blank means none. |
@@ -47,20 +49,24 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 | `acceptTerms` | yes | Must be `true`. The time is stored as `termsAcceptedAt`. |
 | `marketingOptIn` | no | Defaults to `false`. |
 
+Names may contain letters from any alphabet, spaces, hyphens, apostrophes and full stops (Anne-Marie, O'Brien, van der Merwe). Digits, symbols and markup are refused. There is no username field: one is generated (section 1.3) and the developer changes it on the profile.
+
 Returns `201` with:
 
 ```json
 { "accessToken": "eyJ...", "tokenType": "Bearer", "expiresIn": 3600,
-  "developer": { "developerId": "dev_...", "email": "dev@example.com", "fullName": "Wanjiku Kamau",
+  "developer": { "developerId": "dev_...", "email": "dev@example.com", "username": "wanjiku.kamau",
+                 "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau", "fullName": "Wanjiku Grace Kamau",
                  "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
-                 "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
+                 "addressLine1": null, "addressLine2": null, "city": null, "stateOrRegion": null,
+                 "postalCode": null, "timezone": null, "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
                  "status": "ACTIVE", "merchantId": null, "emailVerified": false, "hasPassword": true,
                  "providers": [], "createdAt": "...", "lastLoginAt": null } }
 ```
 
 `emailVerified` is false until the developer uses the link in the confirmation email that sign up sends (section 1.7). `hasPassword` is false for an account created through Google, Facebook or GitHub that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
 
-`profileComplete` is false for an account created through Google, Facebook or GitHub until it has a country; complete it with `PUT /api/v1/me` (section 1.3).
+`profileComplete` is false until the account has a first name, a last name and a country, which an account created through Google, Facebook or GitHub may lack; complete it with `PUT /api/v1/me` (section 1.3).
 
 Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `acceptTerms` or `country`), `409 EMAIL_TAKEN`. Sign up never fails because the confirmation email could not be sent.
 
@@ -73,7 +79,29 @@ Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong passwo
 ### 1.3 Me
 
 * `GET /api/v1/me` returns the developer object above.
-* `PUT /api/v1/me` updates the profile. Body, every field optional and only the ones sent change: `fullName`, `country`, `phoneNumber`, `companyName`, `marketingOptIn`. Send an empty string for `phoneNumber` or `companyName` to clear it. The email address cannot be changed here. Same rules as sign up; returns the developer object. Error `400 VALIDATION_FAILED`.
+* `PUT /api/v1/me` updates the profile. Every field is optional and only the ones sent change; nothing changes unless every field sent is valid. Returns the developer object.
+
+  | Field | Rules |
+  |---|---|
+  | `firstName`, `lastName` | As at sign up. Cannot be cleared. |
+  | `middleName` | As at sign up. Empty string clears it. |
+  | `username` | See below. Cannot be cleared. |
+  | `country` | 2 letter code. Cannot be cleared. |
+  | `phoneNumber`, `companyName` | As at sign up. Empty string clears. |
+  | `addressLine1`, `addressLine2` | Up to 120 characters each. Empty string clears. |
+  | `city`, `stateOrRegion` | Up to 80 characters each (state, county or province). Empty string clears. |
+  | `postalCode` | 2 to 12 letters, digits, spaces or hyphens, stored in upper case. Empty string clears. |
+  | `timezone` | A time zone name such as `Africa/Nairobi`; offsets like `+03:00` are refused. Empty string clears. |
+  | `marketingOptIn` | `true` or `false`. |
+
+  Free text may not contain `<`, `>` or control characters. The email address cannot be changed here. `fullName` is rebuilt from the names whenever one changes. Error `400 VALIDATION_FAILED` with the `field` named.
+
+* **Username.** Generated at sign up as `first.last` in lower case with accents removed (`José Müller` becomes `jose.muller`), falling back to the start of the email address for names without Latin letters. If it is taken, 4 random digits are added. Accounts made before usernames existed get one the next time they sign in. The developer may change it with `PUT /api/v1/me`:
+  * 3 to 30 characters, lower case ASCII letters and digits, starting with a letter, with single dots, hyphens or underscores between parts and none at the end. Input is trimmed and lower cased. ASCII only keeps look alike letters from other alphabets out.
+  * Reserved words are refused (admin, root, support, api, dev and similar), and so is any name that contains `premisave`, `safaricom` or `mpesa`. Separators do not hide them: `ad.min` and `pre-misave` are refused too. A generated username never is or contains a reserved word.
+  * Unique, whatever the case. A name that is taken is `409 USERNAME_TAKEN`. The check and the save are separate steps, so the unique database index settles two people choosing the same name at the same moment, and the loser also gets `USERNAME_TAKEN`.
+  * Changeable once every 7 days; the first change after sign up is free. Too soon is `429 RATE_LIMITED` with `retryAfterSeconds`. Sending the current username again changes nothing.
+* `GET /api/v1/me/username-available?username=...` (signed in) returns `{ "username", "available", "reason" }`, with `reason` one of `OK`, `CURRENT`, `TAKEN`, `RESERVED` or `INVALID` and a `message` for the last two. It needs a bearer token so that usernames cannot be listed anonymously; there is no per account rate limit on it, so put one at the gateway.
 * `PUT /api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
 
 ### 1.4 Business
@@ -265,4 +293,4 @@ Header `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>`. With no key configured every c
 
 ## 6. Error codes
 
-`VALIDATION_FAILED` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `ACCOUNT_EXISTS` 409, `MERCHANT_EXISTS` 409, `MERCHANT_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.
+`VALIDATION_FAILED` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `MERCHANT_EXISTS` 409, `MERCHANT_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.

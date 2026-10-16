@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -43,6 +44,12 @@ public class MeController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateProfile(@RequestAttribute Developer developer,
                                                                           @Valid @RequestBody UpdateProfileRequest req) {
         return Responses.ok("Profile updated", developers.updateProfile(developer, req));
+    }
+
+    @GetMapping("/me/username-available")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> usernameAvailable(@RequestAttribute Developer developer,
+                                                                              @RequestParam String username) {
+        return Responses.ok("Username checked", developers.checkUsername(developer, username));
     }
 
     @PutMapping("/me/password")

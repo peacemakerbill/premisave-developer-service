@@ -61,6 +61,8 @@ developer:
     require-verified-for-business: true
     # Development only: write the links to the log when no mail server is set. Never enable in production.
     log-links: ${DEVELOPER_MAIL_LOG_LINKS:false}
+    # Email the owner on every successful sign in, with the time, device and network address
+    notify-sign-in: ${DEVELOPER_MAIL_NOTIFY_SIGN_IN:true}
   oauth:
     # Exact portal addresses a provider may send people back to. Empty turns social sign in off for every provider.
     allowed-redirect-uris: ${DEVELOPER_OAUTH_REDIRECT_URIS:}

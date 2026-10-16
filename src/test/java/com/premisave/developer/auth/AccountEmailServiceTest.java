@@ -86,6 +86,16 @@ class AccountEmailServiceTest {
         assertEquals(1, mailer.sent.size());
     }
 
+    @Test
+    void emailsGreetTheFirstNameWhenThereIsOne() {
+        Developer d = developer();
+        d.setFirstName("Janet");
+        d.setLastName("Doe");
+        service.sendWelcome(d);
+        assertTrue(mailer.sent.get(0).html().contains("Hello Janet,"));
+        assertFalse(mailer.sent.get(0).html().contains("Doe"));
+    }
+
     // ---- confirming an address
 
     @Test

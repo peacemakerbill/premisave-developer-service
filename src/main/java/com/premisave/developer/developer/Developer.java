@@ -19,7 +19,24 @@ public class Developer {
     @Indexed(unique = true)
     private String email;
 
+    /** First, middle and last name. fullName is them joined, kept for display and for older accounts. */
+    private String firstName;
+    private String middleName;
+    private String lastName;
     private String fullName;
+
+    /** Unique, lower case. Generated at sign up and changeable by the owner. */
+    @Indexed(unique = true, sparse = true)
+    private String username;
+    private Instant usernameChangedAt;
+
+    private String addressLine1;
+    private String addressLine2;
+    private String city;
+    private String stateOrRegion;
+    private String postalCode;
+    /** An IANA zone such as Africa/Nairobi. */
+    private String timezone;
     /** Null for an account created through a sign in provider that has not set a password. */
     private String passwordHash;
 
@@ -57,6 +74,28 @@ public class Developer {
     public void setDeveloperId(String v) { this.developerId = v; }
     public String getEmail() { return email; }
     public void setEmail(String v) { this.email = v; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String v) { this.firstName = v; }
+    public String getMiddleName() { return middleName; }
+    public void setMiddleName(String v) { this.middleName = v; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String v) { this.lastName = v; }
+    public String getUsername() { return username; }
+    public void setUsername(String v) { this.username = v; }
+    public Instant getUsernameChangedAt() { return usernameChangedAt; }
+    public void setUsernameChangedAt(Instant v) { this.usernameChangedAt = v; }
+    public String getAddressLine1() { return addressLine1; }
+    public void setAddressLine1(String v) { this.addressLine1 = v; }
+    public String getAddressLine2() { return addressLine2; }
+    public void setAddressLine2(String v) { this.addressLine2 = v; }
+    public String getCity() { return city; }
+    public void setCity(String v) { this.city = v; }
+    public String getStateOrRegion() { return stateOrRegion; }
+    public void setStateOrRegion(String v) { this.stateOrRegion = v; }
+    public String getPostalCode() { return postalCode; }
+    public void setPostalCode(String v) { this.postalCode = v; }
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String v) { this.timezone = v; }
     public String getFullName() { return fullName; }
     public void setFullName(String v) { this.fullName = v; }
     public String getPasswordHash() { return passwordHash; }

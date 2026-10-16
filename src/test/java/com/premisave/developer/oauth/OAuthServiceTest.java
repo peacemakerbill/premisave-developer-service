@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -161,6 +162,44 @@ class OAuthServiceTest {
         assertEquals("jane@gmail.com", mailer.sent.get(0).to());
         assertFalse(mailer.sent.get(0).html().contains("verify-email"));
         assertEquals(false, dev.get("profileComplete"));
+        assertEquals("Jane", dev.get("firstName"));
+        assertNull(dev.get("middleName"));
+        assertEquals("Doe", dev.get("lastName"));
+        assertEquals("jane.doe", dev.get("username"));
+    }
+
+    @Test
+    void aProviderNameIsSplitIntoFirstMiddleAndLastAndTheUsernameIsUnique() {
+        google("g-1", "jane@gmail.com", true, "Jane Mary Doe");
+        Map<String, Object> first = developerOf(signIn("google"));
+        assertEquals("Jane", first.get("firstName"));
+        assertEquals("Mary", first.get("middleName"));
+        assertEquals("Doe", first.get("lastName"));
+        assertEquals("jane.doe", first.get("username"));
+        google("g-2", "jane.two@gmail.com", true, "Jane Doe");
+        String second = (String) developerOf(signIn("google")).get("username");
+        assertNotEquals("jane.doe", second);
+        assertTrue(second.startsWith("jane.doe"), second);
+    }
+
+    @Test
+    void aProviderThatGivesOneWordOrNoNameStillGetsAFirstNameAndUsername() {
+        google("g-1", "someone@gmail.com", true, null);
+        Map<String, Object> dev = developerOf(signIn("google"));
+        assertEquals("someone", dev.get("firstName"));
+        assertNull(dev.get("lastName"));
+        assertEquals("someone", dev.get("username"));
+        assertEquals(false, dev.get("profileComplete"));
+    }
+
+    @Test
+    void anOlderAccountJoinedThroughAProviderGetsAUsername() {
+        Developer d = localAccount("jane@example.com", true);
+        google("g-9", "jane@example.com", true, "Jane");
+        Map<String, Object> s = signIn("google");
+        assertEquals("Local", d.getFirstName());
+        assertEquals("Person", d.getLastName());
+        assertEquals("local.person", developerOf(s).get("username"));
     }
 
     @Test

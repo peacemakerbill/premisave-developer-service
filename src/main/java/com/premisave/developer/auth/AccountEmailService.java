@@ -62,7 +62,7 @@ public class AccountEmailService {
             if (d.isEmailVerified() || tokens.waitSeconds(d, EmailTokenType.VERIFY_EMAIL).isPresent()) return;
             EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.VERIFY_EMAIL);
             String link = config.portalBaseUrl() + "/verify-email?token=" + issued.token();
-            EmailTemplates.Message m = EmailTemplates.verify(d.getFullName(), link, config.verificationTtlHours(), config.portalBaseUrl());
+            EmailTemplates.Message m = EmailTemplates.verify(greeting(d), link, config.verificationTtlHours(), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), link);
         } catch (RuntimeException e) {
             log.warn("Could not send a confirmation link to developer {}: {}", d.getDeveloperId(), e.toString());
@@ -120,7 +120,7 @@ public class AccountEmailService {
             if (tokens.waitSeconds(d, EmailTokenType.RESET_PASSWORD).isPresent()) return;
             EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.RESET_PASSWORD);
             String link = config.portalBaseUrl() + "/reset-password?token=" + issued.token();
-            EmailTemplates.Message m = EmailTemplates.reset(d.getFullName(), link, config.resetTtlMinutes(), config.portalBaseUrl());
+            EmailTemplates.Message m = EmailTemplates.reset(greeting(d), link, config.resetTtlMinutes(), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), link);
         } catch (RuntimeException e) {
             log.warn("Could not send a password reset link: {}", e.toString());
@@ -158,7 +158,7 @@ public class AccountEmailService {
     /** Tells the owner that the password changed. Never throws. */
     public void sendPasswordChanged(Developer d) {
         try {
-            EmailTemplates.Message m = EmailTemplates.passwordChanged(d.getFullName(), config.portalBaseUrl());
+            EmailTemplates.Message m = EmailTemplates.passwordChanged(greeting(d), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
         } catch (RuntimeException e) {
             log.warn("Could not send the password change notice to developer {}: {}", d.getDeveloperId(), e.toString());
@@ -168,7 +168,7 @@ public class AccountEmailService {
     /** Sent once the address is confirmed: what to do next. Never throws. */
     public void sendWelcome(Developer d) {
         try {
-            EmailTemplates.Message m = EmailTemplates.welcome(d.getFullName(), config.portalBaseUrl());
+            EmailTemplates.Message m = EmailTemplates.welcome(greeting(d), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
         } catch (RuntimeException e) {
             log.warn("Could not send the welcome email to developer {}: {}", d.getDeveloperId(), e.toString());
@@ -183,12 +183,17 @@ public class AccountEmailService {
         if (!config.notifySignIn()) return;
         try {
             ClientInfo c = client == null ? ClientInfo.UNKNOWN : client;
-            EmailTemplates.Message m = EmailTemplates.signIn(d.getFullName(), method, c.device(), c.ipText(), at,
+            EmailTemplates.Message m = EmailTemplates.signIn(greeting(d), method, c.device(), c.ipText(), at,
                     config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
         } catch (RuntimeException e) {
             log.warn("Could not send the sign in notice to developer {}: {}", d.getDeveloperId(), e.toString());
         }
+    }
+
+    /** The name the emails greet: the first name, or the full name for accounts that have none. */
+    private static String greeting(Developer d) {
+        return d.getFirstName() != null && !d.getFirstName().isBlank() ? d.getFirstName() : d.getFullName();
     }
 
     private Optional<Developer> findActive(String email) {

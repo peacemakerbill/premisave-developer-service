@@ -37,14 +37,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{developer_email}}\",\n  \"fullName\": \"Wanjiku Kamau\",\n  \"password\": \"{{developer_password}}\",\n  \"country\": \"KE\",\n  \"phoneNumber\": \"+254 700 123 456\",\n  \"companyName\": \"Kamau Ventures Ltd\",\n  \"acceptTerms\": true,\n  \"marketingOptIn\": false\n}",
+              "raw": "{\n  \"email\": \"{{developer_email}}\",\n  \"firstName\": \"Wanjiku\",\n  \"middleName\": \"Grace\",\n  \"lastName\": \"Kamau\",\n  \"password\": \"{{developer_password}}\",\n  \"country\": \"KE\",\n  \"phoneNumber\": \"+254 700 123 456\",\n  \"companyName\": \"Kamau Ventures Ltd\",\n  \"acceptTerms\": true,\n  \"marketingOptIn\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Required: email, fullName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: phoneNumber (7 to 15 digits), companyName, marketingOptIn. 409 EMAIL_TAKEN if the email is used. A confirmation email is sent."
+            "description": "Required: email, firstName, lastName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: middleName, phoneNumber (7 to 15 digits), companyName, marketingOptIn. A username is generated for you (see the response). 409 EMAIL_TAKEN if the email is used. A confirmation email is sent."
           },
           "response": [],
           "event": [
@@ -209,14 +209,93 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Wanjiku Kamau\",\n  \"country\": \"KE\",\n  \"phoneNumber\": \"+254700123456\",\n  \"companyName\": \"Kamau Ventures Ltd\",\n  \"marketingOptIn\": true\n}",
+              "raw": "{\n  \"firstName\": \"Wanjiku\",\n  \"middleName\": \"Grace\",\n  \"lastName\": \"Kamau\",\n  \"country\": \"KE\",\n  \"phoneNumber\": \"+254700123456\",\n  \"companyName\": \"Kamau Ventures Ltd\",\n  \"addressLine1\": \"12 Riverside Drive\",\n  \"addressLine2\": \"Apt 4B\",\n  \"city\": \"Nairobi\",\n  \"stateOrRegion\": \"Nairobi County\",\n  \"postalCode\": \"00100\",\n  \"timezone\": \"Africa/Nairobi\",\n  \"marketingOptIn\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Every field is optional; only the ones sent change. Send an empty string for phoneNumber or companyName to clear it. Needed after a social sign up to set the country (profileComplete is false until then)."
+            "description": "Every field is optional; only the ones sent change, and nothing changes unless every field sent is valid. Send an empty string to clear middleName, phoneNumber, companyName, the address fields or timezone. firstName, lastName, country and username cannot be cleared."
+          },
+          "response": []
+        },
+        {
+          "name": "Change username",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"wanjiku.kamau\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "3 to 30 characters, lower case letters, digits, dots, hyphens and underscores, starting with a letter. 400 for a bad format or a reserved word, 409 USERNAME_TAKEN if taken, 429 RATE_LIMITED if changed in the last 7 days."
+          },
+          "response": []
+        },
+        {
+          "name": "Check username",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/username-available?username=wanjiku.kamau",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "username-available"
+              ],
+              "query": [
+                {
+                  "key": "username",
+                  "value": "wanjiku.kamau",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Returns available and a reason: OK, CURRENT, TAKEN, RESERVED or INVALID."
           },
           "response": []
         },

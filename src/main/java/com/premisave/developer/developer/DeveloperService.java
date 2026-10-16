@@ -27,6 +27,9 @@ import java.util.regex.Pattern;
 @Service("developerAccountService")
 public class DeveloperService {
 
+    /** How long to wait between two username changes. The first change after sign up is free. */
+    static final Duration USERNAME_COOLDOWN = Duration.ofDays(7);
+
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]{1,64}@[^@\\s]+\\.[^@\\s]{2,}$");
 
     private final DeveloperRepository developers;
@@ -64,19 +67,25 @@ public class DeveloperService {
     public Map<String, Object> signup(SignupRequest req) {
         String email = normaliseEmail(req.email());
         checkPassword(req.password(), email);
+        String first = PersonNames.required("firstName", req.firstName(), 60);
+        String middle = PersonNames.optional("middleName", req.middleName(), 60);
+        String last = PersonNames.required("lastName", req.lastName(), 60);
         if (!Boolean.TRUE.equals(req.acceptTerms())) {
             throw DeveloperException.validation("acceptTerms", "must be accepted to create an account");
         }
-        String country = country(req.country());
-        String phone = phone(req.phoneNumber());
-        String company = optionalText("companyName", req.companyName(), 160);
+        String country = ProfileFields.country(req.country());
+        String phone = ProfileFields.phone(req.phoneNumber());
+        String company = ProfileFields.text("companyName", req.companyName(), 160);
         if (developers.findByEmail(email).isPresent()) throw emailTaken();
 
         Instant now = clock.instant();
         Developer d = new Developer();
         d.setDeveloperId(Ids.next("dev"));
         d.setEmail(email);
-        d.setFullName(req.fullName().trim());
+        d.setFirstName(first);
+        d.setMiddleName(middle);
+        d.setLastName(last);
+        d.setFullName(PersonNames.full(first, middle, last));
         d.setPasswordHash(hasher.hash(req.password()));
         d.setCountry(country);
         d.setPhoneNumber(phone);
@@ -86,10 +95,16 @@ public class DeveloperService {
         d.setStatus(DeveloperStatus.ACTIVE);
         d.setCreatedAt(now);
         d.setUpdatedAt(now);
-        try {
-            developers.insert(d);
-        } catch (DuplicateKeyException raced) {
-            throw emailTaken();
+        // The unique index decides between two sign ups that pick the same username at once: the loser tries again
+        // with a new one, unless the clash was the email address.
+        for (int attempt = 0; ; attempt++) {
+            d.setUsername(generateUsername(first, last, email));
+            try {
+                developers.insert(d);
+                break;
+            } catch (DuplicateKeyException raced) {
+                if (attempt >= 3 || developers.findByEmail(email).isPresent()) throw emailTaken();
+            }
         }
         accountEmail.sendVerification(d);
         return session(d);
@@ -136,26 +151,128 @@ public class DeveloperService {
         d.setFailedLogins(0);
         d.setLockedUntil(null);
         d.setLastLoginAt(now);
+        fillMissingProfile(d);
         if (hasher.needsRehash(d.getPasswordHash())) d.setPasswordHash(hasher.hash(req.password()));
         developers.save(d);
         accountEmail.sendSignInAlert(d, client, "Email and password", now);
         return session(d);
     }
 
-    /** Updates the profile. Only the fields that are sent change. */
+    /**
+     * Updates the profile. Only the fields that are sent change, and nothing changes unless every field sent is valid.
+     * A username change is checked for format, reserved words and uniqueness, and may be made once a week.
+     */
     public Map<String, Object> updateProfile(Developer d, UpdateProfileRequest req) {
-        if (req.fullName() != null) {
-            String name = req.fullName().trim();
-            if (name.length() < 2) throw DeveloperException.validation("fullName", "must be at least 2 characters");
-            d.setFullName(name);
+        Instant now = clock.instant();
+        String first = req.firstName() == null ? d.getFirstName() : PersonNames.required("firstName", req.firstName(), 60);
+        String middle = req.middleName() == null ? d.getMiddleName() : PersonNames.optional("middleName", req.middleName(), 60);
+        String last = req.lastName() == null ? d.getLastName() : PersonNames.required("lastName", req.lastName(), 60);
+        String country = req.country() == null ? d.getCountry() : ProfileFields.country(req.country());
+        String phone = req.phoneNumber() == null ? d.getPhoneNumber() : ProfileFields.phone(req.phoneNumber());
+        String company = req.companyName() == null ? d.getCompanyName() : ProfileFields.text("companyName", req.companyName(), 160);
+        String line1 = req.addressLine1() == null ? d.getAddressLine1() : ProfileFields.text("addressLine1", req.addressLine1(), 120);
+        String line2 = req.addressLine2() == null ? d.getAddressLine2() : ProfileFields.text("addressLine2", req.addressLine2(), 120);
+        String city = req.city() == null ? d.getCity() : ProfileFields.text("city", req.city(), 80);
+        String region = req.stateOrRegion() == null ? d.getStateOrRegion() : ProfileFields.text("stateOrRegion", req.stateOrRegion(), 80);
+        String postal = req.postalCode() == null ? d.getPostalCode() : ProfileFields.postalCode(req.postalCode());
+        String zone = req.timezone() == null ? d.getTimezone() : ProfileFields.timezone(req.timezone());
+
+        String username = d.getUsername();
+        boolean usernameChanged = false;
+        if (req.username() != null) {
+            String wanted = Usernames.normalise(req.username());
+            if (!wanted.equals(d.getUsername())) {
+                Usernames.check(wanted);
+                if (d.getUsernameChangedAt() != null && now.isBefore(d.getUsernameChangedAt().plus(USERNAME_COOLDOWN))) {
+                    long wait = Duration.between(now, d.getUsernameChangedAt().plus(USERNAME_COOLDOWN)).toSeconds() + 1;
+                    throw new DeveloperException(ErrorCode.RATE_LIMITED,
+                            "The username was changed recently. Try again in " + Math.max(1, wait / 3600) + " hours.")
+                            .with("retryAfterSeconds", wait);
+                }
+                if (developers.findByUsername(wanted).isPresent()) throw usernameTaken();
+                username = wanted;
+                usernameChanged = true;
+            }
         }
-        if (req.country() != null) d.setCountry(country(req.country()));
-        if (req.phoneNumber() != null) d.setPhoneNumber(phone(req.phoneNumber()));
-        if (req.companyName() != null) d.setCompanyName(optionalText("companyName", req.companyName(), 160));
+
+        d.setFirstName(first);
+        d.setMiddleName(middle);
+        d.setLastName(last);
+        d.setFullName(PersonNames.full(first, middle, last));
+        d.setCountry(country);
+        d.setPhoneNumber(phone);
+        d.setCompanyName(company);
+        d.setAddressLine1(line1);
+        d.setAddressLine2(line2);
+        d.setCity(city);
+        d.setStateOrRegion(region);
+        d.setPostalCode(postal);
+        d.setTimezone(zone);
         if (req.marketingOptIn() != null) d.setMarketingOptIn(req.marketingOptIn());
-        d.setUpdatedAt(clock.instant());
-        developers.save(d);
+        if (usernameChanged) {
+            d.setUsername(username);
+            d.setUsernameChangedAt(now);
+        }
+        d.setUpdatedAt(now);
+        try {
+            developers.save(d);
+        } catch (DuplicateKeyException raced) {
+            throw usernameTaken();
+        }
         return DeveloperViews.developer(d);
+    }
+
+    /** Whether a username can be used by this developer, and if not, why. Needs a signed in developer. */
+    public Map<String, Object> checkUsername(Developer d, String raw) {
+        String wanted = Usernames.normalise(raw);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("username", wanted);
+        if (wanted.equals(d.getUsername())) {
+            m.put("available", true);
+            m.put("reason", "CURRENT");
+            return m;
+        }
+        String reason = "OK";
+        try {
+            Usernames.check(wanted);
+            if (developers.existsByUsername(wanted)) reason = "TAKEN";
+        } catch (DeveloperException e) {
+            reason = Usernames.isValid(wanted) ? "RESERVED" : "INVALID";
+            m.put("message", e.getMessage());
+        }
+        m.put("available", reason.equals("OK"));
+        m.put("reason", reason);
+        return m;
+    }
+
+    /** A username that is valid, not reserved and not taken, built from the names (see Usernames.base). */
+    public String generateUsername(String first, String last, String email) {
+        String base = Usernames.base(first, last, email);
+        // A name that is itself reserved (or contains a brand) starts from the neutral "dev" instead.
+        if (Usernames.isReserved(base)) base = "dev";
+        for (int attempt = 0; attempt < 40; attempt++) {
+            String candidate = Usernames.candidate(base, attempt);
+            if (Usernames.isValid(candidate) && !Usernames.isReserved(candidate) && !developers.existsByUsername(candidate)) {
+                return candidate;
+            }
+        }
+        throw new DeveloperException(ErrorCode.INTERNAL_ERROR, "Could not create a username. Try again.");
+    }
+
+    /**
+     * Accounts made before names and usernames existed, or through a sign in provider, may lack them. Fills what can be
+     * worked out: the names from the full name, and a generated username. The caller saves.
+     */
+    public void fillMissingProfile(Developer d) {
+        if (d.getFirstName() == null && d.getFullName() != null) {
+            PersonNames.Parts parts = PersonNames.split(d.getFullName());
+            d.setFirstName(parts.first());
+            d.setMiddleName(parts.middle());
+            d.setLastName(parts.last());
+        }
+        if (d.getUsername() == null) {
+            d.setUsername(generateUsername(d.getFirstName(), d.getLastName(), d.getEmail()));
+        }
     }
 
     /**
@@ -240,36 +357,16 @@ public class DeveloperService {
         return e;
     }
 
-    /** A 2 letter country code, upper case. */
-    static String country(String value) {
-        String c = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-        if (!c.matches("[A-Z]{2}")) throw DeveloperException.validation("country", "must be a 2 letter country code");
-        return c;
-    }
-
-    /** Digits with an optional leading plus, 7 to 15 of them, after spaces, dots, dashes and brackets are removed. Blank means none. */
-    static String phone(String value) {
-        if (value == null || value.isBlank()) return null;
-        String p = value.replaceAll("[\\s.\\-()]", "");
-        if (!p.matches("\\+?[0-9]{7,15}")) {
-            throw DeveloperException.validation("phoneNumber", "must be 7 to 15 digits, optionally starting with +");
-        }
-        return p;
-    }
-
-    private static String optionalText(String field, String value, int max) {
-        if (value == null || value.isBlank()) return null;
-        String t = value.trim();
-        if (t.length() > max) throw DeveloperException.validation(field, "must be at most " + max + " characters");
-        return t;
-    }
-
     private void checkPassword(String password, String email) {
         PasswordPolicy.check(security.passwordMinLength(), password, email);
     }
 
     private static DeveloperException invalid() {
         return new DeveloperException(ErrorCode.INVALID_CREDENTIALS, "The email or password is not correct");
+    }
+
+    private static DeveloperException usernameTaken() {
+        return new DeveloperException(ErrorCode.USERNAME_TAKEN, "This username is already taken");
     }
 
     private static DeveloperException emailTaken() {
