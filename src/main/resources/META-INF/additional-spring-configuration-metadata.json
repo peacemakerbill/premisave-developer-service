@@ -54,8 +54,8 @@
     {
       "name": "developer.seed-admins.enabled",
       "type": "java.lang.Boolean",
-      "description": "Create the first two administrators when the service starts. Nothing is created if an administrator already exists or either email address is already used. It never stops the service from starting.",
-      "defaultValue": false
+      "description": "Create the first two administrators when the service starts. Does nothing once an administrator exists, or when either email address is already used. Set to false to switch it off. It never stops the service from starting.",
+      "defaultValue": true
     },
     {
       "name": "developer.seed-admins.first.email",

@@ -137,7 +137,7 @@ Developer service (`developer.*`):
 | `oauth.google.client-id` | `GOOGLE_CLIENT_ID` | empty | Google is on with the client ID alone, because ID tokens are checked against Google and this ID |
 | `oauth.facebook`, `oauth.github` `.client-id`, `.client-secret` | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | empty | A provider is on with both set. `verify-url`, `token-url`, `user-info-url` (and `emails-url` for GitHub) can be overridden |
 | server port | `SERVER_PORT` | 8091 | |
-| database | `MONGODB_URI` | `mongodb://localhost:27017/premisave_developer` | A separate database from the wallet |
+| database | `MONGODB_URI` | `mongodb://localhost:27017/premisave_developers` | A separate database from the wallet |
 
 Wallet: the `commercial.merchants` block is removed. Nothing is added. Keep `commercial.events.developer-service-url` (`DEVELOPER_SERVICE_URL`) empty for now (section 9).
 

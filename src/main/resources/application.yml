@@ -34,7 +34,7 @@ spring:
           timeout: 10000
           writetimeout: 10000
   mongodb:
-    uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developer}
+    uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developers}
 
 developer:
   jwt:
@@ -75,8 +75,9 @@ developer:
     # Comma separated email addresses. An account with one of these addresses, once its email is confirmed, becomes an ADMIN
     # the next time it signs in. This is how the first administrator is made; after that, administrators can promote others.
     admin-emails: ${DEVELOPER_ADMIN_EMAILS:}
-  # Creates the first two administrators at startup. Off by default. When it is on and no administrator exists yet and neither
-  # address is used, both accounts are created; if an administrator or one of the addresses is already there, nothing is created.
+  # Creates the first two administrators at startup. On by default, but it does nothing once an administrator exists. When no
+  # administrator exists and neither address is used, both accounts are created from the settings below; if an administrator or one
+  # of the addresses is already there, nothing is created. Set DEVELOPER_SEED_ADMINS_ENABLED=false to switch it off.
   seed-admins:
     enabled: ${DEVELOPER_SEED_ADMINS_ENABLED:true}
     first:

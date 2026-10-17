@@ -30,7 +30,8 @@ import java.util.List;
  * Creates the first two administrators when the service starts. It is off unless developer.seed-admins.enabled is true.
  *
  * It creates both accounts or neither. If any administrator already exists, or either address is already used by an
- * account, it stops at once and changes nothing, so a restart never creates the accounts a second time and never touches
+ * account, it stops at once and changes nothing. The check for an existing administrator comes first, so the settings can be
+ * emptied once the accounts exist, so a restart never creates the accounts a second time and never touches
  * an account that is already there. A setting that is missing or not valid is logged and nothing is created. Neither
  * outcome stops the service from starting.
  *
@@ -101,15 +102,16 @@ public class AdminSeeder implements ApplicationRunner {
 
     /** Creates both accounts, or none, and logs what happened. */
     public Result seed() {
-        List<Candidate> wanted = new ArrayList<>(2);
-        String problem = check(wanted);
-        if (problem != null) return report(Outcome.INVALID, "Admin seed: nothing created. " + problem);
-
+        // First, so that once the accounts exist the settings can be emptied without the seed complaining at every start.
         long admins = developers.countByRole(DeveloperRole.ADMIN);
         if (admins > 0) {
             return report(Outcome.ALREADY_THERE, "Admin seed: skipped. " + admins + " administrator"
                     + (admins == 1 ? " already exists" : "s already exist") + ", so nothing was created.");
         }
+
+        List<Candidate> wanted = new ArrayList<>(2);
+        String problem = check(wanted);
+        if (problem != null) return report(Outcome.INVALID, "Admin seed: nothing created. " + problem);
         for (Candidate c : wanted) {
             if (developers.findByEmail(c.email()).isPresent()) {
                 return report(Outcome.ALREADY_THERE, "Admin seed: skipped. An account with the address " + c.email()

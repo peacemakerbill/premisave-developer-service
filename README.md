@@ -75,7 +75,7 @@
 
 It is also the public entry for payments. A merchant's server calls `https://<developer-service>/v1/live/...` or `/v1/sandbox/...` with its key and secret. This service authenticates the key, applies a rate limit and the app's rules, and forwards the call to the **wallet service**, which does the actual payments. The wallet is never exposed to merchants.
 
-It is a standalone Spring Boot service with its own database (`premisave_developer`), separate from the wallet service.
+It is a standalone Spring Boot service with its own database (`premisave_developers`), separate from the wallet service.
 
 | Service | Port | Owns |
 |---|---|---|
@@ -146,7 +146,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 |---|---|
 | Language / Runtime | Java 21 |
 | Framework | Spring Boot 4.1.1 (Spring Web MVC, Spring Data MongoDB, Bean Validation, Spring Mail) |
-| Database | MongoDB (its own database, `premisave_developer`) |
+| Database | MongoDB (its own database, `premisave_developers`) |
 | Authentication | HS256 JSON Web Tokens and PBKDF2WithHmacSHA256 from the JDK. No Spring Security |
 | API keys | Secrets hashed with HMAC-SHA256 and a server-side pepper |
 | Social Sign-In | Google, Facebook and GitHub over the JDK HTTP client |
@@ -610,7 +610,7 @@ Every path below works under both prefixes. `/api/v1/admin` takes the bearer tok
 Every account has a `role`: `DEVELOPER` (the default, also for accounts that existed before roles) or `ADMIN`. The role is read from the database on each request, so a demotion applies at once.
 
 - **First administrator.** Put the address in `DEVELOPER_ADMIN_EMAILS`. When that account signs in with a confirmed email address it becomes an `ADMIN`. Afterwards administrators grant and remove the role with `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in, so take it off the list when you demote that person.
-- **Two administrators at startup.** Set `DEVELOPER_SEED_ADMINS_ENABLED=true` and fill in the `DEVELOPER_SEED_ADMIN1_*` and `DEVELOPER_SEED_ADMIN2_*` settings. At startup the service creates both accounts, active, with a confirmed address and the given password. If any administrator already exists, or either address is already used by an account, it logs that it skipped and creates nothing, so a restart never creates them twice and never touches an existing account. A missing or invalid setting also creates nothing and is logged with the name of the setting. Neither case stops the service from starting. Passwords are hashed and never logged. Remove the passwords from `.env` once the accounts exist, and change them after the first sign in. The creation is written to the audit trail as the actor `startup-seed`.
+- **Two administrators at startup.** It is on by default (`DEVELOPER_SEED_ADMINS_ENABLED=false` switches it off). Fill in the `DEVELOPER_SEED_ADMIN1_*` and `DEVELOPER_SEED_ADMIN2_*` settings. At startup the service creates both accounts, active, with a confirmed address and the given password. If any administrator already exists, or either address is already used by an account, it logs that it skipped and creates nothing, so a restart never creates them twice and never touches an existing account. A missing or invalid setting also creates nothing and is logged with the name of the setting, unless an administrator already exists, in which case it skips quietly and the settings can be left empty. Neither case stops the service from starting. Passwords are hashed and never logged. Remove the passwords from `.env` once the accounts exist, and change them after the first sign in. The creation is written to the audit trail as the actor `startup-seed`.
 - **No lockout.** An administrator cannot change their own role, disable or delete their own account, and the last active administrator can never be demoted, disabled or deleted.
 - **Safe deletes.** A developer who still has apps, or who applied for a business, cannot be deleted; disable the account instead. An app is deleted only after the wallet service has been told it is closing.
 - **Audit.** Every admin change is written to the `admin_actions` collection with who did it, what, to what and when, and is searchable with `GET /admin/audit`. Calls made with the internal key are recorded as the actor `internal-key`.
@@ -676,7 +676,7 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | Variable | Purpose |
 |---|---|
 | `SERVER_PORT` | HTTP port, default `8091` |
-| `MONGODB_URI` | MongoDB connection string, default `mongodb://localhost:27017/premisave_developer`. Use a database separate from the wallet's |
+| `MONGODB_URI` | MongoDB connection string, default `mongodb://localhost:27017/premisave_developers`. Use a database separate from the wallet's |
 | `DEVELOPER_JWT_SECRET` | Signs portal tokens. Required, at least 32 characters |
 | `API_KEY_PEPPER` | Keys the hash of every API secret and every email link. Required, at least 16 characters |
 | `WALLET_SERVICE_URL` | Where the wallet service runs, default `http://localhost:8084` |
@@ -685,7 +685,7 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `DEVELOPER_MAX_BUSINESSES` | How many businesses one account may apply for, default `10` |
 | `DEVELOPER_INTERNAL_API_KEY` | Guards `/internal/admin`. Empty means those endpoints refuse every call |
 | `DEVELOPER_ADMIN_EMAILS` | Comma separated addresses that become administrators when they sign in with a confirmed email. Empty creates none this way |
-| `DEVELOPER_SEED_ADMINS_ENABLED` | `true` creates two administrators at startup from the settings below. Default `false`. See [Roles and Administration](#roles-and-administration) |
+| `DEVELOPER_SEED_ADMINS_ENABLED` | Creates two administrators at startup from the settings below when none exists. Default `true`; `false` switches it off. See [Roles and Administration](#roles-and-administration) |
 | `DEVELOPER_SEED_ADMIN1_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The first administrator to create |
 | `DEVELOPER_SEED_ADMIN2_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The second administrator to create |
 | `DEVELOPER_PORTAL_ORIGINS` | Browser origins allowed to call `/api/v1`, comma separated. `/v1` is never opened to browsers |
