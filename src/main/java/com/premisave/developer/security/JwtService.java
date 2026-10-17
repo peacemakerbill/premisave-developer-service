@@ -1,7 +1,7 @@
 package com.premisave.developer.security;
 
-import com.premisave.developer.common.FlatJson;
-import com.premisave.developer.common.Hashing;
+import com.premisave.developer.util.FlatJson;
+import com.premisave.developer.util.Hashing;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -47,7 +47,7 @@ public final class JwtService {
         payload.put("iss", issuer);
         payload.put("sub", developerId);
         payload.put("ver", tokenVersion);
-        payload.put("jti", com.premisave.developer.common.Ids.randomToken(12));
+        payload.put("jti", com.premisave.developer.util.Ids.randomToken(12));
         payload.put("iat", now);
         payload.put("exp", now + ttlSeconds);
         String body = HEADER + "." + ENC.encodeToString(FlatJson.write(payload).getBytes(StandardCharsets.UTF_8));

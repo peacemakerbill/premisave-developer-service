@@ -11,6 +11,8 @@ spring:
     mongodb:
       auto-index-creation: true
   mail:
+    # The mail server, in the same form as the wallet service. Each value comes from a MAIL_* name in capital
+    # letters, from .env or the environment. With no username nothing is sent: mail counts as off.
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:}
@@ -67,6 +69,15 @@ developer:
     api-key: ${DEVELOPER_INTERNAL_API_KEY:}
   cors:
     allowed-origins: ${DEVELOPER_PORTAL_ORIGINS:}
+  cloudinary:
+    # Profile pictures are stored in Cloudinary. Find the three values on the Cloudinary dashboard. With any of them
+    # empty, profile pictures are switched off and everything else works. Pictures go under folder/developerId.
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    folder: ${CLOUDINARY_FOLDER:premisave/developers}
+    # Largest picture accepted. 5 MB by default, never more than 10 MB.
+    max-bytes: ${CLOUDINARY_MAX_BYTES:5242880}
   mail:
     # Sender address on verification and reset emails. When empty the mail server decides (usually the login user).
     from: ${DEVELOPER_MAIL_FROM:}

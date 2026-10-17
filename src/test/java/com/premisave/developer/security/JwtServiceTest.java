@@ -1,8 +1,9 @@
 package com.premisave.developer.security;
 
 import com.premisave.developer.TestProps;
-import com.premisave.developer.common.FlatJson;
-import com.premisave.developer.common.Hashing;
+import com.premisave.developer.util.FlatJson;
+import com.premisave.developer.util.Hashing;
+
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

@@ -50,6 +50,7 @@
 - [Getting Started](#getting-started)
   - [Generating Secrets](#generating-secrets)
 - [Environment Variables](#environment-variables)
+- [Profile Pictures](#profile-pictures)
 - [Email Setup](#email-setup)
 - [Social Sign In Setup](#social-sign-in-setup)
 - [Testing](#testing)
@@ -85,7 +86,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 ## Features
 
 **Accounts and Authentication**
-- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record. Sign up returns a message and the next step (`SIGN_IN`) and issues no token, so the portal sends the developer to the sign in page. Sign in does not wait for the email to be confirmed
+- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record. Sign up leaves the account `PENDING` until the email is confirmed, then it becomes `ACTIVE`. It returns only a message, the next step (`SIGN_IN`) and the status: no token and no account data, so the portal sends the developer to the sign in page. Sign in does not wait for the email to be confirmed
 - Sign in with Google, Facebook or GitHub through the authorization code flow, so the portal never handles a provider secret
 - Stateless HS256 JWT access tokens (`jti`, token version) with real revocation: sign out one device, or sign out everywhere
 - Email confirmation and forgot password, using single-use links that are stored only as keyed hashes
@@ -97,6 +98,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - A username is generated at sign up (`wanjiku.kamau`) and can be changed once every 7 days
 - Username checks: ASCII only, 3 to 30 characters, unique whatever the case, reserved words refused, brand names such as `premisave`, `safaricom` and `mpesa` refused even when separators try to hide them
 - A live availability check for the profile form
+- A profile picture (JPEG, PNG or WebP, up to 5 MB) stored in Cloudinary, replaced by uploading a new one and removed on request
 
 **Account Emails**
 - Five HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, and password changed
@@ -123,7 +125,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 **Platform Concerns**
 - One response envelope everywhere and an `X-Request-Id` header on every response
 - Staff endpoints to suspend an app or disable a developer
-- Postman collection with 51 requests, ready to import
+- Postman collection with 53 requests, ready to import
 
 <br/>
 
@@ -190,10 +192,10 @@ sequenceDiagram
     alt Email already registered
         S-->>P: 409 EMAIL_TAKEN
     else Available
-        S->>M: Save developer (emailVerified = false)
+        S->>M: Save developer (status = PENDING, emailVerified = false)
         S->>M: Save confirmation token (hash only, 24 hours)
         S-->>E: Send confirmation email (background)
-        S-->>P: 201 message, next = SIGN_IN and developer (no token)
+        S-->>P: 201 message, next = SIGN_IN and status = PENDING (no token, no account data)
     end
     E-->>D: Confirmation email delivered
     D->>P: Open the link in the email
@@ -202,13 +204,13 @@ sequenceDiagram
     alt Unknown, expired or already used
         S-->>P: 400 INVALID_TOKEN
     else Valid
-        S->>M: Set emailVerified = true
+        S->>M: Set emailVerified = true and status = ACTIVE
         S-->>E: Send welcome email (background)
         S-->>P: 200 emailVerified true
     end
 ```
 
-Sign up issues no token. The portal shows `data.message` and sends the developer to the sign in page, where sign in works before the email is confirmed. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
+Sign up issues no token and returns no account data. The account is `PENDING` until the email link is used, which makes it `ACTIVE` (so does a password reset from an email link, or joining through a provider that vouches for the address). The portal shows `data.message` and sends the developer to the sign in page, where sign in works while the account is pending. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
 
 ### Sign In
 
@@ -420,6 +422,8 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | GET | `/api/v1/me` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | The current developer |
 | PUT | `/api/v1/me` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Update profile, address and username |
 | GET | `/api/v1/me/username-available?username=` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Check a username before saving |
+| PUT | `/api/v1/me/profile-picture` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Upload or replace the profile picture (the body is the image) |
+| DELETE | `/api/v1/me/profile-picture` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Remove the profile picture |
 | PUT | `/api/v1/me/password` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Change or first set a password |
 | POST | `/api/v1/me/logout` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Revoke the current token |
 | POST | `/api/v1/me/logout-all` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Revoke every token on every device |
@@ -550,12 +554,39 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `DEVELOPER_MAIL_LOG_LINKS` | Development only: write confirmation and reset links to the log when no mail server is set |
 | `DEVELOPER_MAIL_STARTUP_CHECK` | Check the mail settings at every start and log the result, default `false`. See [Email Setup](#email-setup) |
 | `DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO` | With the check on, also send one test email to this address at every start. Empty means none |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Where profile pictures are stored, from the Cloudinary dashboard. With any of them empty, profile pictures are off and the rest of the service works. See [Profile Pictures](#profile-pictures) |
+| `CLOUDINARY_FOLDER`, `CLOUDINARY_MAX_BYTES` | Folder for the pictures (default `premisave/developers`) and the largest picture accepted (default 5 MB, never more than 10 MB) |
 | `DEVELOPER_OAUTH_REDIRECT_URIS` | Exact portal callback addresses, comma separated. Empty turns social sign in off |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign in |
 | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Facebook sign in |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign in |
 
 Further tuning is in `application.yml` under `developer.*`: token lifetime (`developer.jwt.access-ttl-minutes`, 60), key rotation grace (`developer.keys.rotation-grace-hours`, 24), rate limit (`developer.proxy.rate-limit-per-minute`, 600), apps per environment (10), keys per app (5), lockout (5 failures, 15 minutes), password length (10), link lifetimes (24 hours and 60 minutes) and the app sync interval (30 seconds).
+
+<br/>
+
+## Profile Pictures
+
+A signed-in developer can set a profile picture. It is stored in Cloudinary, and the account shows its address as `profilePictureUrl`.
+
+1. Create a Cloudinary account and copy the cloud name, API key and API secret from its dashboard.
+2. Put them in `.env`:
+   ```properties
+   CLOUDINARY_CLOUD_NAME=
+   CLOUDINARY_API_KEY=
+   CLOUDINARY_API_SECRET=
+   ```
+3. Restart the service.
+
+Things to know:
+
+- **Upload:** `PUT /api/v1/me/profile-picture` with the image file itself as the request body and a matching `Content-Type` (`image/jpeg`, `image/png` or `image/webp`). It is not form data. In a browser: `fetch(url, { method: 'PUT', headers: { Authorization: 'Bearer ...', 'Content-Type': file.type }, body: file })`.
+- **Checks:** the file is judged by its first bytes, not by its name or the type the caller claims, and must be a JPEG, PNG or WebP of at most 5 MB. Anything else is `400 VALIDATION_FAILED`, a larger file is `413 PAYLOAD_TOO_LARGE`.
+- **Replacing:** each developer has one picture, stored as `premisave/developers/<developerId>`. A new upload overwrites it, so nothing is left behind, and the old address stops being served. Cloudinary keeps the picture within 1024 by 1024 pixels.
+- **Removing:** `DELETE /api/v1/me/profile-picture` deletes it from Cloudinary and clears it from the account. It is safe to repeat.
+- **Secret:** the API secret stays in this service. Uploads are signed here and sent to Cloudinary from the server, and the secret is never printed in logs or returned.
+- **Not set up:** with the cloud name, key or secret empty, the two endpoints answer `503 UPSTREAM_UNAVAILABLE` and nothing else is affected. The same code is returned when Cloudinary cannot be reached.
+- **Why not form data:** the public API proxy reads raw request bodies, and turning on Spring's form upload handling would consume them before the proxy sees them.
 
 <br/>
 
@@ -663,7 +694,7 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
-For manual testing, import both files from `postman/` into Postman: the collection has 51 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
+For manual testing, import both files from `postman/` into Postman: the collection has 53 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
 
 <br/>
 
@@ -671,25 +702,26 @@ For manual testing, import both files from `postman/` into Postman: the collecti
 
 ```
 src/main/java/com/premisave/developer
-├── developer     # Sign up and sign in, account, profile, usernames, names, the business (merchant) link
-├── auth          # Email confirmation and reset links, the mailer, email templates, revoked tokens
-├── oauth         # Sign in with Google, Facebook and GitHub
-├── app           # Apps, narrowing rules, pushing app context to the wallet
-├── key           # API keys, secrets, rotation
-├── proxy         # The public /v1 entry, the onboarding pass-through, rate limiting
-├── wallet        # Client for the wallet's internal API
-├── admin         # Staff endpoints
-├── security      # Password hashing, JWT, the two interceptors
-├── config        # Properties, web configuration, security beans
-├── common        # Response envelope, errors, request id, client info, hashing, JSON helpers
-├── enums         # Statuses, environments, methods, error codes
-└── model         # Shared value types such as limits
+├── PremisaveDeveloperServiceApplication.java
+├── controller    # REST endpoints: Auth, Me (profile, picture, business), OAuth, App, Key, Admin, the public /v1 entry
+├── service       # Business logic: accounts, email links, OAuth, apps, API keys, proxy, profile pictures, mail check
+├── repository    # Spring Data MongoDB repositories, one per collection
+├── model         # Mongo documents: Developer, DeveloperApp, ApiKey, EmailToken, RevokedToken, OAuthIdentity, Limits
+├── enums         # Statuses, environments, method types, error codes, email token types, OAuth providers
+├── dto           # Request bodies, the response envelope, and small value types passed between layers
+├── view          # Turns models into the maps the API returns (developer, app, key, page)
+├── client        # Calls to other systems: the wallet, sign in providers, Cloudinary, SMTP, and the HTTP transports
+├── security      # Password hashing, JWT, OAuth state, the rate limiter, the two interceptors
+├── config        # Properties (developer.*), web and security beans, mail and picture storage wiring
+├── filter        # The request id filter
+├── exception     # DeveloperException and the global error handler
+└── util          # Ids, hashing, JSON reading, names, usernames, profile fields, password rules, email templates, response helpers
 
 src/main/resources
 ├── application.yml
 └── email         # layout.html and the five email bodies
 
-postman           # Collection (51 requests) and local environment
+postman           # Collection (53 requests) and local environment
 email-previews    # The five emails rendered, open in a browser
 ```
 

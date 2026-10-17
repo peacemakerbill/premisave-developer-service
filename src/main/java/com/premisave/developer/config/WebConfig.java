@@ -2,6 +2,7 @@ package com.premisave.developer.config;
 
 import com.premisave.developer.security.DeveloperAuthInterceptor;
 import com.premisave.developer.security.InternalKeyInterceptor;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

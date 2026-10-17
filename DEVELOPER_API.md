@@ -51,23 +51,18 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 
 Names may contain letters from any alphabet, spaces, hyphens, apostrophes and full stops (Anne-Marie, O'Brien, van der Merwe). Digits, symbols and markup are refused. There is no username field: one is generated (section 1.3) and the developer changes it on the profile.
 
-Returns `201` with no token. Sign up only creates the account; the developer signs in on the next screen (section 1.2), and sign in does not wait for the email address to be confirmed. The portal shows `data.message` and sends the developer to the sign in page.
+Returns `201` with no token and no account data. Sign up only creates the account, and the account is `PENDING` until the email address is confirmed (section 1.7), which makes it `ACTIVE`. The developer signs in on the next screen (section 1.2), and sign in does not wait for the confirmation. The portal shows `data.message` and sends the developer to the sign in page.
 
 ```json
-{ "success": true, "message": "Your account has been created. Sign in to continue. We sent a confirmation link to dev@example.com. Confirm it before you create your business.",
-  "data": { "message": "Your account has been created. Sign in to continue. We sent a confirmation link to dev@example.com. Confirm it before you create your business.",
-            "next": "SIGN_IN", "confirmationEmailSent": true,
-            "developer": { "developerId": "dev_...", "email": "dev@example.com", "username": "wanjiku.kamau",
-                 "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau", "fullName": "Wanjiku Grace Kamau",
-                 "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
-                 "addressLine1": null, "addressLine2": null, "city": null, "stateOrRegion": null,
-                 "postalCode": null, "timezone": null, "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
-                 "status": "ACTIVE", "merchantId": null, "emailVerified": false, "hasPassword": true,
-                 "providers": [], "createdAt": "...", "lastLoginAt": null } },
+{ "success": true, "message": "Your account has been created and is pending until you confirm your email address. We sent a confirmation link to dev@example.com. Sign in to continue.",
+  "data": { "message": "Your account has been created and is pending until you confirm your email address. We sent a confirmation link to dev@example.com. Sign in to continue.",
+            "next": "SIGN_IN", "status": "PENDING", "confirmationEmailSent": true },
   "timestamp": "..." }
 ```
 
-`next` is always `SIGN_IN`. `confirmationEmailSent` is true when the service has a mail server and handed the confirmation email to it, and false when no mail server is configured (the message then does not mention an email). It is not a delivery guarantee: sending happens in the background and a failure never fails sign up. `emailVerified` is false until the developer uses the link in the confirmation email (section 1.7). `hasPassword` is false for an account created through Google, Facebook or GitHub that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
+`next` is always `SIGN_IN`. `status` is always `PENDING`. `confirmationEmailSent` is true when the service has a mail server and handed the confirmation email to it, and false when no mail server is configured (the message then does not mention an email address). It is not a delivery guarantee: sending happens in the background and a failure never fails sign up. The account itself (`developerId`, `username`, `emailVerified` and the rest) is returned by sign in (section 1.2) and `GET /api/v1/me`, not by sign up.
+
+Account `status` values: `PENDING` (email not confirmed yet), `ACTIVE`, and `DISABLED` (set by staff, blocks every sign in). A pending account becomes `ACTIVE` when the confirmation link is used, when a password is set from a reset link, or when a Google, Facebook or GitHub sign in vouches for the same address. `hasPassword` is false for an account created through a provider that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
 
 `profileComplete` is false until the account has a first name, a last name and a country, which an account created through Google, Facebook or GitHub may lack; complete it with `PUT /api/v1/me` (section 1.3).
 
@@ -77,11 +72,26 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
 
 `POST /api/v1/auth/login` with `{ "email", "password" }`. Returns `200` with the session: `accessToken`, `tokenType`, `expiresIn` and the `developer` object. Sign up issues no token, so this is where the portal gets the first one after sign up.
 
+```json
+{ "success": true, "message": "Signed in",
+  "data": { "accessToken": "eyJ...", "tokenType": "Bearer", "expiresIn": 3600,
+            "developer": { "developerId": "dev_...", "email": "dev@example.com", "username": "wanjiku.kamau",
+                 "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau", "fullName": "Wanjiku Grace Kamau",
+                 "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
+                 "addressLine1": null, "addressLine2": null, "city": null, "stateOrRegion": null,
+                 "postalCode": null, "timezone": null, "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
+                 "status": "PENDING", "merchantId": null, "emailVerified": false, "hasPassword": true,
+                 "profilePictureUrl": null, "providers": [], "createdAt": "...", "lastLoginAt": "..." } },
+  "timestamp": "..." }
+```
+
+The developer object is the same in `GET /api/v1/me`. `status` is `PENDING` until the email is confirmed, then `ACTIVE`. `profilePictureUrl` is null until a picture is uploaded (section 1.3).
+
 Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong password and an account that has no password because it was created through a provider), `403 ACCOUNT_DISABLED`, `423 ACCOUNT_LOCKED` after 5 failed attempts, for 15 minutes. An unconfirmed email does not stop sign in; it stops creating a business (section 1.4).
 
 ### 1.3 Me
 
-* `GET /api/v1/me` returns the developer object above.
+* `GET /api/v1/me` returns the developer object (section 1.2).
 * `PUT /api/v1/me` updates the profile. Every field is optional and only the ones sent change; nothing changes unless every field sent is valid. Returns the developer object.
 
   | Field | Rules |
@@ -105,6 +115,8 @@ Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong passwo
   * Unique, whatever the case. A name that is taken is `409 USERNAME_TAKEN`. The check and the save are separate steps, so the unique database index settles two people choosing the same name at the same moment, and the loser also gets `USERNAME_TAKEN`.
   * Changeable once every 7 days; the first change after sign up is free. Too soon is `429 RATE_LIMITED` with `retryAfterSeconds`. Sending the current username again changes nothing.
 * `GET /api/v1/me/username-available?username=...` (signed in) returns `{ "username", "available", "reason" }`, with `reason` one of `OK`, `CURRENT`, `TAKEN`, `RESERVED` or `INVALID` and a `message` for the last two. It needs a bearer token so that usernames cannot be listed anonymously; there is no per account rate limit on it, so put one at the gateway.
+* **Profile picture.** `PUT /api/v1/me/profile-picture` (signed in) with the image file itself as the request body, not form data, and a `Content-Type` of `image/jpeg`, `image/png` or `image/webp`. The picture is stored in Cloudinary under `<folder>/<developerId>` and replaces any earlier one. Returns `{ "profilePictureUrl", "updatedAt" }`; the same address is `profilePictureUrl` on the account from `GET /api/v1/me` and sign in (null when there is none). The file is judged by its first bytes, whatever its name or `Content-Type` claims, and may be at most 5 MB (`CLOUDINARY_MAX_BYTES`, never more than 10 MB); Cloudinary keeps it within 1024 by 1024 pixels. Errors: `400 VALIDATION_FAILED` (`field: picture`) for an empty body or a file that is not a JPEG, PNG or WebP (form data included), `413 PAYLOAD_TOO_LARGE`, and `503 UPSTREAM_UNAVAILABLE` when Cloudinary is not set up (cloud name, key or secret empty) or cannot be reached. In a browser: `fetch(url, { method: 'PUT', headers: { Authorization: 'Bearer ...', 'Content-Type': file.type }, body: file })`.
+* `DELETE /api/v1/me/profile-picture` (signed in) removes the picture from Cloudinary and the account, and returns `{ "profilePictureUrl": null, "updatedAt" }`. Repeating it is not an error. If Cloudinary cannot be reached, the picture is still cleared from the account.
 * `PUT /api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
 
 ### 1.4 Business

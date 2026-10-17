@@ -1,11 +1,11 @@
 package com.premisave.developer;
 
-import com.premisave.developer.app.DeveloperApp;
-import com.premisave.developer.app.DeveloperAppRepository;
-import com.premisave.developer.developer.Developer;
-import com.premisave.developer.developer.DeveloperRepository;
-import com.premisave.developer.key.ApiKey;
-import com.premisave.developer.key.ApiKeyRepository;
+import com.premisave.developer.model.ApiKey;
+import com.premisave.developer.model.Developer;
+import com.premisave.developer.model.DeveloperApp;
+import com.premisave.developer.repository.ApiKeyRepository;
+import com.premisave.developer.repository.DeveloperAppRepository;
+import com.premisave.developer.repository.DeveloperRepository;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -81,10 +81,10 @@ public final class TestRepos {
     }
 
     public static final class EmailTokens {
-        public final Map<String, com.premisave.developer.auth.EmailToken> store = new LinkedHashMap<>();
-        public final com.premisave.developer.auth.EmailTokenRepository repo = Fake.of(com.premisave.developer.auth.EmailTokenRepository.class, Map.of(
+        public final Map<String, com.premisave.developer.model.EmailToken> store = new LinkedHashMap<>();
+        public final com.premisave.developer.repository.EmailTokenRepository repo = Fake.of(com.premisave.developer.repository.EmailTokenRepository.class, Map.of(
                 "insert", a -> {
-                    com.premisave.developer.auth.EmailToken x = (com.premisave.developer.auth.EmailToken) a[0];
+                    com.premisave.developer.model.EmailToken x = (com.premisave.developer.model.EmailToken) a[0];
                     store.put(x.getId(), x);
                     return x;
                 },
@@ -101,17 +101,17 @@ public final class TestRepos {
                 },
                 "findFirstByDeveloperIdAndTypeOrderByCreatedAtDesc", a -> store.values().stream()
                         .filter(x -> x.getDeveloperId().equals(a[0]) && x.getType() == a[1])
-                        .max(java.util.Comparator.comparing(com.premisave.developer.auth.EmailToken::getCreatedAt)),
+                        .max(java.util.Comparator.comparing(com.premisave.developer.model.EmailToken::getCreatedAt)),
                 "countByDeveloperIdAndTypeAndCreatedAtAfter", a -> store.values().stream()
                         .filter(x -> x.getDeveloperId().equals(a[0]) && x.getType() == a[1]
                                 && x.getCreatedAt().isAfter((java.time.Instant) a[2])).count()));
     }
 
     public static final class Revoked {
-        public final Map<String, com.premisave.developer.auth.RevokedToken> store = new LinkedHashMap<>();
-        public final com.premisave.developer.auth.RevokedTokenRepository repo = Fake.of(com.premisave.developer.auth.RevokedTokenRepository.class, Map.of(
+        public final Map<String, com.premisave.developer.model.RevokedToken> store = new LinkedHashMap<>();
+        public final com.premisave.developer.repository.RevokedTokenRepository repo = Fake.of(com.premisave.developer.repository.RevokedTokenRepository.class, Map.of(
                 "save", a -> {
-                    com.premisave.developer.auth.RevokedToken x = (com.premisave.developer.auth.RevokedToken) a[0];
+                    com.premisave.developer.model.RevokedToken x = (com.premisave.developer.model.RevokedToken) a[0];
                     store.put(x.getTokenId(), x);
                     return x;
                 },
@@ -119,11 +119,11 @@ public final class TestRepos {
     }
 
     public static final class Identities {
-        public final Map<String, com.premisave.developer.oauth.OAuthIdentity> store = new LinkedHashMap<>();
-        public final com.premisave.developer.oauth.OAuthIdentityRepository repo = Fake.of(com.premisave.developer.oauth.OAuthIdentityRepository.class, Map.of(
+        public final Map<String, com.premisave.developer.model.OAuthIdentity> store = new LinkedHashMap<>();
+        public final com.premisave.developer.repository.OAuthIdentityRepository repo = Fake.of(com.premisave.developer.repository.OAuthIdentityRepository.class, Map.of(
                 "findById", a -> java.util.Optional.ofNullable(store.get((String) a[0])),
                 "insert", a -> {
-                    com.premisave.developer.oauth.OAuthIdentity x = (com.premisave.developer.oauth.OAuthIdentity) a[0];
+                    com.premisave.developer.model.OAuthIdentity x = (com.premisave.developer.model.OAuthIdentity) a[0];
                     if (store.containsKey(x.getId())) throw new org.springframework.dao.DuplicateKeyException("duplicate");
                     store.put(x.getId(), x);
                     return x;
@@ -131,7 +131,7 @@ public final class TestRepos {
     }
 
     /** Remembers every email handed to it. */
-    public static final class RecordingMailer implements com.premisave.developer.auth.Mailer {
+    public static final class RecordingMailer implements com.premisave.developer.client.Mailer {
         public record Sent(String to, String subject, String html) {}
         public final java.util.List<Sent> sent = new java.util.ArrayList<>();
         public boolean fail;

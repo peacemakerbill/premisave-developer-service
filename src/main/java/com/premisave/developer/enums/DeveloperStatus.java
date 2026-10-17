@@ -1,5 +1,9 @@
 package com.premisave.developer.enums;
 
+/**
+ * PENDING is a new account whose email address has not been confirmed yet. It becomes ACTIVE when the address is
+ * confirmed. DISABLED is set by Premisave staff and blocks every sign in.
+ */
 public enum DeveloperStatus {
-    ACTIVE, DISABLED
+    PENDING, ACTIVE, DISABLED
 }

@@ -23,7 +23,8 @@ public record DeveloperProperties(
         Internal internal,
         Cors cors,
         Mail mail,
-        OAuth oauth) {
+        OAuth oauth,
+        Cloudinary cloudinary) {
 
     public DeveloperProperties {
         if (jwt == null) jwt = new Jwt(null, null, null);
@@ -36,6 +37,7 @@ public record DeveloperProperties(
         if (cors == null) cors = new Cors(null);
         if (mail == null) mail = new Mail(null, null, null, null, null, null, null, null, null);
         if (oauth == null) oauth = new OAuth(null, null, null, null, null);
+        if (cloudinary == null) cloudinary = new Cloudinary(null, null, null, null, null);
     }
 
     /** Sign in tokens. */
@@ -189,6 +191,46 @@ public record DeveloperProperties(
             if (requireVerifiedForBusiness == null) requireVerifiedForBusiness = Boolean.TRUE;
             if (logLinks == null) logLinks = Boolean.FALSE;
             if (notifySignIn == null) notifySignIn = Boolean.TRUE;
+        }
+    }
+
+    /**
+     * Where profile pictures are stored. The picture is uploaded to Cloudinary under folder/developerId, signed with the
+     * API secret, so the secret never leaves this service. With no cloud name, key or secret the picture endpoints answer
+     * that pictures are not available and everything else works. maxBytes is the largest picture accepted (5 MB by
+     * default, never more than 10 MB).
+     */
+    public record Cloudinary(String cloudName, String apiKey, String apiSecret, String folder, Integer maxBytes) {
+
+        public static final int DEFAULT_MAX_BYTES = 5 * 1_048_576;
+        public static final int LARGEST_MAX_BYTES = 10 * 1_048_576;
+
+        public Cloudinary {
+            cloudName = blankToNull(cloudName);
+            apiKey = blankToNull(apiKey);
+            apiSecret = blankToNull(apiSecret);
+            String f = folder == null ? "" : folder.trim();
+            while (f.startsWith("/")) f = f.substring(1);
+            while (f.endsWith("/")) f = f.substring(0, f.length() - 1);
+            folder = f.isEmpty() ? "premisave/developers" : f;
+            if (maxBytes == null || maxBytes < 10_240) maxBytes = DEFAULT_MAX_BYTES;
+            if (maxBytes > LARGEST_MAX_BYTES) maxBytes = LARGEST_MAX_BYTES;
+        }
+
+        /** True when all three credentials are present and the cloud name is safe to put in a web address. */
+        public boolean configured() {
+            return cloudName != null && cloudName.matches("[A-Za-z0-9_-]{1,64}") && apiKey != null && apiSecret != null;
+        }
+
+        /** Never prints the secret. */
+        @Override
+        public String toString() {
+            return "Cloudinary[cloudName=" + cloudName + ", apiKey=" + (apiKey == null ? "unset" : "set")
+                    + ", apiSecret=" + (apiSecret == null ? "unset" : "set") + ", folder=" + folder + ", maxBytes=" + maxBytes + "]";
+        }
+
+        private static String blankToNull(String v) {
+            return v == null || v.isBlank() ? null : v.trim();
         }
     }
 

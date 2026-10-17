@@ -124,4 +124,45 @@ class DeveloperPropertiesTest {
         assertFalse(w.configured());
         assertTrue(new DeveloperProperties.Wallet("http://wallet:8084", null, null, "real-key-value", null, null).configured());
     }
+
+    @Test
+    void cloudinaryNeedsAllThreeCredentialsAndASafeCloudName() {
+        assertFalse(new DeveloperProperties.Cloudinary(null, null, null, null, null).configured());
+        assertFalse(new DeveloperProperties.Cloudinary("demo", "key", null, null, null).configured());
+        assertFalse(new DeveloperProperties.Cloudinary("demo", "  ", "secret", null, null).configured());
+        assertFalse(new DeveloperProperties.Cloudinary("de mo/../x", "key", "secret", null, null).configured());
+        assertTrue(new DeveloperProperties.Cloudinary(" demo-cloud_1 ", " key ", " secret ", null, null).configured());
+    }
+
+    @Test
+    void cloudinaryDefaultsAreTidyAndTheLimitIsBounded() {
+        DeveloperProperties.Cloudinary d = new DeveloperProperties.Cloudinary("c", "k", "s", "  ", null);
+        assertEquals("premisave/developers", d.folder());
+        assertEquals(5 * 1_048_576, d.maxBytes());
+        assertEquals("a/b", new DeveloperProperties.Cloudinary("c", "k", "s", "//a/b//", null).folder());
+        assertEquals(5 * 1_048_576, new DeveloperProperties.Cloudinary("c", "k", "s", null, 100).maxBytes());
+        assertEquals(10 * 1_048_576, new DeveloperProperties.Cloudinary("c", "k", "s", null, 999_999_999).maxBytes());
+        assertEquals(2_000_000, new DeveloperProperties.Cloudinary("c", "k", "s", null, 2_000_000).maxBytes());
+    }
+
+    @Test
+    void cloudinarySecretsAreNeverPrinted() {
+        String text = new DeveloperProperties.Cloudinary("demo", "my-api-key", "my-api-secret", null, null).toString();
+        assertFalse(text.contains("my-api-secret"));
+        assertFalse(text.contains("my-api-key"));
+        assertTrue(text.contains("demo"));
+    }
+
+    @Test
+    void missingCloudinarySettingsMeanPicturesAreOff() {
+        assertFalse(TestPropsHolder.defaults().cloudinary().configured());
+    }
+
+    private static final class TestPropsHolder {
+        static DeveloperProperties defaults() {
+            return new DeveloperProperties(
+                    new DeveloperProperties.Jwt("x".repeat(32), null, null), new DeveloperProperties.Keys("y".repeat(16), null, null),
+                    null, null, null, null, null, null, null, null, null);
+        }
+    }
 }

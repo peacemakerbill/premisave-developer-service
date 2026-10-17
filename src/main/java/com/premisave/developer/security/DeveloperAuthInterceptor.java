@@ -1,8 +1,9 @@
 package com.premisave.developer.security;
 
-import com.premisave.developer.common.DeveloperException;
-import com.premisave.developer.developer.DeveloperService;
 import com.premisave.developer.enums.ErrorCode;
+import com.premisave.developer.exception.DeveloperException;
+import com.premisave.developer.service.DeveloperService;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;

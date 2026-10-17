@@ -44,26 +44,9 @@
                 }
               }
             },
-            "description": "Required: email, firstName, lastName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: middleName, phoneNumber (7 to 15 digits), companyName, marketingOptIn. A username is generated for you (see the response). 409 EMAIL_TAKEN if the email is used. A confirmation email is sent when a mail server is set. No token is returned: show data.message and send the developer to the sign in page, then run Sign in. Sign in works before the email is confirmed."
+            "description": "Required: email, firstName, lastName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: middleName, phoneNumber (7 to 15 digits), companyName, marketingOptIn. A username is generated for you. 409 EMAIL_TAKEN if the email is used. The account is created PENDING and the answer carries only message, next (SIGN_IN), status (PENDING) and confirmationEmailSent: no token and no account data. A confirmation email is sent when a mail server is set, and confirming it makes the account ACTIVE. Show data.message and send the developer to the sign in page, then run Sign in. Sign in works before the email is confirmed."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let body = {};",
-                  "try { body = pm.response.json(); } catch (e) {}",
-                  "const d = body.data || {};",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
-                  "}"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Sign in",
@@ -213,6 +196,74 @@
               }
             },
             "description": "Every field is optional; only the ones sent change, and nothing changes unless every field sent is valid. Send an empty string to clear middleName, phoneNumber, companyName, the address fields or timezone. firstName, lastName, country and username cannot be cleared."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload profile picture",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "image/jpeg"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/profile-picture",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "profile-picture"
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {}
+            },
+            "description": "The body is the image file itself, not form data: in Postman choose Body, binary, and pick a JPEG, PNG or WebP file of at most 5 MB (set the Content-Type header to match). The picture is stored in Cloudinary and data.profilePictureUrl is the address to show. A new picture replaces the old one. 400 VALIDATION_FAILED if the file is not an image, 413 PAYLOAD_TOO_LARGE if too big, 503 UPSTREAM_UNAVAILABLE if Cloudinary is not set up or cannot be reached."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove profile picture",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/profile-picture",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "profile-picture"
+              ]
+            },
+            "description": "Removes the picture from Cloudinary and the account. Safe to repeat."
           },
           "response": []
         },
