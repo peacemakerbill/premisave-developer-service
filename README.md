@@ -711,7 +711,7 @@ Run the first sign in with a new email to see the account created, then run it a
 mvn clean test
 ```
 
-The tests use fakes for the repositories and a local HTTP server standing in for the wallet, so they need no database and no network. This code base was compiled and its tests run only with `javac` against stubs, never with Maven or a real MongoDB, SMTP server, wallet or provider. Run this first on your machine.
+The tests use fakes for the repositories and a local HTTP server standing in for the wallet, so they need no database and no network. `MailIsAsynchronousTest` holds the mail server shut and checks that sign up, sign in, a reset request and a new confirmation link still answer at once, and that the email goes out when the server opens. This code base was compiled and its tests run only with `javac` against stubs, never with Maven or a real MongoDB, SMTP server, wallet or provider. Run this first on your machine.
 
 To check that email is really switched on in your setup, run the mail check. It starts the application, reads your `.env`, and reports whether the mail host was picked up and whether the mail server accepts the login. It sends nothing unless you add an address, and it is skipped in a normal build:
 
