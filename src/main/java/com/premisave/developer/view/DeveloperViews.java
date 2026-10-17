@@ -36,6 +36,7 @@ public final class DeveloperViews {
         m.put("profilePictureUrl", d.getProfilePictureUrl());
         m.put("providers", d.getAuthProviders().stream().sorted().toList());
         m.put("status", d.getStatus().name());
+        m.put("role", d.getRole().name());
         m.put("businessIds", d.businessIds());
         m.put("createdAt", iso(d.getCreatedAt()));
         m.put("lastLoginAt", iso(d.getLastLoginAt()));
@@ -52,6 +53,7 @@ public final class DeveloperViews {
         m.put("companyName", d.getCompanyName());
         m.put("country", d.getCountry());
         m.put("status", d.getStatus().name());
+        m.put("role", d.getRole().name());
         m.put("emailVerified", d.isEmailVerified());
         m.put("businessIds", d.businessIds());
         m.put("createdAt", iso(d.getCreatedAt()));

@@ -6,6 +6,7 @@ import com.premisave.developer.dto.ClientInfo;
 import com.premisave.developer.dto.LoginRequest;
 import com.premisave.developer.dto.SignupRequest;
 import com.premisave.developer.dto.UpdateProfileRequest;
+import com.premisave.developer.enums.DeveloperRole;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.enums.ErrorCode;
 import com.premisave.developer.exception.DeveloperException;
@@ -23,6 +24,8 @@ import com.premisave.developer.util.SearchText;
 import com.premisave.developer.util.Usernames;
 import com.premisave.developer.view.DeveloperViews;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
@@ -40,6 +43,8 @@ import java.util.regex.Pattern;
 /** Sign up, sign in, sign out and password change for developers. */
 @Service("developerAccountService")
 public class DeveloperService {
+
+    private static final Logger log = LoggerFactory.getLogger(DeveloperService.class);
 
     /** How long to wait between two username changes. The first change after sign up is free. */
     static final Duration USERNAME_COOLDOWN = Duration.ofDays(7);
@@ -388,6 +393,7 @@ public class DeveloperService {
     }
 
     public Developer setStatus(String developerId, DeveloperStatus status) {
+        if (status == DeveloperStatus.PENDING) throw DeveloperException.validation("status", "must be ACTIVE or DISABLED");
         Developer d = require(developerId);
         d.setStatus(status);
         d.setUpdatedAt(clock.instant());
@@ -396,12 +402,25 @@ public class DeveloperService {
 
     /** A new sign in for the developer: the token and the account. */
     public Map<String, Object> session(Developer d) {
+        promoteIfListed(d);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("accessToken", jwt.issue(d.getDeveloperId(), d.getTokenVersion()));
         m.put("tokenType", "Bearer");
         m.put("expiresIn", jwt.ttlSeconds());
         m.put("developer", DeveloperViews.developer(d));
         return m;
+    }
+
+    /**
+     * Makes the account an administrator when its address is on the configured list and the address has been confirmed.
+     * This is how the first administrator comes about; the confirmed address is what stops anyone else from claiming it.
+     */
+    private void promoteIfListed(Developer d) {
+        if (d.isAdmin() || !d.isEmailVerified() || !security.isAdminEmail(d.getEmail())) return;
+        d.setRole(DeveloperRole.ADMIN);
+        d.setUpdatedAt(clock.instant());
+        developers.save(d);
+        log.info("Developer {} became an administrator through the configured address list", d.getDeveloperId());
     }
 
     public static String normaliseEmail(String email) {

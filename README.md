@@ -135,8 +135,8 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 
 **Platform Concerns**
 - One response envelope everywhere and an `X-Request-Id` header on every response
-- Staff endpoints to suspend an app or disable a developer
-- Postman collection with 66 requests, ready to import
+- Roles `DEVELOPER` and `ADMIN`, with admin endpoints to manage developers, apps, API keys, business sharing and transfers, every change audited
+- Postman collection with 101 requests, ready to import
 
 <br/>
 
@@ -162,7 +162,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 flowchart TD
     Portal["Developer Portal (browser)"] -->|"Bearer JWT, /api/v1/**"| Dev[Premisave Developer Service]
     Merchant["Merchant server"] -->|"API key + secret, /v1/live or /v1/sandbox"| Dev
-    Staff["Premisave staff tooling"] -->|"X-API-Key, /internal/admin/**"| Dev
+    Staff["Premisave staff"] -->|"admin Bearer JWT, /api/v1/admin/**<br/>or X-API-Key, /internal/admin/**"| Dev
 
     Dev --> Mongo[("MongoDB: developers, apps, api_keys,<br/>email_tokens, revoked_tokens, oauth_identities")]
     Dev --> SMTP[/"SMTP: confirmation, welcome, sign-in, reset emails"/]
@@ -180,7 +180,7 @@ Three surfaces share one service:
 |---|---|---|---|
 | Portal API | `/api/v1/**` | The developer portal | `Authorization: Bearer <accessToken>`, except `/api/v1/auth/**` |
 | Public API | `/v1/{live\|sandbox}/**` | Merchants' servers | API key and secret |
-| Admin API | `/internal/admin/**` | Premisave staff tooling | `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
+| Admin API | `/api/v1/admin/**` and `/internal/admin/**` | Premisave staff | An administrator's `Authorization: Bearer <accessToken>`, or `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
 
 <br/>
 
@@ -563,17 +563,57 @@ Every response uses the same envelope, and every response carries an `X-Request-
 
 Authenticate with `Authorization: Basic base64(key:secret)` or with the headers `X-Client-Key` and `X-Client-Secret`. A `pk_sandbox_` key works on `/v1/sandbox` only, and a `pk_live_` key on `/v1/live` only. The payment operations themselves are documented in the wallet's `COMMERCIAL_API_ENDPOINTS.md`: a path such as `POST /payments` there is `POST /v1/live/payments` here.
 
-**Admin** — `/internal/admin`
+**Admin** — `/api/v1/admin` and `/internal/admin`
+
+Every path below works under both prefixes. `/api/v1/admin` takes the bearer token of an `ADMIN` account; `/internal/admin` takes the internal API key.
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| GET | `/internal/admin/developers` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Search developer accounts by email, username, name, company or developer id, filter by status, paged |
-| GET | `/internal/admin/developers/{developerId}` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | One developer account |
-| GET | `/internal/admin/apps/{appId}` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Any app |
-| PUT | `/internal/admin/apps/{appId}/status` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Suspend or reactivate an app (a reason is required to suspend) |
-| PUT | `/internal/admin/developers/{developerId}/status` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Disable or enable a developer |
+| GET | `/admin/stats` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Counts of developers, apps and transfers |
+| GET | `/admin/audit` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | The trail of every admin change, filter by actor, target or action |
+| GET | `/admin/developers` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Search accounts by email, username, name, company or developer id, filter by status, paged |
+| POST | `/admin/developers` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Create an account with a role and send an invitation |
+| GET | `/admin/administrators` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | The accounts whose role is ADMIN |
+| GET | `/admin/developers/{developerId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | One account with lockout and business details |
+| PUT | `/admin/developers/{developerId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Change any profile |
+| DELETE | `/admin/developers/{developerId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Delete an account that owns nothing |
+| PUT | `/admin/developers/{developerId}/status` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Disable or enable |
+| PUT | `/admin/developers/{developerId}/role` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Make an account DEVELOPER or ADMIN |
+| PUT | `/admin/developers/{developerId}/email` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Change the sign in address |
+| POST | `/admin/developers/{developerId}/verify-email` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Count the address as confirmed |
+| POST | `/admin/developers/{developerId}/unlock` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Clear a lockout |
+| POST | `/admin/developers/{developerId}/sign-out` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | End every session |
+| POST | `/admin/developers/{developerId}/password-reset` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Email a password reset link |
+| GET | `/admin/developers/{developerId}/apps` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Apps of one account |
+| GET | `/admin/developers/{developerId}/businesses` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Businesses of one account |
+| POST | `/admin/developers/{developerId}/businesses/{businessId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Share a business with the account |
+| DELETE | `/admin/developers/{developerId}/businesses/{businessId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Take a shared business back |
+| GET | `/admin/apps` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Search every app by developer, business, environment, status or name |
+| GET | `/admin/apps/{appId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Any app |
+| PUT | `/admin/apps/{appId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Change any app |
+| DELETE | `/admin/apps/{appId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Delete an app and its keys |
+| PUT | `/admin/apps/{appId}/status` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Suspend or reactivate (a reason is required to suspend) |
+| PUT | `/admin/apps/{appId}/owner` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Hand the app to another account |
+| GET | `/admin/apps/{appId}/keys` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Keys of an app |
+| POST | `/admin/apps/{appId}/keys` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Issue a key |
+| POST | `/admin/apps/{appId}/keys/{key}/rotate` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Rotate a key |
+| DELETE | `/admin/apps/{appId}/keys/{key}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Revoke a key |
+| DELETE | `/admin/apps/{appId}/keys` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Revoke every key of an app |
+| GET | `/admin/transfers` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Search app transfers and business claims |
+| GET | `/admin/transfers/{transferId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | One request |
+| DELETE | `/admin/transfers/{transferId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Cancel a waiting request |
 
-`Internal` endpoints authenticate exclusively with the `X-API-Key` header matching `DEVELOPER_INTERNAL_API_KEY`. With no key configured, every call returns `401`.
+`Admin` endpoints need either the bearer token of an account whose role is `ADMIN` (on `/api/v1/admin`) or the `X-API-Key` header matching `DEVELOPER_INTERNAL_API_KEY` (on `/internal/admin`). With no internal key configured, every `/internal` call returns `401`; a developer account on `/api/v1/admin` gets `403`.
+
+### Roles and Administration
+
+Every account has a `role`: `DEVELOPER` (the default, also for accounts that existed before roles) or `ADMIN`. The role is read from the database on each request, so a demotion applies at once.
+
+- **First administrator.** Put the address in `DEVELOPER_ADMIN_EMAILS`. When that account signs in with a confirmed email address it becomes an `ADMIN`. Afterwards administrators grant and remove the role with `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in, so take it off the list when you demote that person.
+- **Two administrators at startup.** Set `DEVELOPER_SEED_ADMINS_ENABLED=true` and fill in the `DEVELOPER_SEED_ADMIN1_*` and `DEVELOPER_SEED_ADMIN2_*` settings. At startup the service creates both accounts, active, with a confirmed address and the given password. If any administrator already exists, or either address is already used by an account, it logs that it skipped and creates nothing, so a restart never creates them twice and never touches an existing account. A missing or invalid setting also creates nothing and is logged with the name of the setting. Neither case stops the service from starting. Passwords are hashed and never logged. Remove the passwords from `.env` once the accounts exist, and change them after the first sign in. The creation is written to the audit trail as the actor `startup-seed`.
+- **No lockout.** An administrator cannot change their own role, disable or delete their own account, and the last active administrator can never be demoted, disabled or deleted.
+- **Safe deletes.** A developer who still has apps, or who applied for a business, cannot be deleted; disable the account instead. An app is deleted only after the wallet service has been told it is closing.
+- **Audit.** Every admin change is written to the `admin_actions` collection with who did it, what, to what and when, and is searchable with `GET /admin/audit`. Calls made with the internal key are recorded as the actor `internal-key`.
 
 Request and response examples for every endpoint, plus the full list of error codes, are in [DEVELOPER_API.md](DEVELOPER_API.md). A ready-to-import Postman collection and environment are in `postman/`.
 
@@ -644,6 +684,10 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `WALLET_SIGNING_SECRET` | Only when the wallet has request signing on. Must be one of its `commercial.signing.secrets` |
 | `DEVELOPER_MAX_BUSINESSES` | How many businesses one account may apply for, default `10` |
 | `DEVELOPER_INTERNAL_API_KEY` | Guards `/internal/admin`. Empty means those endpoints refuse every call |
+| `DEVELOPER_ADMIN_EMAILS` | Comma separated addresses that become administrators when they sign in with a confirmed email. Empty creates none this way |
+| `DEVELOPER_SEED_ADMINS_ENABLED` | `true` creates two administrators at startup from the settings below. Default `false`. See [Roles and Administration](#roles-and-administration) |
+| `DEVELOPER_SEED_ADMIN1_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The first administrator to create |
+| `DEVELOPER_SEED_ADMIN2_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The second administrator to create |
 | `DEVELOPER_PORTAL_ORIGINS` | Browser origins allowed to call `/api/v1`, comma separated. `/v1` is never opened to browsers |
 | `DEVELOPER_PORTAL_URL` | Where the portal runs. Links in emails point here |
 | `DEVELOPER_MAIL_FROM` | Sender address on every email |
@@ -818,7 +862,7 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
-For manual testing, import both files from `postman/` into Postman: the collection has 66 requests grouped as account, email and password, social sign in, businesses and onboarding, apps, transfers and sharing, API keys, the public API and the admin API.
+For manual testing, import both files from `postman/` into Postman: the collection has 101 requests grouped as account, email and password, social sign in, businesses and onboarding, apps, transfers and sharing, API keys, the public API and the admin API (internal key and administrator sign in).
 
 To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-test`. See [Trying It in a Browser](#trying-it-in-a-browser).
 
@@ -832,12 +876,12 @@ src/main/java/com/premisave/developer
 ├── controller    # REST endpoints: Auth, Me (profile, picture), Business, Business application, OAuth, App, Key, Admin, the public /v1 entry
 ├── service       # Business logic: accounts, email links, OAuth, apps, API keys, proxy, profile pictures, mail check
 ├── repository    # Spring Data MongoDB repositories, one per collection
-├── model         # Mongo documents: Developer, DeveloperApp, ApiKey, EmailToken, RevokedToken, OAuthIdentity, Limits
+├── model         # Mongo documents: Developer, DeveloperApp, ApiKey, EmailToken, RevokedToken, OAuthIdentity, AdminAction, Limits
 ├── enums         # Statuses, environments, method types, error codes, email token types, OAuth providers
 ├── dto           # Request bodies, the response envelope, and small value types passed between layers
 ├── view          # Turns models into the maps the API returns (developer, app, key, page)
 ├── client        # Calls to other systems: the wallet, sign in providers, Cloudinary, SMTP, and the HTTP transports
-├── security      # Password hashing, JWT, the rate limiter, the two interceptors
+├── security      # Password hashing, JWT, the rate limiter, the sign in, internal key and admin role interceptors
 ├── config        # Properties (developer.*), web and security beans, mail and picture storage wiring
 ├── filter        # The request id filter
 ├── exception     # DeveloperException and the global error handler
@@ -847,7 +891,7 @@ src/main/resources
 ├── application.yml
 └── email         # layout.html and the eight email bodies
 
-postman           # Collection (66 requests) and local environment
+postman           # Collection (101 requests) and local environment
 oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
 email-previews    # The eight emails rendered, open in a browser
 ```
@@ -866,6 +910,7 @@ email-previews    # The eight emails rendered, open in a browser
 - **Strict public path handling.** `/v1` refuses dot segments, encoded dots and slashes, backslashes, semicolons, whitespace and control characters, caps bodies at 1 MB, forwards a small allow list of headers, and never forwards the client's credentials.
 - **Usernames and profile text are checked.** ASCII-only usernames defeat look-alike letters, brand names are blocked through separators, and free text refuses `<`, `>` and control characters. Values placed in emails are HTML-escaped.
 - **No plaintext secrets in source control.** Configuration comes from the environment or an ignored `.env`.
+- **Staff access is checked on every request.** The role is read from the database, never from the token, so a demotion applies at once. The first administrator needs a confirmed address on `DEVELOPER_ADMIN_EMAILS`, administrators cannot lock themselves out, and every admin change goes to the audit trail.
 - **Consistent, human-readable errors.** Every failure returns the same JSON envelope with a code and a request id, never a stack trace.
 - **Browsers only reach the portal API.** CORS is opened for `/api/v1` and only for the configured origins, never for `/v1`.
 - **The wallet must not be public.** The context headers sent to the wallet are protected by the internal key and network isolation, not by the request signature. Expose only this service to the internet.
@@ -891,6 +936,7 @@ Created at startup (`spring.data.mongodb.auto-index-creation: true`):
 | `email_tokens` | `tokenHash` (unique), `developerId`, TTL on `expiresAt` |
 | `revoked_tokens` | TTL on `expiresAt`, so revoked tokens clean themselves up |
 | `oauth_identities` | Keyed by `provider:subject`, index on `developerId` |
+| `admin_actions` | `actorId`, `targetId`, `createdAt` (the audit trail; kept, not purged) |
 
 If your Mongo user cannot create indexes, create these by hand. The wallet guarantee and the username rule depend on the unique ones.
 
@@ -905,7 +951,7 @@ If your Mongo user cannot create indexes, create these by hand. The wallet guara
 - Event and webhook delivery to merchant URLs is not built yet. Leave the wallet's `DEVELOPER_SERVICE_URL` empty so events wait in its outbox.
 - A provider cannot be linked from inside a signed-in account yet.
 - A transfer or claim code goes to one address, the wallet account on the application or else the business contact email. If the owner has lost access to it there is no other route yet: contact Premisave support.
-- Transfer requests cannot be listed by staff, and there is no staff route yet to reverse a completed transfer.
+- Staff can list and cancel waiting transfer requests, but there is no staff route to reverse a completed transfer. Hand the app back with `PUT /admin/apps/{appId}/owner` instead.
 - The GitHub login runs in the portal, so the portal must make and compare its own `state` value, as the test page does. This service never sees it.
 - Emails have no plain-text part and no localisation. They were checked in a Chromium-based browser only, so Outlook on desktop will show them plainer and without dark mode.
 - Nothing has been run against a real MongoDB, SMTP server, provider or wallet, and Maven has not been run on this code. See [Testing](#testing).
@@ -921,7 +967,7 @@ The complete list, with reasons, is in [DEVELOPER_SERVICE_SPLIT.md](DEVELOPER_SE
 - [ ] Two-factor authentication
 - [ ] Per-IP and per-account rate limits on the account endpoints
 - [ ] Refresh tokens
-- [ ] A staff portal on top of `/internal/admin`
+- [ ] A staff portal on top of `/api/v1/admin`
 - [ ] OpenAPI documentation
 - [ ] Integration tests against a real MongoDB and wallet
 

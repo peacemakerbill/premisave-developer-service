@@ -72,6 +72,23 @@ developer:
     lock-minutes: 15
     password-min-length: 10
     pbkdf2-iterations: 210000
+    # Comma separated email addresses. An account with one of these addresses, once its email is confirmed, becomes an ADMIN
+    # the next time it signs in. This is how the first administrator is made; after that, administrators can promote others.
+    admin-emails: ${DEVELOPER_ADMIN_EMAILS:}
+  # Creates the first two administrators at startup. Off by default. When it is on and no administrator exists yet and neither
+  # address is used, both accounts are created; if an administrator or one of the addresses is already there, nothing is created.
+  seed-admins:
+    enabled: ${DEVELOPER_SEED_ADMINS_ENABLED:true}
+    first:
+      email: ${DEVELOPER_SEED_ADMIN1_EMAIL:}
+      first-name: ${DEVELOPER_SEED_ADMIN1_FIRST_NAME:}
+      last-name: ${DEVELOPER_SEED_ADMIN1_LAST_NAME:}
+      password: ${DEVELOPER_SEED_ADMIN1_PASSWORD:}
+    second:
+      email: ${DEVELOPER_SEED_ADMIN2_EMAIL:}
+      first-name: ${DEVELOPER_SEED_ADMIN2_FIRST_NAME:}
+      last-name: ${DEVELOPER_SEED_ADMIN2_LAST_NAME:}
+      password: ${DEVELOPER_SEED_ADMIN2_PASSWORD:}
   internal:
     api-key: ${DEVELOPER_INTERNAL_API_KEY:}
   cors:

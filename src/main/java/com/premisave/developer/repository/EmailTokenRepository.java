@@ -15,6 +15,8 @@ public interface EmailTokenRepository extends MongoRepository<EmailToken, String
     /** Removes the token and says how many rows went. Only the caller that gets 1 owns the token. */
     long deleteByTokenHash(String tokenHash);
 
+    long deleteByDeveloperId(String developerId);
+
     long deleteByDeveloperIdAndType(String developerId, EmailTokenType type);
 
     Optional<EmailToken> findFirstByDeveloperIdAndTypeOrderByCreatedAtDesc(String developerId, EmailTokenType type);

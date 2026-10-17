@@ -11,6 +11,21 @@ public final class SearchText {
 
     private SearchText() {}
 
+    /** Matches any value in a pattern built from the helpers below. */
+    public static final String ANY = ".*";
+
+    /** A pattern for the whole value to equal the text, or ANY when no text was given. */
+    public static String exact(String raw) {
+        String s = raw == null ? null : raw.trim();
+        return s == null || s.isEmpty() ? ANY : "^" + escape(s) + "$";
+    }
+
+    /** A pattern for the text to appear anywhere in the value, or ANY when no text was given. */
+    public static String contains(String raw) {
+        String s = clean(raw);
+        return s == null ? ANY : escape(s);
+    }
+
     /** Trims the text and returns null when nothing is left. Throws when it is longer than MAX_LENGTH. */
     public static String clean(String raw) {
         if (raw == null) return null;

@@ -50,4 +50,28 @@ class SearchTextTest {
     void ordinaryTextIsLeftAlone() {
         assertEquals("jane_doe-2@example", SearchText.escape("jane_doe-2@example"));
     }
+
+    @Test
+    void exactMatchesTheWholeValueOnly() {
+        Pattern p = Pattern.compile(SearchText.exact(" app_1 "));
+        assertTrue(p.matcher("app_1").matches());
+        assertFalse(p.matcher("app_10").matches());
+        assertFalse(p.matcher("xapp_1").matches());
+        assertFalse(Pattern.compile(SearchText.exact(".*")).matcher("anything").matches());
+    }
+
+    @Test
+    void containsMatchesAnywhereAndTakesNoPatternFromTheUser() {
+        assertTrue(Pattern.compile(SearchText.contains("_DELETED")).matcher("APP_DELETED").find());
+        assertFalse(Pattern.compile(SearchText.contains("a.c")).matcher("abc").find());
+    }
+
+    @Test
+    void noTextMeansEverythingMatches() {
+        assertEquals(SearchText.ANY, SearchText.exact(null));
+        assertEquals(SearchText.ANY, SearchText.exact("   "));
+        assertEquals(SearchText.ANY, SearchText.contains(null));
+        assertEquals(SearchText.ANY, SearchText.contains(""));
+        assertTrue("whatever".matches(SearchText.ANY));
+    }
 }

@@ -20,7 +20,7 @@ public final class TestProps {
     }
 
     public static DeveloperProperties.Security fastSecurity() {
-        return new DeveloperProperties.Security(3, 10, 10, 10_000);
+        return new DeveloperProperties.Security(3, 10, 10, 10_000, null);
     }
 
     public static DeveloperProperties with(String baseUrl, String signingSecret) {

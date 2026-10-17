@@ -34,7 +34,7 @@ public record DeveloperProperties(
         if (proxy == null) proxy = new Proxy(null, null, null);
         if (apps == null) apps = new Apps(null, null);
         if (businesses == null) businesses = new Businesses(null);
-        if (security == null) security = new Security(null, null, null, null);
+        if (security == null) security = new Security(null, null, null, null, null);
         if (internal == null) internal = new Internal(null);
         if (cors == null) cors = new Cors(null);
         if (mail == null) mail = new Mail(null, null, null, null, null, null, null, null, null);
@@ -154,14 +154,21 @@ public record DeveloperProperties(
         }
     }
 
-    /** Passwords and lockout. */
+    /** Passwords and lockout, and the addresses that become administrators when they sign in. */
     public record Security(Integer maxFailedLogins, Integer lockMinutes, Integer passwordMinLength,
-                           Integer pbkdf2Iterations) {
+                           Integer pbkdf2Iterations, List<String> adminEmails) {
         public Security {
+            adminEmails = adminEmails == null ? List.of() : adminEmails.stream()
+                    .filter(e -> e != null && !e.isBlank()).map(e -> e.trim().toLowerCase(java.util.Locale.ROOT)).distinct().toList();
             if (maxFailedLogins == null || maxFailedLogins < 1) maxFailedLogins = 5;
             if (lockMinutes == null || lockMinutes < 1) lockMinutes = 15;
             if (passwordMinLength == null || passwordMinLength < 8) passwordMinLength = 10;
             if (pbkdf2Iterations == null || pbkdf2Iterations < 10_000) pbkdf2Iterations = 210_000;
+        }
+
+        /** True when the address is on the list of accounts that become administrators at sign in. */
+        public boolean isAdminEmail(String email) {
+            return email != null && adminEmails.contains(email.trim().toLowerCase(java.util.Locale.ROOT));
         }
     }
 

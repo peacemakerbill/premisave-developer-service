@@ -1,5 +1,6 @@
 package com.premisave.developer.repository;
 
+import com.premisave.developer.enums.DeveloperRole;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.model.Developer;
 
@@ -19,6 +20,14 @@ public interface DeveloperRepository extends MongoRepository<Developer, String> 
     boolean existsByUsername(String username);
 
     Page<Developer> findByStatus(DeveloperStatus status, Pageable pageable);
+
+    Page<Developer> findByRole(DeveloperRole role, Pageable pageable);
+
+    long countByStatus(DeveloperStatus status);
+
+    long countByRole(DeveloperRole role);
+
+    long countByRoleAndStatus(DeveloperRole role, DeveloperStatus status);
 
     /** pattern is already escaped; it is matched anywhere in the email, username, full name or company, ignoring case. */
     @Query("{ $or: [ { _id: ?1 }, { email: { $regex: ?0, $options: 'i' } }, { username: { $regex: ?0, $options: 'i' } },"

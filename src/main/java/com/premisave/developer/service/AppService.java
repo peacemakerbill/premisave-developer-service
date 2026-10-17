@@ -169,7 +169,15 @@ public class AppService {
     }
 
     public DeveloperApp update(Developer developer, String appId, UpdateAppRequest req) {
-        DeveloperApp a = get(developer, appId);
+        return applyUpdate(get(developer, appId), req);
+    }
+
+    /** Premisave staff: change any app. The same rules apply as for its owner, so an app still cannot widen its business. */
+    public DeveloperApp adminUpdate(String appId, UpdateAppRequest req) {
+        return applyUpdate(adminGet(appId), req);
+    }
+
+    private DeveloperApp applyUpdate(DeveloperApp a, UpdateAppRequest req) {
         MerchantInfo merchant = null;
         if (req.name() != null && !req.name().isBlank()) a.setName(req.name().trim());
         if (req.description() != null) a.setDescription(blankToNull(req.description()));

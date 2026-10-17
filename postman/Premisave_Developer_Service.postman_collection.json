@@ -2686,7 +2686,1480 @@
       "name": "06 Admin (internal key)",
       "item": [
         {
-          "name": "Get app",
+          "name": "Overview and audit",
+          "item": [
+            {
+              "name": "Platform statistics",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/stats",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "stats"
+                  ]
+                },
+                "description": "Counts of developers, apps and transfers."
+              },
+              "response": []
+            },
+            {
+              "name": "Audit trail",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/audit",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "audit"
+                  ],
+                  "query": [
+                    {
+                      "key": "actorId",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "targetId",
+                      "value": "{{app_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "action",
+                      "value": "APP_",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Every admin change, newest first. actorId and targetId match exactly; action matches anywhere in the name, for example APP_ or _DELETED."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Developers",
+          "item": [
+            {
+              "name": "Search developers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers?q=jane@",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "jane@",
+                      "disabled": false
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Finds developer accounts by email, username, name or company, or by the exact developer id. Use it to get the developerId for a new merchant."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let body = {};",
+                      "try { body = pm.response.json(); } catch (e) {}",
+                      "const d = body.data || {};",
+                      "let v = (function () { return d.content && d.content[0] && d.content[0].developerId; })();",
+                      "if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List administrators",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/administrators",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "administrators"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create developer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers"
+                  ]
+                },
+                "description": "Creates an active account with a confirmed address and no password, and emails an invitation to choose one. The new developerId is saved to target_developer_id.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"amina.otieno@example.com\",\n  \"firstName\": \"Amina\",\n  \"middleName\": \"\",\n  \"lastName\": \"Otieno\",\n  \"country\": \"KE\",\n  \"phoneNumber\": \"+254 700 555 010\",\n  \"companyName\": \"Otieno Digital\",\n  \"role\": \"DEVELOPER\",\n  \"sendInvite\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let body = {};",
+                      "try { body = pm.response.json(); } catch (e) {}",
+                      "const d = body.data || {};",
+                      "{",
+                      "  const v = (function () { return d.developerId; })();",
+                      "  if (v) { pm.collectionVariables.set('target_developer_id', String(v)); console.log('target_developer_id = ' + v); }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get developer",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{developer_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update developer profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}"
+                  ]
+                },
+                "description": "Same body as the owner's profile update. Every field is optional.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Amina\",\n  \"lastName\": \"Otieno\",\n  \"companyName\": \"Otieno Digital Ltd\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Disable developer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}/status",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{developer_id}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"DISABLED\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Enable developer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}/status",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{developer_id}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Make administrator",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/role",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "role"
+                  ]
+                },
+                "description": "Only an active account can become an administrator.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"ADMIN\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Remove administrator role",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/role",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "role"
+                  ]
+                },
+                "description": "Refused for the last active administrator.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"DEVELOPER\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Change email",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/email",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "email"
+                  ]
+                },
+                "description": "verified defaults to true. With false a confirmation link is sent to the new address. Every session of the account ends.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"amina.new@example.com\",\n  \"verified\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Count email as confirmed",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/verify-email",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "verify-email"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Unlock account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/unlock",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "unlock"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Sign out everywhere",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/sign-out",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "sign-out"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Send password reset",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/password-reset",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "password-reset"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Developer apps",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/apps",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "apps"
+                  ],
+                  "query": [
+                    {
+                      "key": "environment",
+                      "value": "sandbox",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Developer businesses",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/businesses",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "businesses"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Share business with developer",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/businesses/{{business_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "businesses",
+                    "{{business_id}}"
+                  ]
+                },
+                "description": "Gives the account use of a business it did not apply for."
+              },
+              "response": []
+            },
+            {
+              "name": "Take shared business back",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}/businesses/{{business_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}",
+                    "businesses",
+                    "{{business_id}}"
+                  ]
+                },
+                "description": "Refused for a business the account applied for, or one it still has apps on."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete developer",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/developers/{{target_developer_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "developers",
+                    "{{target_developer_id}}"
+                  ]
+                },
+                "description": "Only an account that owns no apps and applied for no business. Otherwise disable it."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Apps and keys",
+          "item": [
+            {
+              "name": "Search apps",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps"
+                  ],
+                  "query": [
+                    {
+                      "key": "developerId",
+                      "value": "{{developer_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "businessId",
+                      "value": "{{business_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "environment",
+                      "value": "sandbox",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "ACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "name",
+                      "value": "shop",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Every app on the platform. Filters combine."
+              },
+              "response": []
+            },
+            {
+              "name": "Get app",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update app",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}"
+                  ]
+                },
+                "description": "The owner's rules apply: a production callback must be https.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Renamed by staff\",\n  \"description\": \"Updated from the admin API\",\n  \"callbackUrl\": \"http://localhost:3000/hooks\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Suspend app",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/status",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"SUSPENDED\",\n  \"reason\": \"Chargeback review CMP-1182\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "The developer cannot lift a suspension placed here."
+              },
+              "response": []
+            },
+            {
+              "name": "Reactivate app",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/status",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Change app owner",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/owner",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "owner"
+                  ]
+                },
+                "description": "Hands the app to another active account, which gets use of the business. Every key of the app is revoked.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"developerId\": \"{{target_developer_id}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List app keys",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/keys",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "keys"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Issue app key",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/keys",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "keys"
+                  ]
+                },
+                "description": "The secret is shown once. The key id is saved to admin_key_id.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"label\": \"Staff test\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let body = {};",
+                      "try { body = pm.response.json(); } catch (e) {}",
+                      "const d = body.data || {};",
+                      "{",
+                      "  const v = (function () { return d.key; })();",
+                      "  if (v) { pm.collectionVariables.set('admin_key_id', String(v)); console.log('admin_key_id = ' + v); }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Rotate app key",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/keys/{{admin_key_id}}/rotate",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "keys",
+                    "{{admin_key_id}}",
+                    "rotate"
+                  ]
+                },
+                "description": "Issues a replacement. The old key keeps working for the rotation grace period."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "let body = {};",
+                      "try { body = pm.response.json(); } catch (e) {}",
+                      "const d = body.data || {};",
+                      "{",
+                      "  const v = (function () { return d.key; })();",
+                      "  if (v) { pm.collectionVariables.set('admin_key_id', String(v)); console.log('admin_key_id = ' + v); }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Revoke app key",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/keys/{{admin_key_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "keys",
+                    "{{admin_key_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke all app keys",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/keys",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}",
+                    "keys"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete app",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "apps",
+                    "{{app_id}}"
+                  ]
+                },
+                "description": "Suspends the app in the wallet first, then removes it and its keys."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Transfers",
+          "item": [
+            {
+              "name": "Search transfers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/transfers",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "transfers"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "PENDING",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "APP_TRANSFER",
+                      "disabled": true
+                    },
+                    {
+                      "key": "developerId",
+                      "value": "{{developer_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "0",
+                      "disabled": true
+                    },
+                    {
+                      "key": "size",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "status: PENDING, COMPLETED, CANCELLED or REJECTED. type: APP_TRANSFER or BUSINESS_CLAIM. developerId matches the requester or the receiver."
+              },
+              "response": []
+            },
+            {
+              "name": "Get transfer",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/transfers/{{transfer_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "transfers",
+                    "{{transfer_id}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Cancel transfer",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/transfers/{{transfer_id}}",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "transfers",
+                    "{{transfer_id}}"
+                  ]
+                },
+                "description": "Only a request that is still waiting for its code."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 Admin (administrator sign in)",
+      "description": "The same endpoints under /api/v1/admin, with the bearer token of an account whose role is ADMIN. Sign in as that account first. Every path in folder 06 works here by replacing /internal/admin with /api/v1/admin and dropping the X-API-Key header.",
+      "item": [
+        {
+          "name": "Statistics",
           "request": {
             "method": "GET",
             "header": [
@@ -2695,108 +4168,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}",
+              "raw": "{{base_url_dev}}/api/v1/admin/stats",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
-                "internal",
+                "api",
+                "v1",
                 "admin",
-                "apps",
-                "{{app_id}}"
+                "stats"
               ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Suspend app",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/status",
-              "host": [
-                "{{base_url_dev}}"
-              ],
-              "path": [
-                "internal",
-                "admin",
-                "apps",
-                "{{app_id}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"SUSPENDED\",\n  \"reason\": \"Chargeback review CMP-1182\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "The developer cannot lift a suspension placed here."
-          },
-          "response": []
-        },
-        {
-          "name": "Reactivate app",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url_dev}}/internal/admin/apps/{{app_id}}/status",
-              "host": [
-                "{{base_url_dev}}"
-              ],
-              "path": [
-                "internal",
-                "admin",
-                "apps",
-                "{{app_id}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"ACTIVE\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           },
           "response": []
@@ -2811,24 +4197,25 @@
                 "value": "application/json"
               },
               {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/internal/admin/developers?q=jane@",
+              "raw": "{{base_url_dev}}/api/v1/admin/developers?q=amina",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
-                "internal",
+                "api",
+                "v1",
                 "admin",
                 "developers"
               ],
               "query": [
                 {
                   "key": "q",
-                  "value": "jane@",
+                  "value": "amina",
                   "disabled": false
                 },
                 {
@@ -2847,28 +4234,12 @@
                   "disabled": true
                 }
               ]
-            },
-            "description": "Finds developer accounts by email, username, name or company, or by the exact developer id. Use it to get the developerId for a new merchant."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let body = {};",
-                  "try { body = pm.response.json(); } catch (e) {}",
-                  "const d = body.data || {};",
-                  "let v = (function () { return d.content && d.content[0] && d.content[0].developerId; })();",
-                  "if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }"
-                ]
-              }
             }
-          ]
+          },
+          "response": []
         },
         {
-          "name": "Get developer",
+          "name": "List administrators",
           "request": {
             "method": "GET",
             "header": [
@@ -2877,27 +4248,39 @@
                 "value": "application/json"
               },
               {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}",
+              "raw": "{{base_url_dev}}/api/v1/admin/administrators",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
-                "internal",
+                "api",
+                "v1",
                 "admin",
-                "developers",
-                "{{developer_id}}"
+                "administrators"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
               ]
             }
           },
           "response": []
         },
         {
-          "name": "Disable developer",
+          "name": "Make administrator",
           "request": {
             "method": "PUT",
             "header": [
@@ -2906,8 +4289,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               },
               {
                 "key": "Content-Type",
@@ -2915,21 +4298,23 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}/status",
+              "raw": "{{base_url_dev}}/api/v1/admin/developers/{{target_developer_id}}/role",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
-                "internal",
+                "api",
+                "v1",
                 "admin",
                 "developers",
-                "{{developer_id}}",
-                "status"
+                "{{target_developer_id}}",
+                "role"
               ]
             },
+            "description": "An administrator cannot change their own role.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"DISABLED\"\n}",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2940,44 +4325,98 @@
           "response": []
         },
         {
-          "name": "Enable developer",
+          "name": "Search apps",
           "request": {
-            "method": "PUT",
+            "method": "GET",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
               },
               {
-                "key": "X-API-Key",
-                "value": "{{admin_api_key}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}/status",
+              "raw": "{{base_url_dev}}/api/v1/admin/apps",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
-                "internal",
+                "api",
+                "v1",
                 "admin",
-                "developers",
-                "{{developer_id}}",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"ACTIVE\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+                "apps"
+              ],
+              "query": [
+                {
+                  "key": "developerId",
+                  "value": "{{developer_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
                 }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Audit trail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
               }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/admin/audit?action=DEVELOPER_",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "DEVELOPER_",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
             }
           },
           "response": []
@@ -3116,6 +4555,16 @@
     },
     {
       "key": "otp",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "target_developer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_key_id",
       "value": "",
       "type": "string"
     }

@@ -50,6 +50,60 @@
       "name": "spring.mail.properties.mail.smtp.writetimeout",
       "type": "java.lang.Integer",
       "description": "Milliseconds to wait while sending data to the mail server before giving up. Jakarta Mail waits forever when this is not set."
+    },
+    {
+      "name": "developer.seed-admins.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Create the first two administrators when the service starts. Nothing is created if an administrator already exists or either email address is already used. It never stops the service from starting.",
+      "defaultValue": false
+    },
+    {
+      "name": "developer.seed-admins.first.email",
+      "type": "java.lang.String",
+      "description": "Email address of the first administrator to create at startup.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.first.first-name",
+      "type": "java.lang.String",
+      "description": "First name of the first administrator.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.first.last-name",
+      "type": "java.lang.String",
+      "description": "Last name of the first administrator.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.first.password",
+      "type": "java.lang.String",
+      "description": "Password of the first administrator. It must meet the password rules. It is hashed before it is stored and never logged. Remove it from the .env file once the account exists.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.second.email",
+      "type": "java.lang.String",
+      "description": "Email address of the second administrator to create at startup.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.second.first-name",
+      "type": "java.lang.String",
+      "description": "First name of the second administrator.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.second.last-name",
+      "type": "java.lang.String",
+      "description": "Last name of the second administrator.",
+      "defaultValue": ""
+    },
+    {
+      "name": "developer.seed-admins.second.password",
+      "type": "java.lang.String",
+      "description": "Password of the second administrator. It must meet the password rules. It is hashed before it is stored and never logged. Remove it from the .env file once the account exists.",
+      "defaultValue": ""
     }
   ]
 }

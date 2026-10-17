@@ -20,7 +20,7 @@ Status of this delivery: both services were compiled with `javac` against hand w
 | Sandbox test merchant numbers | Developer service (`developer.apps.test-merchant-numbers`) |
 | One live app per Premisave wallet | Developer service |
 | Public `/v1/{live\|sandbox}/**` entry, key authentication, rate limiting | Developer service |
-| Staff tooling to suspend an app or disable a developer | Developer service (`/internal/admin`) |
+| Staff tooling: roles, developers, apps, keys, transfers and the audit trail | Developer service (`/api/v1/admin` for administrators, `/internal/admin` for the internal key) |
 | Merchants and merchant numbers (`PRM-` and ten digits) | Wallet |
 | Onboarding application, documents on Drive, review, approval | Wallet |
 | Merchant status, enabled methods, merchant limits | Wallet |
@@ -155,7 +155,7 @@ Existing merchants in the wallet have no developer account. A developer who sign
 
 * Event and webhook delivery to merchant URLs. The wallet's outbox dispatcher posts to `{developer-service-url}/internal/events`, which the developer service does not have yet. Leave `DEVELOPER_SERVICE_URL` empty so events wait in the outbox. With a value set, the dispatcher would fail and retry up to 12 times per event.
 * `POST /internal/validations` (C2B validation callback) and `POST /internal/callbacks/verify` (live callback registration check) on the developer service.
-* A staff portal. Staff use `/internal/admin` directly.
+* A staff portal screen. Staff use `/api/v1/admin` with an administrator account, or `/internal/admin` directly.
 * A deployment where the wallet runs as separate live and sandbox services needs the merchant to exist in both. Nothing here creates it twice.
 * Request signing does not cover the context headers (section 2).
 

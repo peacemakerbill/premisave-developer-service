@@ -9,4 +9,6 @@ import java.util.List;
 public interface ApiKeyRepository extends MongoRepository<ApiKey, String> {
 
     List<ApiKey> findByAppId(String appId);
+
+    long deleteByAppId(String appId);
 }

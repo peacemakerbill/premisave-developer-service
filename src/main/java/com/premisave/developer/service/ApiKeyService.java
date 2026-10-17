@@ -108,6 +108,11 @@ public class ApiKeyService {
         return ended;
     }
 
+    /** Removes every key row of an app that is being deleted. */
+    public long deleteAll(String appId) {
+        return keys.deleteByAppId(appId);
+    }
+
     /** Returns the key when the pair is valid and usable, otherwise throws the same INVALID_API_KEY for every reason. */
     public ApiKey authenticate(String clientKey, String clientSecret) {
         Instant now = clock.instant();

@@ -6,7 +6,7 @@ Three surfaces on one service (default port 8091):
 |:-|:-|:-|:-|
 | Portal API | `/api/v1/**` | The developer portal (a browser app) | `Authorization: Bearer <accessToken>`, except `/api/v1/auth/**` |
 | Public API | `/v1/{live\|sandbox}/**` | Merchants' servers | API key and secret |
-| Admin API | `/internal/admin/**` | Premisave staff tooling | `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
+| Admin API | `/api/v1/admin/**` and `/internal/admin/**` | Premisave staff | An administrator's `Authorization: Bearer <accessToken>`, or `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
 
 Every response uses the same envelope:
 
@@ -418,15 +418,98 @@ An app that staff or the developer suspended gets `403 APP_SUSPENDED` from the w
 
 ## 5. Admin API
 
-Header `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>`. With no key configured every call returns `401`.
+Premisave staff control everything on the developer service from here: accounts, apps, API keys, business sharing and app transfers. Every call behaves the same on both entrances.
+
+| Entrance | Path | Authentication | Who it is for |
+|:-|:-|:-|:-|
+| Staff portal | `/api/v1/admin/**` | `Authorization: Bearer <accessToken>` of an account whose `role` is `ADMIN` | Staff using the portal. A developer account gets `403 FORBIDDEN` |
+| Internal | `/internal/admin/**` | `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` | Staff tooling and other services. With no key configured every call returns `401` |
+
+In the tables below `/admin` stands for either prefix.
+
+### 5.1 Roles
+
+Every account has a `role`, shown in every account response: `DEVELOPER` (the default, also for accounts created before roles existed) or `ADMIN`. The role is read from the database on every request, so a demotion takes effect at once and no token has to expire first.
+
+**The first administrator.** Set `DEVELOPER_ADMIN_EMAILS` to a comma separated list of addresses, for example `DEVELOPER_ADMIN_EMAILS=boss@premisave.com`. When an account with a listed address that has been confirmed signs in (password or social sign in), it becomes an `ADMIN`. The confirmation is what stops someone else from claiming a listed address by signing up with it. After that, administrators manage roles through `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in if the role was taken away, so remove the address from the list when you demote that person.
+
+**Safeguards.**
+
+| Rule | Result |
+|:-|:-|
+| An administrator changes their own role, disables or deletes their own account | `403 FORBIDDEN` |
+| The last active administrator is demoted, disabled or deleted | `409 INVALID_STATE` |
+| An account that is not `ACTIVE` is made an administrator | `409 INVALID_STATE` |
+| A developer is deleted while they still have apps or applied for a business | `409 INVALID_STATE` with the counts. Move or delete the apps, or disable the account |
+| An app is deleted while the wallet service cannot be told | `409 INVALID_STATE`. The app stays, suspended, and the delete can be repeated |
+
+The self checks need to know who is calling, so they apply on the staff portal entrance. Calls with the internal key are recorded as the actor `internal-key`; the last administrator rule applies to them too.
+
+Lists are paged with `page` (from 0) and `size` (default 20, at most 100), newest first. Filters that take an id match the whole id; `q` and `name` match anywhere in the text, ignoring case, and are never read as patterns.
+
+### 5.2 Overview and audit
 
 | Call | Body | Notes |
 |:-|:-|:-|
-| `GET /internal/admin/developers` | query: `q`, `status`, `page`, `size` | Searches developer accounts, newest first. `q` is matched anywhere in the email, username, full name or company name, ignoring case, or against the developer id exactly (at most 100 characters). `status` is `PENDING`, `ACTIVE` or `DISABLED`. Each row has `developerId`, `email`, `username`, `fullName`, `companyName`, `country`, `status`, `emailVerified`, `businessIds`, `createdAt` and `lastLoginAt`. Use it to find the `developerId` to put on a new merchant |
-| `GET /internal/admin/developers/{developerId}` | none | One developer account with the full profile |
-| `GET /internal/admin/apps/{appId}` | none | Any app |
-| `PUT /internal/admin/apps/{appId}/status` | `{ "status": "ACTIVE" or "SUSPENDED", "reason" }` | `reason` required to suspend. A suspension from here is recorded as `suspendedBy: ADMIN` and the developer cannot lift it |
-| `PUT /internal/admin/developers/{developerId}/status` | `{ "status": "ACTIVE" or "DISABLED" }` | A disabled developer cannot sign in, their portal tokens are refused with `403 ACCOUNT_DISABLED`, and their keys are refused on `/v1` with the same code |
+| `GET /admin/stats` | none | Counts. `developers`: `total`, `pending`, `active`, `disabled`, `administrators`. `apps`: `total`, `sandbox`, `production`, `active`, `suspended`. `transfers`: `pending`, `completed`. And `generatedAt` |
+| `GET /admin/audit` | query: `actorId`, `targetId`, `action`, `page`, `size` | The trail of every admin change, newest first. `actorId` and `targetId` match exactly. `action` matches anywhere in the name, so `APP_` finds every app change and `_DELETED` every delete. Each row has `id`, `actorId`, `actorEmail`, `action`, `targetType`, `targetId`, `detail` and `createdAt` |
+
+Actions recorded: `DEVELOPER_CREATED`, `DEVELOPER_UPDATED`, `DEVELOPER_EMAIL_CHANGED`, `DEVELOPER_EMAIL_CONFIRMED`, `DEVELOPER_ROLE_CHANGED`, `DEVELOPER_ENABLED`, `DEVELOPER_DISABLED`, `DEVELOPER_UNLOCKED`, `DEVELOPER_SIGNED_OUT`, `DEVELOPER_PASSWORD_RESET_SENT`, `DEVELOPER_DELETED`, `BUSINESS_SHARED`, `BUSINESS_UNSHARED`, `APP_UPDATED`, `APP_SUSPENDED`, `APP_REACTIVATED`, `APP_OWNER_CHANGED`, `APP_DELETED`, `KEY_ISSUED`, `KEY_ROTATED`, `KEY_REVOKED`, `KEYS_REVOKED` and `TRANSFER_CANCELLED`. Entries are kept in the `admin_actions` collection and hold no secret. A failure to write an entry is logged and never undoes the change.
+
+```json
+GET /api/v1/admin/stats
+{ "success": true, "message": "Statistics retrieved", "data": {
+    "developers": { "total": 42, "pending": 3, "active": 37, "disabled": 2, "administrators": 2 },
+    "apps": { "total": 58, "sandbox": 30, "production": 28, "active": 55, "suspended": 3 },
+    "transfers": { "pending": 1, "completed": 9 },
+    "generatedAt": "2026-10-18T08:00:00Z" } }
+```
+
+### 5.3 Developers
+
+| Call | Body | Notes |
+|:-|:-|:-|
+| `GET /admin/developers` | query: `q`, `status`, `page`, `size` | Searches accounts, newest first. `q` is matched anywhere in the email, username, full name or company name, or against the developer id exactly (at most 100 characters). `status` is `PENDING`, `ACTIVE` or `DISABLED`. Each row has `developerId`, `email`, `username`, `fullName`, `companyName`, `country`, `role`, `status`, `emailVerified`, `businessIds`, `createdAt` and `lastLoginAt`. Use it to find the `developerId` to put on a new merchant |
+| `GET /admin/administrators` | query: `page`, `size` | The accounts whose role is `ADMIN`, same rows as above |
+| `POST /admin/developers` | `{ "email", "firstName", "middleName"?, "lastName", "country"?, "phoneNumber"?, "companyName"?, "role"?, "sendInvite"? }` | Creates an `ACTIVE` account with a confirmed address and no password. `role` is `DEVELOPER` (default) or `ADMIN`. Unless `sendInvite` is `false`, the person is emailed a link to choose a password; the answer says whether that email could be sent (`inviteSent`). `409 EMAIL_TAKEN` when the address is used |
+| `GET /admin/developers/{developerId}` | none | The full account: everything the owner sees, plus `appliedBusinessIds`, `sharedBusinessIds`, `failedLogins`, `lockedUntil` and `updatedAt`. No password hash or token is ever shown |
+| `PUT /admin/developers/{developerId}` | the profile body of `PUT /api/v1/me`, every field optional | Changes the profile of any account. The same checks as for the owner apply |
+| `PUT /admin/developers/{developerId}/status` | `{ "status": "ACTIVE" or "DISABLED" }` | A disabled developer cannot sign in, their portal tokens are refused with `403 ACCOUNT_DISABLED`, and their keys are refused on `/v1` with the same code. `PENDING` cannot be set; an account leaves it by confirming its address |
+| `PUT /admin/developers/{developerId}/role` | `{ "role": "DEVELOPER" or "ADMIN" }` | See the safeguards above |
+| `PUT /admin/developers/{developerId}/email` | `{ "email", "verified"? }` | Changes the sign in address. `verified` defaults to `true`; with `false` a confirmation link is sent to the new address. Every session of the account ends. `409 EMAIL_TAKEN` when another account has it |
+| `POST /admin/developers/{developerId}/verify-email` | none | Counts the address as confirmed. A `PENDING` account becomes `ACTIVE` |
+| `POST /admin/developers/{developerId}/unlock` | none | Clears the failed sign in count and any lockout |
+| `POST /admin/developers/{developerId}/sign-out` | none | Ends every session of the account on every device |
+| `POST /admin/developers/{developerId}/password-reset` | none | Emails a reset link to an active account. The answer has `requested` and `emailEnabled` |
+| `DELETE /admin/developers/{developerId}` | none | Removes an account that owns nothing, with its email links and linked social identities. Otherwise `409 INVALID_STATE`; disable the account instead |
+| `GET /admin/developers/{developerId}/apps` | query: `environment`, `page`, `size` | The apps of one account |
+| `GET /admin/developers/{developerId}/businesses` | none | The businesses of one account, each marked as applied for or shared |
+| `POST /admin/developers/{developerId}/businesses/{businessId}` | none | Gives the account use of a business it did not apply for. Nothing changes if it already has it |
+| `DELETE /admin/developers/{developerId}/businesses/{businessId}` | none | Takes a shared business back. `409 INVALID_STATE` for a business the account applied for, or one it still has apps on |
+
+### 5.4 Apps and keys
+
+| Call | Body | Notes |
+|:-|:-|:-|
+| `GET /admin/apps` | query: `developerId`, `businessId`, `environment` (`sandbox` or `production`), `status` (`ACTIVE` or `SUSPENDED`), `name`, `page`, `size` | Every app on the platform, filters combine |
+| `GET /admin/apps/{appId}` | none | Any app |
+| `PUT /admin/apps/{appId}` | `{ "name"?, "description"?, "enabledMethods"?, "limits"?, "callbackUrl"? }` | Changes any app. The rules for the owner apply, for example a production callback URL must be `https`. The wallet service is told |
+| `PUT /admin/apps/{appId}/status` | `{ "status": "ACTIVE" or "SUSPENDED", "reason" }` | `reason` required to suspend. A suspension from here is recorded as `suspendedBy: ADMIN` and the developer cannot lift it |
+| `PUT /admin/apps/{appId}/owner` | `{ "developerId" }` | Hands the app to another active account, which gets use of the app's business. Every key of the app is revoked, so the new owner issues their own. `409 INVALID_STATE` for an unknown, inactive or current owner |
+| `DELETE /admin/apps/{appId}` | none | Suspends the app in the wallet first, then deletes it with its keys |
+| `GET /admin/apps/{appId}/keys` | none | The keys of the app with status and last used time; secrets are never shown |
+| `POST /admin/apps/{appId}/keys` | `{ "label"? }` | Issues a key. The secret is in the answer once and cannot be read again |
+| `POST /admin/apps/{appId}/keys/{key}/rotate` | none | Issues a replacement; the old key keeps working for the rotation grace period |
+| `DELETE /admin/apps/{appId}/keys/{key}` | none | Revokes one key now |
+| `DELETE /admin/apps/{appId}/keys` | none | Revokes every key of the app and returns how many |
+
+### 5.5 Transfers and business claims
+
+| Call | Body | Notes |
+|:-|:-|:-|
+| `GET /admin/transfers` | query: `status` (`PENDING`, `COMPLETED`, `CANCELLED`, `REJECTED`), `type` (`APP_TRANSFER` or `BUSINESS_CLAIM`), `developerId`, `page`, `size` | Requests newest first. `developerId` matches the requester or the receiver. The code that was sent is never shown |
+| `GET /admin/transfers/{transferId}` | none | One request with both parties, the app or business, attempts used and expiry |
+| `DELETE /admin/transfers/{transferId}` | none | Cancels a request that is still waiting for its code. `409 INVALID_STATE` for one that is done |
 
 ## 6. Error codes
 

@@ -1,5 +1,6 @@
 package com.premisave.developer.model;
 
+import com.premisave.developer.enums.DeveloperRole;
 import com.premisave.developer.enums.DeveloperStatus;
 
 import org.springframework.data.annotation.Id;
@@ -61,6 +62,9 @@ public class Developer {
     /** Sign in providers linked to this account, for display. The links themselves are in oauth_identities. */
     private Set<String> authProviders = new LinkedHashSet<>();
     private DeveloperStatus status = DeveloperStatus.ACTIVE;
+
+    /** Accounts from before roles existed have none stored and count as DEVELOPER. */
+    private DeveloperRole role = DeveloperRole.DEVELOPER;
 
     /**
      * The business of an account from before an account could have many. Nothing writes it any more; businessIds() still
@@ -154,6 +158,9 @@ public class Developer {
     public void setAuthProviders(Set<String> v) { this.authProviders = v == null ? new LinkedHashSet<>() : v; }
     public DeveloperStatus getStatus() { return status; }
     public void setStatus(DeveloperStatus v) { this.status = v; }
+    public DeveloperRole getRole() { return role == null ? DeveloperRole.DEVELOPER : role; }
+    public void setRole(DeveloperRole v) { this.role = v == null ? DeveloperRole.DEVELOPER : v; }
+    public boolean isAdmin() { return getRole() == DeveloperRole.ADMIN; }
     public String getMerchantId() { return merchantId; }
     public void setMerchantId(String v) { this.merchantId = v; }
     public List<String> getMerchantIds() { return merchantIds; }
@@ -187,6 +194,11 @@ public class Developer {
         if (ownsBusiness(businessId)) return;
         if (sharedMerchantIds == null) sharedMerchantIds = new ArrayList<>();
         sharedMerchantIds.add(businessId);
+    }
+
+    /** Takes back the use of a shared business. Returns false when the account had it by applying, or did not have it. */
+    public boolean removeSharedBusiness(String businessId) {
+        return sharedMerchantIds != null && sharedMerchantIds.remove(businessId);
     }
 
     public boolean ownsBusiness(String businessId) {

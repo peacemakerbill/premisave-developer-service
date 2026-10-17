@@ -9,6 +9,14 @@ public final class Fake {
 
     private Fake() {}
 
+    /** Both sets of handlers; the second wins on a clash. Lets a fake go past the ten pairs Map.of takes. */
+    public static Map<String, Function<Object[], Object>> merge(Map<String, Function<Object[], Object>> first,
+                                                                Map<String, Function<Object[], Object>> second) {
+        Map<String, Function<Object[], Object>> all = new java.util.HashMap<>(first);
+        all.putAll(second);
+        return all;
+    }
+
     @SuppressWarnings("unchecked")
     public static <T> T of(Class<T> type, Map<String, Function<Object[], Object>> handlers) {
         return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, args) -> {
