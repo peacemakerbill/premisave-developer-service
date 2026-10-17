@@ -53,6 +53,7 @@
 - [Profile Pictures](#profile-pictures)
 - [Email Setup](#email-setup)
 - [Social Sign In Setup](#social-sign-in-setup)
+  - [Trying It in a Browser](#trying-it-in-a-browser)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 - [Security Highlights](#security-highlights)
@@ -675,6 +676,31 @@ Notes per provider:
 
 The check for a working setup is `GET /api/v1/auth/oauth/providers`, which lists the providers that are on. The full flow, matching rules and error codes are in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
 
+### Trying It in a Browser
+
+The `oauth-test` folder holds a single page, `social-login-test.html`, that runs the whole flow against this service so you can test Google, Facebook and GitHub sign up and sign in without building the portal first. It needs no client ID or secret, because those stay in `.env`. It asks `GET /api/v1/auth/oauth/providers` which providers are on and enables only those buttons.
+
+1. Add the page's return address and origin to `.env`, then restart the service:
+
+```properties
+DEVELOPER_OAUTH_REDIRECT_URIS=http://localhost:3000/social-login-test.html
+DEVELOPER_PORTAL_ORIGINS=http://localhost:3000
+```
+
+2. Register `http://localhost:3000/social-login-test.html` as the redirect or callback address in the Google, Facebook and GitHub consoles. It must match character for character.
+3. Serve the folder and open the page. Opening the file directly does not work, because the providers need a real address to send people back to:
+
+```bash
+cd oauth-test
+python3 -m http.server 3000
+```
+
+Then open `http://localhost:3000/social-login-test.html`.
+
+The page has two modes. **Sign in to Premisave** runs the flow to the end, shows the access token and the developer that came back, and lets you call `GET /api/v1/me` and `POST /api/v1/me/logout`. **Get the code only** stops when the provider returns, and shows the code and state with a ready request body for `POST /api/v1/auth/oauth/{provider}/callback`, so you can send it from Postman. A code works once. If the state the provider returns is not the one this service issued, the page refuses it, which is the check the portal must also make.
+
+Run the first sign in with a new email to see the account created, then run it again to see the same account signed in. Check `newAccount` and `status` in the result.
+
 <br/>
 
 ## Testing
@@ -695,6 +721,8 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
 For manual testing, import both files from `postman/` into Postman: the collection has 53 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
+
+To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-test`. See [Trying It in a Browser](#trying-it-in-a-browser).
 
 <br/>
 
@@ -722,6 +750,7 @@ src/main/resources
 └── email         # layout.html and the five email bodies
 
 postman           # Collection (53 requests) and local environment
+oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
 email-previews    # The five emails rendered, open in a browser
 ```
 
