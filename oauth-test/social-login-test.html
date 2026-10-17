@@ -708,15 +708,15 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
 
   /* A provider token or code is in hand. This is the one place both modes meet. */
 
-  function onToken(provider, token, extra) {
+  function onToken(provider, token) {
     var label = PROVIDERS[provider].label;
     pipeReset();
     pipe('login', 'done', label + ' approved');
     pipe('token', 'done', PROVIDERS[provider].kind + ' received');
     if (mode === 'token') {
-      addToken(provider, token, extra);
+      addToken(provider, token);
     } else {
-      sendToken(provider, token, extra);
+      sendToken(provider, token);
     }
   }
 
@@ -840,21 +840,19 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     mode = pending.mode === 'token' ? 'token' : 'signin';
     sessionSet(MODE_KEY, mode);
     applyMode();
-    onToken('github', code, { redirectUri: redirectUri() });
+    onToken('github', code);
   }
 
   /* Send the token to the matching Premisave endpoint */
 
-  function bodyFor(provider, token, extra) {
-    var body = { token: token };
-    if (provider === 'github' && extra && extra.redirectUri) { body.redirectUri = extra.redirectUri; }
-    return body;
+  function bodyFor(token) {
+    return { token: token };
   }
 
-  async function sendToken(provider, token, extra) {
+  async function sendToken(provider, token) {
     var label = PROVIDERS[provider].label;
     var path = API + '/' + provider;
-    var body = bodyFor(provider, token, extra);
+    var body = bodyFor(token);
     pipe('verify', 'active', 'Checking with ' + label);
     pipe('session', '', 'Waiting');
     log(label + ': POST ' + cfg.backend + path, body);
@@ -885,8 +883,8 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
 
   /* Token only mode */
 
-  function addToken(provider, token, extra) {
-    tokens.unshift({ provider: provider, token: token, redirectUri: extra && extra.redirectUri ? extra.redirectUri : null, at: Date.now() });
+  function addToken(provider, token) {
+    tokens.unshift({ provider: provider, token: token, at: Date.now() });
     saveTokens();
     renderTokens();
     pipe('verify', '', 'Skipped in token only mode');
@@ -931,10 +929,6 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
 
     card.appendChild(h('div', 'k2', t.provider === 'github' ? 'Code' : 'Token'));
     card.appendChild(h('div', 'tokenbox', t.token));
-    if (t.redirectUri) {
-      card.appendChild(h('div', 'k2', 'redirectUri to send with it'));
-      card.appendChild(h('div', 'tokenbox', t.redirectUri));
-    }
 
     var meta = h('div', 'meta');
     meta.appendChild(metaItem('Length', t.token.length + ' characters'));
@@ -947,7 +941,7 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     endpoint.appendChild(h('code', '', 'POST ' + url));
     card.appendChild(endpoint);
 
-    var body = JSON.stringify(bodyFor(t.provider, t.token, t), null, 2);
+    var body = JSON.stringify(bodyFor(t.token), null, 2);
 
     var actions = h('div', 'actions');
     function action(cls, text, fn) {
@@ -963,7 +957,7 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       pipeReset();
       pipe('login', 'done', p.label + ' approved');
       pipe('token', 'done', p.kind + ' received');
-      sendToken(t.provider, t.token, t);
+      sendToken(t.provider, t.token);
     });
     card.appendChild(actions);
     return card;

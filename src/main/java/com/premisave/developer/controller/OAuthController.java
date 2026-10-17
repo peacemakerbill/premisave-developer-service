@@ -57,6 +57,6 @@ public class OAuthController {
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> signedIn(String provider, SocialLoginRequest req,
                                                                       HttpServletRequest http) {
-        return Responses.ok("Signed in", oauth.signIn(provider, req.token(), req.redirectUri(), ClientInfo.of(http)));
+        return Responses.ok("Signed in", oauth.signIn(provider, req.token(), ClientInfo.of(http)));
     }
 }

@@ -78,7 +78,7 @@ class OAuthServiceTest {
     }
 
     private Map<String, Object> signIn(String provider) {
-        return service.signIn(provider, "token-1", null);
+        return service.signIn(provider, "token-1");
     }
 
     @SuppressWarnings("unchecked")
@@ -116,11 +116,11 @@ class OAuthServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void anUnknownOrSwitchedOffProviderIsRefused() {
-        assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> service.signIn("myspace", "t", null)).code());
+        assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> service.signIn("myspace", "t")).code());
         OAuthService off = new OAuthService(new OAuthClient(new com.premisave.developer.config.DeveloperProperties.OAuth(null, null, null), http),
                 ids.repo, devs.repo, accounts, accountEmail, clock);
         for (String p : new String[] {"google", "facebook", "github"}) {
-            assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> off.signIn(p, "t", null)).code());
+            assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> off.signIn(p, "t")).code());
         }
         assertEquals(java.util.List.of(), off.providers().get("providers"));
         assertTrue(((Map<String, Object>) off.providers().get("clientIds")).isEmpty());
@@ -130,7 +130,7 @@ class OAuthServiceTest {
     @Test
     void aBlankTokenIsRefusedBeforeTheProviderIsContacted() {
         for (String bad : new String[] {null, "", "   "}) {
-            DeveloperException e = assertThrows(DeveloperException.class, () -> service.signIn("google", bad, null));
+            DeveloperException e = assertThrows(DeveloperException.class, () -> service.signIn("google", bad));
             assertEquals(ErrorCode.VALIDATION_FAILED, e.code());
         }
         assertTrue(http.calls.isEmpty());
@@ -155,14 +155,14 @@ class OAuthServiceTest {
     @Test
     void theTokenIsTrimmedBeforeItIsSentToTheProvider() {
         google("g-1", "jane@gmail.com", true, "Jane Doe");
-        service.signIn("google", "  the.id.token \n", null);
+        service.signIn("google", "  the.id.token \n");
         assertEquals("https://oauth2.googleapis.com/tokeninfo?id_token=the.id.token", http.calls.get(0).url());
     }
 
     @Test
     void githubSignInTradesTheCodeAndCreatesAConfirmedAccount() {
         github("583231", "octocat", "Octo@Example.com");
-        Map<String, Object> s = service.signIn("github", "the-code", "http://localhost:3000/social-login-test.html");
+        Map<String, Object> s = service.signIn("github", "the-code");
         assertEquals(true, s.get("newAccount"));
         assertEquals("github", s.get("provider"));
         Map<String, Object> dev = developerOf(s);
@@ -171,7 +171,7 @@ class OAuthServiceTest {
         assertEquals(true, dev.get("emailVerified"));
         assertEquals(java.util.List.of("github"), dev.get("providers"));
         assertTrue(ids.store.containsKey("github:583231"));
-        assertEquals("http://localhost:3000/social-login-test.html", http.calls.get(0).form().get("redirect_uri"));
+        assertFalse(http.calls.get(0).form().containsKey("redirect_uri"));
     }
 
     @Test
@@ -179,7 +179,7 @@ class OAuthServiceTest {
         google("g-1", "jane@example.com", true, "Jane Doe");
         String id = (String) developerOf(signIn("google")).get("developerId");
         github("77", "janedoe", "jane@example.com");
-        Map<String, Object> viaGithub = service.signIn("github", "code", null);
+        Map<String, Object> viaGithub = service.signIn("github", "code");
         assertEquals(false, viaGithub.get("newAccount"));
         assertEquals(id, developerOf(viaGithub).get("developerId"));
         assertEquals(java.util.List.of("github", "google"), developerOf(viaGithub).get("providers"));

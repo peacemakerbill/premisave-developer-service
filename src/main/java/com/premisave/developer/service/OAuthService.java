@@ -84,20 +84,20 @@ public class OAuthService {
     }
 
     /** Signs in or up with a token the browser got from the provider. */
-    public Map<String, Object> signIn(String providerName, String token, String redirectUri) {
-        return signIn(providerName, token, redirectUri, ClientInfo.UNKNOWN);
+    public Map<String, Object> signIn(String providerName, String token) {
+        return signIn(providerName, token, ClientInfo.UNKNOWN);
     }
 
     /**
      * Checks the token with the provider, reads the profile, and signs the person in or up. token is Google's ID token,
-     * Facebook's access token or GitHub's one time code. redirectUri is only used for GitHub.
+     * Facebook's access token or GitHub's one time code.
      */
-    public Map<String, Object> signIn(String providerName, String token, String redirectUri, ClientInfo caller) {
+    public Map<String, Object> signIn(String providerName, String token, ClientInfo caller) {
         OAuthProvider p = enabled(providerName);
         if (token == null || token.isBlank()) {
             throw DeveloperException.validation("token", "is required");
         }
-        OAuthProfile profile = client.fetchProfile(p, token.trim(), redirectUri);
+        OAuthProfile profile = client.fetchProfile(p, token.trim());
         if (profile.subject() == null || profile.subject().isBlank()) {
             throw new DeveloperException(ErrorCode.OAUTH_FAILED, "The provider did not identify you. Start again.");
         }

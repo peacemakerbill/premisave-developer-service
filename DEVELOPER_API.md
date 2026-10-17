@@ -170,7 +170,7 @@ Each provider has its own endpoint. The browser (or the portal) gets the provide
 |:-|:-|:-|
 | `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | Google's token info endpoint checks the signature and expiry. The token must be issued by Google to `GOOGLE_CLIENT_ID` |
 | `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | Facebook's `debug_token` endpoint must say the token is valid and was issued to this app, and the profile read with it must belong to the same user |
-| `POST /api/v1/auth/social/github` | `{ "token": "<code>", "redirectUri": "<callback URL>" }` | The code is traded for an access token with the client secret. `redirectUri` is optional and, when sent, must be the one the login started with |
+| `POST /api/v1/auth/social/github` | `{ "token": "<code>" }` | The code is traded for an access token with the client secret |
 
 `token` is required (at most 4096 characters), otherwise `400 VALIDATION_FAILED`. The response is the sign in session of section 1.2 plus `newAccount` (true when this call created the account) and `provider`. A GitHub code works once and for about 10 minutes, so a retry needs a new login.
 

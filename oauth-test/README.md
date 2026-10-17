@@ -8,7 +8,7 @@ The browser gets the provider token. The page then posts it as JSON to one endpo
 |----------|----------|------|--------------------------------------|
 | Google | `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | An ID token from Google Identity Services |
 | Facebook | `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | A user access token from the Facebook SDK, or one pasted from the Graph API Explorer |
-| GitHub | `POST /api/v1/auth/social/github` | `{ "token": "<code>", "redirectUri": "<callback URL>" }` | A one-time code from the GitHub redirect |
+| GitHub | `POST /api/v1/auth/social/github` | `{ "token": "<code>" }` | A one-time code from the GitHub redirect |
 
 GitHub is the odd one out. A browser cannot get a GitHub access token without the client secret, so the page gets a one-time code and the service trades it. The secret stays in the service.
 
@@ -51,4 +51,4 @@ The page reads `GET /api/v1/auth/social/providers`, which returns the switched-o
 
 ## Using the tokens in Postman
 
-The collection has one request per provider in the "00 Social sign in" folder. Paste the token into the collection variable `google_id_token`, `facebook_access_token` or `github_code`, then send the request. For GitHub also check `github_redirect_uri`, which defaults to this page's address.
+The collection has one request per provider in the "00 Social sign in" folder. Paste the token into the collection variable `google_id_token`, `facebook_access_token` or `github_code`, then send the request.

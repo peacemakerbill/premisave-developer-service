@@ -66,16 +66,16 @@ public class OAuthClient {
     }
 
     /**
-     * Checks the token or code the browser sent and reads who the person is. redirectUri is only used for GitHub, and
+     * Checks the token or code the browser sent and reads who the person is.
      * only when the browser started the GitHub login with one.
      */
-    public OAuthProfile fetchProfile(OAuthProvider p, String token, String redirectUri) {
+    public OAuthProfile fetchProfile(OAuthProvider p, String token) {
         DeveloperProperties.Provider s = settings(p);
         try {
             return switch (p) {
                 case GOOGLE -> google(s, token);
                 case FACEBOOK -> facebook(s, token);
-                case GITHUB -> github(s, token, redirectUri);
+                case GITHUB -> github(s, token);
             };
         } catch (IOException e) {
             log.warn("Sign in with {} failed to reach the provider: {}", p.key(), e.toString());
@@ -125,12 +125,11 @@ public class OAuthClient {
         return new OAuthProfile(OAuthProvider.FACEBOOK, subject, clean(text(u.get("email"))), false, text(u.get("name")));
     }
 
-    private OAuthProfile github(DeveloperProperties.Provider s, String code, String redirectUri) throws IOException {
+    private OAuthProfile github(DeveloperProperties.Provider s, String code) throws IOException {
         Map<String, String> form = new LinkedHashMap<>();
         form.put("client_id", s.clientId());
         form.put("client_secret", s.clientSecret());
         form.put("code", code);
-        if (redirectUri != null && !redirectUri.isBlank()) form.put("redirect_uri", redirectUri.trim());
         HttpTransport.Reply reply = http.postForm(s.tokenUrl(), Map.of("Accept", "application/json"), form);
         Map<String, Object> body = object(OAuthProvider.GITHUB, reply);
         Object issued = body.get("access_token");

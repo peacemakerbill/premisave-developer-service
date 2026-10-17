@@ -70,7 +70,7 @@ public class OAuthClientTest {
     void googleGivesAVerifiedAddressFromAnIdTokenIssuedToThisClient() {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200,
                 googleToken("gid", "https://accounts.google.com", "1234567890", "Jane@Gmail.com", "true"));
-        OAuthProfile p = client.fetchProfile(OAuthProvider.GOOGLE, "the.id.token", null);
+        OAuthProfile p = client.fetchProfile(OAuthProvider.GOOGLE, "the.id.token");
         assertEquals("1234567890", p.subject());
         assertEquals("Jane@Gmail.com", p.email());
         assertTrue(p.emailVerified());
@@ -84,14 +84,14 @@ public class OAuthClientTest {
     void googleAcceptsTheShortFormOfTheIssuerAndABooleanVerifiedFlag() {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200,
                 "{\"aud\":\"gid\",\"iss\":\"accounts.google.com\",\"sub\":\"1\",\"email\":\"a@b.com\",\"email_verified\":true}");
-        assertTrue(client.fetchProfile(OAuthProvider.GOOGLE, "t", null).emailVerified());
+        assertTrue(client.fetchProfile(OAuthProvider.GOOGLE, "t").emailVerified());
     }
 
     @Test
     void googleSayingTheAddressIsNotVerifiedIsBelieved() {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200,
                 googleToken("gid", "https://accounts.google.com", "1", "a@b.com", "false"));
-        assertFalse(client.fetchProfile(OAuthProvider.GOOGLE, "t", null).emailVerified());
+        assertFalse(client.fetchProfile(OAuthProvider.GOOGLE, "t").emailVerified());
     }
 
     @Test
@@ -99,7 +99,7 @@ public class OAuthClientTest {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200,
                 googleToken("someone-elses-client", "https://accounts.google.com", "1", "a@b.com", "true"));
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t")).code());
     }
 
     @Test
@@ -107,13 +107,13 @@ public class OAuthClientTest {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200,
                 googleToken("gid", "https://evil.example.com", "1", "a@b.com", "true"));
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t")).code());
     }
 
     @Test
     void anIdTokenGoogleRejectsIsRefusedWithoutGooglesOwnWords() {
         http.on("https://oauth2.googleapis.com/tokeninfo", 400, "{\"error\":\"invalid_token\",\"error_description\":\"secret detail\"}");
-        DeveloperException e = assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t", null));
+        DeveloperException e = assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t"));
         assertEquals(ErrorCode.OAUTH_FAILED, e.code());
         assertFalse(e.getMessage().contains("secret detail"));
     }
@@ -122,7 +122,7 @@ public class OAuthClientTest {
     void aReplyThatIsNotJsonIsRefused() {
         http.on("https://oauth2.googleapis.com/tokeninfo", 200, "<html>oops</html>");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GOOGLE, "t")).code());
     }
 
     // ---- Facebook: an access token
@@ -131,7 +131,7 @@ public class OAuthClientTest {
     void facebookTokenIsCheckedAgainstThisAppAndTheAddressIsNeverCountedAsVerified() {
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, facebookCheck("fid", true, "99887766"))
             .on("https://graph.facebook.com/v21.0/me", 200, "{\"id\":\"99887766\",\"name\":\"Jane Doe\",\"email\":\"jane@fb.com\"}");
-        OAuthProfile p = client.fetchProfile(OAuthProvider.FACEBOOK, "user-token", null);
+        OAuthProfile p = client.fetchProfile(OAuthProvider.FACEBOOK, "user-token");
         assertEquals("99887766", p.subject());
         assertEquals("jane@fb.com", p.email());
         assertFalse(p.emailVerified());
@@ -149,7 +149,7 @@ public class OAuthClientTest {
     void aFacebookTokenIssuedToAnotherAppIsRefusedAndNoProfileIsRead() {
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, facebookCheck("another-app", true, "1"));
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t")).code());
         assertEquals(1, http.calls.size());
     }
 
@@ -157,10 +157,10 @@ public class OAuthClientTest {
     void aFacebookTokenThatIsNotValidIsRefused() {
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, facebookCheck("fid", false, "1"));
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t")).code());
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, "{\"error\":{\"message\":\"bad\"}}");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t")).code());
     }
 
     @Test
@@ -168,21 +168,21 @@ public class OAuthClientTest {
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, facebookCheck("fid", true, "111"))
             .on("https://graph.facebook.com/v21.0/me", 200, "{\"id\":\"222\",\"name\":\"X\"}");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t")).code());
     }
 
     @Test
     void facebookMayGiveNoAddressAtAll() {
         http.on("https://graph.facebook.com/v21.0/debug_token", 200, facebookCheck("fid", true, "5"))
             .on("https://graph.facebook.com/v21.0/me", 200, "{\"id\":\"5\",\"name\":\"No Mail\"}");
-        assertNull(client.fetchProfile(OAuthProvider.FACEBOOK, "t", null).email());
+        assertNull(client.fetchProfile(OAuthProvider.FACEBOOK, "t").email());
     }
 
     @Test
     void aFacebookCheckThatIsRefusedIsRefused() {
         http.on("https://graph.facebook.com/v21.0/debug_token", 400, "{}");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.FACEBOOK, "t")).code());
     }
 
     // ---- GitHub: a one time code
@@ -195,7 +195,7 @@ public class OAuthClientTest {
                 + "{\"email\":\"unproven@x.com\",\"primary\":true,\"verified\":false},"
                 + "{\"email\":\"main@x.com\",\"primary\":true,\"verified\":true}]")
             .on("https://api.github.com/user", 200, "{\"id\":583231,\"login\":\"octocat\",\"name\":null,\"email\":\"public@x.com\"}");
-        OAuthProfile p = client.fetchProfile(OAuthProvider.GITHUB, "the-code", null);
+        OAuthProfile p = client.fetchProfile(OAuthProvider.GITHUB, "the-code");
         assertEquals("583231", p.subject());
         assertEquals("main@x.com", p.email());
         assertTrue(p.emailVerified());
@@ -212,41 +212,29 @@ public class OAuthClientTest {
     }
 
     @Test
-    void githubPassesTheReturnAddressOnlyWhenOneWasGiven() {
-        http.on("https://github.com/login/oauth/access_token", 200, "{\"access_token\":\"t\"}")
-            .on("https://api.github.com/user/emails", 200, "[]")
-            .on("https://api.github.com/user", 200, "{\"id\":1,\"login\":\"o\"}");
-        client.fetchProfile(OAuthProvider.GITHUB, "c", " http://localhost:3000/social-login-test.html ");
-        assertEquals("http://localhost:3000/social-login-test.html", http.calls.get(0).form().get("redirect_uri"));
-        client.fetchProfile(OAuthProvider.GITHUB, "c", "  ");
-        FakeTransport.Call second = http.calls.stream().filter(c -> c.method().equals("POST")).skip(1).findFirst().orElseThrow();
-        assertFalse(second.form().containsKey("redirect_uri"));
-    }
-
-    @Test
     void githubFallsBackToAnyVerifiedAddressAndOtherwiseGivesNone() {
         http.on("https://github.com/login/oauth/access_token", 200, "{\"access_token\":\"t\"}")
             .on("https://api.github.com/user/emails", 200, "[{\"email\":\"one@x.com\",\"primary\":false,\"verified\":true}]")
             .on("https://api.github.com/user", 200, "{\"id\":1,\"login\":\"o\"}");
-        assertEquals("one@x.com", client.fetchProfile(OAuthProvider.GITHUB, "c", null).email());
+        assertEquals("one@x.com", client.fetchProfile(OAuthProvider.GITHUB, "c").email());
 
         http.on("https://api.github.com/user/emails", 200, "[{\"email\":\"u@x.com\",\"primary\":true,\"verified\":false}]");
-        OAuthProfile none = client.fetchProfile(OAuthProvider.GITHUB, "c", null);
+        OAuthProfile none = client.fetchProfile(OAuthProvider.GITHUB, "c");
         assertNull(none.email());
         assertFalse(none.emailVerified());
 
         http.on("https://api.github.com/user/emails", 403, "{\"message\":\"no\"}");
-        assertNull(client.fetchProfile(OAuthProvider.GITHUB, "c", null).email());
+        assertNull(client.fetchProfile(OAuthProvider.GITHUB, "c").email());
 
         http.on("https://api.github.com/user/emails", 200, "not json");
-        assertNull(client.fetchProfile(OAuthProvider.GITHUB, "c", null).email());
+        assertNull(client.fetchProfile(OAuthProvider.GITHUB, "c").email());
     }
 
     @Test
     void githubAnswersARejectedCodeWithA200AndAnError() {
         http.on("https://github.com/login/oauth/access_token", 200, "{\"error\":\"bad_verification_code\"}");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GITHUB, "c", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GITHUB, "c")).code());
     }
 
     // ---- failures
@@ -256,7 +244,7 @@ public class OAuthClientTest {
         http.on("https://github.com/login/oauth/access_token", 200, "{\"access_token\":\"t\"}")
             .on("https://api.github.com/user", 401, "{}");
         assertEquals(ErrorCode.OAUTH_FAILED,
-                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GITHUB, "c", null)).code());
+                assertThrows(DeveloperException.class, () -> client.fetchProfile(OAuthProvider.GITHUB, "c")).code());
     }
 
     @Test
@@ -264,7 +252,7 @@ public class OAuthClientTest {
         http.down = true;
         for (OAuthProvider p : OAuthProvider.values()) {
             assertEquals(ErrorCode.UPSTREAM_UNAVAILABLE,
-                    assertThrows(DeveloperException.class, () -> client.fetchProfile(p, "t", null)).code());
+                    assertThrows(DeveloperException.class, () -> client.fetchProfile(p, "t")).code());
         }
     }
 
@@ -275,7 +263,7 @@ public class OAuthClientTest {
         OAuthClient c = new OAuthClient(new DeveloperProperties.OAuth(null, custom, null), http);
         http.on("https://example.test/debug", 200, facebookCheck("id", true, "7"))
             .on("https://example.test/me", 200, "{\"id\":\"7\",\"name\":\"N\"}");
-        assertEquals("7", c.fetchProfile(OAuthProvider.FACEBOOK, "t", null).subject());
+        assertEquals("7", c.fetchProfile(OAuthProvider.FACEBOOK, "t").subject());
         assertTrue(http.calls.get(0).url().startsWith("https://example.test/debug?x=1&input_token=t"));
     }
 }

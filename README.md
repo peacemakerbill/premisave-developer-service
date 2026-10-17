@@ -412,7 +412,7 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | GET | `/api/v1/auth/social/providers` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Providers that are on, with their public client IDs |
 | POST | `/api/v1/auth/social/google` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a Google ID token: `{ "token": "..." }` |
 | POST | `/api/v1/auth/social/facebook` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a Facebook access token: `{ "token": "..." }` |
-| POST | `/api/v1/auth/social/github` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a GitHub code: `{ "token": "<code>", "redirectUri": "..." }` |
+| POST | `/api/v1/auth/social/github` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a GitHub code: `{ "token": "<code>" }` |
 
 **Account** — `/api/v1/me`
 
@@ -655,7 +655,7 @@ Each provider has its own endpoint that takes a JSON body with the token, so the
 |---|---|---|---|
 | Google | `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | An ID token from Google Identity Services |
 | Facebook | `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | A user access token from the Facebook SDK |
-| GitHub | `POST /api/v1/auth/social/github` | `{ "token": "<code>", "redirectUri": "<callback URL>" }` | A one-time code from the GitHub redirect |
+| GitHub | `POST /api/v1/auth/social/github` | `{ "token": "<code>" }` | A one-time code from the GitHub redirect |
 
 GitHub differs because a browser cannot get an access token without the client secret. The browser gets a one-time code and this service trades it. The secrets never reach the browser, and no provider access token is stored.
 
@@ -671,7 +671,7 @@ Notes per provider:
 
 - **Google.** Add the portal origin, for example `http://localhost:3000`, under **Authorized JavaScript origins**. No redirect address is needed. The service accepts an ID token only when Google says it was issued to `GOOGLE_CLIENT_ID`. While the consent screen is in Testing, add the accounts you sign in with under Test users.
 - **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. A first Facebook sign in creates the account as `PENDING`, sends the confirmation link and answers `403 ACCOUNT_PENDING` with no session; the developer signs in with Facebook again after opening the link. The service asks Facebook's `debug_token` endpoint whether the token is valid and was issued to this app, so a token from another app is refused. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.verify-url` and `user-info-url` if needed.
-- **GitHub.** Set the Authorization callback URL to the page that receives the code, for example `http://localhost:3000/social-login-test.html`. Start the login with that same address as `redirect_uri` and send it as `redirectUri` in the body. Only verified addresses from the account's email list are used, with the primary one preferred.
+- **GitHub.** Set the Authorization callback URL to the page that receives the code, for example `http://localhost:3000/social-login-test.html`. Start the login with that same address as `redirect_uri`. The body sent to this service holds only the code. Only verified addresses from the account's email list are used, with the primary one preferred.
 
 The check for a working setup is `GET /api/v1/auth/social/providers`, which lists the providers that are on. The full flow, matching rules and error codes are in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
 
