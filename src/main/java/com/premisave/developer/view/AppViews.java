@@ -14,6 +14,7 @@ public final class AppViews {
     public static Map<String, Object> app(DeveloperApp a) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("appId", a.getAppId());
+        m.put("businessId", a.getMerchantId());
         m.put("merchantId", a.getMerchantId());
         m.put("environment", a.getEnvironment().headerValue());
         m.put("name", a.getName());

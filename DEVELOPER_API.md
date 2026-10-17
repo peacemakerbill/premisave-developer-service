@@ -80,7 +80,7 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
                  "country": "KE", "phoneNumber": "+254700123456", "companyName": "Kamau Ventures Ltd",
                  "addressLine1": null, "addressLine2": null, "city": null, "stateOrRegion": null,
                  "postalCode": null, "timezone": null, "marketingOptIn": false, "termsAcceptedAt": "...", "profileComplete": true,
-                 "status": "PENDING", "merchantId": null, "emailVerified": false, "hasPassword": true,
+                 "status": "PENDING", "businessIds": [], "emailVerified": false, "hasPassword": true,
                  "profilePictureUrl": null, "providers": [], "createdAt": "...", "lastLoginAt": "..." } },
   "timestamp": "..." }
 ```
@@ -119,17 +119,82 @@ Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong passwo
 * `DELETE /api/v1/me/profile-picture` (signed in) removes the picture from Cloudinary and the account, and returns `{ "profilePictureUrl": null, "updatedAt" }`. Repeating it is not an error. If Cloudinary cannot be reached, the picture is still cleared from the account.
 * `PUT /api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
 
-### 1.4 Business
+### 1.4 Businesses
 
-A developer has one business, which is a merchant in the wallet service.
+One account can apply for many businesses. Each is a merchant in the wallet service with its own merchant number, its own onboarding application and its own apps. Applying needs a confirmed email address (switch off with `developer.mail.require-verified-for-business=false`). One account may have up to `DEVELOPER_MAX_BUSINESSES` businesses, 10 by default.
 
-* `POST /api/v1/merchant` creates it. Body: `businessName` (required), `displayName`, `country` (2 letters, required), `contactEmail` (defaults to the sign in email), `contactPhone`, `defaultCurrency` (3 letters), `requestedMethods` (array of method names). Returns `201` with the wallet's merchant view (merchantId, merchantNumber, statuses, limits, enabled methods). Errors: `403 EMAIL_NOT_VERIFIED` until the developer's email address is confirmed (switch off with `developer.mail.require-verified-for-business=false`), `409 MERCHANT_EXISTS` when the account already has one.
-* `GET /api/v1/merchant` returns the same view. Error `409 MERCHANT_REQUIRED` before the business exists.
+* `POST /api/v1/businesses` applies for a business and opens its application as a draft. Returns `201` with the business object below.
+
+  | Field | Rules |
+  |---|---|
+  | `name` | Required, up to 160. The registered or legal name |
+  | `country` | Required, 2 letter code such as `KE` |
+  | `tradingName` | Optional, up to 160. The name customers know |
+  | `currency` | Optional, 3 letters such as `KES` |
+  | `paymentMethods` | Optional, the methods asked for: `MOBILE_MONEY`, `CARD`, `BANK_TRANSFER`, `PAYPAL`, `CRYPTO`, `PREMISAVE_WALLET` |
+  | `contactEmail` | Optional, defaults to the sign in email |
+  | `contactPhone` | Optional, up to 20 |
+
+  ```json
+  { "name": "Acme Limited", "tradingName": "Acme", "country": "KE", "currency": "KES",
+    "paymentMethods": ["MOBILE_MONEY", "CARD"], "contactEmail": "finance@acme.example.com", "contactPhone": "254712345678" }
+  ```
+
+  Applying for a second business is the same call with another name. The same name in the same country is the same business whatever the case, spaces or punctuation: it is `409 BUSINESS_EXISTS` with `data.businessId` of the one already there. Errors: `400 VALIDATION_FAILED`, `403 EMAIL_NOT_VERIFIED`, `409 BUSINESS_EXISTS`, `422 LIMIT_REACHED`.
+
+* `GET /api/v1/businesses` lists every business of the account: `{ "businesses": [...], "count": 2, "limit": 10 }`.
+* `GET /api/v1/businesses/{businessId}` returns one. A business that is not on the account is `404 BUSINESS_NOT_FOUND`, the same as one that does not exist.
 * `GET /api/v1/meta/test-merchant-numbers` returns `{ "testMerchantNumbers": [...], "default": "PRM-TEST-0001" }` for sandbox apps.
+
+The business object:
+
+```json
+{ "businessId": "mer_...", "merchantNumber": "PRM-0000000001", "name": "Acme Limited", "tradingName": "Acme",
+  "country": "KE", "currency": "KES", "paymentMethods": ["CARD", "MOBILE_MONEY"],
+  "status": { "sandbox": "ACTIVE", "production": "NOT_ENABLED" },
+  "limits": { "sandbox": { }, "production": { } },
+  "access": "OWNER",
+  "application": { "applicationId": "...", "status": "DRAFT", "readyToSubmit": false, "missing": ["registrationNumber", "directors"] },
+  "nextStep": { "code": "COMPLETE_APPLICATION", "message": "Fill in 2 more items on the application, then submit it." },
+  "createdAt": "..." }
+```
+
+`nextStep.code` tells a client what to show without reading the statuses: `START_APPLICATION`, `COMPLETE_APPLICATION`, `SUBMIT_APPLICATION`, `WAIT_FOR_REVIEW`, `FIX_APPLICATION` (sent back), `RESUBMIT_APPLICATION`, `CREATE_APP` (approved), `CONTACT_SUPPORT` (declined), `PRODUCTION_SUSPENDED`, `PRODUCTION_CLOSED` and `CHECK_APPLICATION`. The account object lists its businesses as `businessIds`.
+
+`access` is `OWNER` for a business the account applied for, and `SHARED` for one it was given use of through an app transfer or a claim by merchant number (sections 2.4 and 2.5). A shared business has `application: null`, because the application belongs to the account that applied, and `nextStep.code` is `CREATE_APP` while production is on. It counts towards the account's business limit, can be named as `businessId` when creating a production app, and its merchant number is the same one the other accounts use.
 
 ### 1.5 Onboarding application
 
-`/api/v1/merchant/application/**` is a pass-through to the wallet's onboarding application endpoints for the developer's own merchant (`COMMERCIAL_STAGE7_ONBOARDING.md`, section "Merchant side"). Paths after `/application` and bodies are the same as the wallet's `/merchants/{merchantId}/application...` routes, with the merchant id filled in for you. Document upload accepts up to 12 MB. Staff review is not reachable here.
+Each business has its own application under `/api/v1/businesses/{businessId}/application`. The business must be one the caller applied for (`404 BUSINESS_NOT_FOUND` if it is not on the account, `403 FORBIDDEN` if it was only shared with the account: the application stays with the account that applied). The calls go to the wallet's onboarding application endpoints for that business (`COMMERCIAL_STAGE7_ONBOARDING.md`, section "Merchant side"), with the same bodies and answers. Staff review is not reachable here.
+
+| Call | Notes |
+|:-|:-|
+| `GET /application` | Status, form, documents, `returnItems`, `missing` and `readyToSubmit` |
+| `PUT /application` | Save the form. Send what you have; it can be saved again until it is submitted |
+| `POST /application/documents` | Upload a document, see below |
+| `GET /application/documents/{documentId}/content` | Download a document |
+| `DELETE /application/documents/{documentId}` | Remove a document |
+| `POST /application/submit` | Send for review once nothing is missing |
+| `GET /application/timeline` | What has happened to the application |
+
+**Linking the application to a wallet, and applying for someone else's business.** Three fields on the form say whose wallet this business belongs to and who is applying. The owner of the wallet can then follow the whole application from the wallet (progress, details, decision and, once it is approved, the merchant number), so the developer does not have to report back.
+
+| Form field | Rules |
+|---|---|
+| `walletAccountNumber` | Required to submit. The Premisave wallet account (the owner's email address) the business is linked to. `422` when no wallet has that number or it is frozen. An empty value removes the link while drafting. The owner is emailed when the application is submitted |
+| `onBehalf` | `true` when the developer applies for a business that is not their own. Default `false` |
+| `applicantRole` | Required when `onBehalf` is `true`: who the developer is to the business, for example `Developer at the agency`. Up to 80 characters |
+
+With `onBehalf: true` an `authorisation letter` document is also required before the application can be submitted, in addition to the usual ones. `missing` lists whatever is still needed. The wallet account number is also the address that the production app and transfer codes use (see 2.2 and 2.4), and the tax pin and director ID numbers are never shown to the wallet owner in full.
+
+**Uploading a document.** Send form data (`multipart/form-data`), not JSON:
+
+| Form field | Rules |
+|---|---|
+| `file` | Required. A PDF, PNG or JPEG of at most 5 MB. The type is taken from the file when the browser sends none useful |
+| `type` | Optional, what the document is, in ordinary words: `business registration`, `certificate of incorporation`, `tax compliance`, `director id`, `proof of address`, `bank statement`, `authorisation letter` or `other` (the default). `BUSINESS_REGISTRATION` and `business-registration` work too |
+
+In a browser: `const f = new FormData(); f.append('type', 'tax compliance'); f.append('file', input.files[0]); fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ...' }, body: f })`, and leave `Content-Type` for the browser to set. Errors: `400 VALIDATION_FAILED` with the `field` named (`file` or `type`), `413 PAYLOAD_TOO_LARGE`, `503` when the wallet has no document storage set up. The wallet's own JSON upload, with the file as base64, is not exposed here.
 
 ### 1.6 Sign out
 
@@ -200,7 +265,7 @@ Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expire
 
 ### 1.11 The emails the service sends
 
-Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all five are in `email-previews/`; open them in a browser.
+Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all eight are in `email-previews/`; open them in a browser.
 
 | Email | When | Contains a link |
 |---|---|---|
@@ -209,6 +274,9 @@ Every email is an HTML page built from a file in `src/main/resources/email/` (`l
 | New sign in to your account | Every successful sign in, by password or by a provider, except the one that creates the account. Shows time (UTC), method, device and network address. Off with `developer.mail.notify-sign-in=false` | Portal "secure my account" address only, never a sign in link |
 | Reset your password | `forgot-password` for an active account | Yes, single use, 60 minutes |
 | Your password was changed | After a password change or a reset | Portal "reset my password" address only |
+| Your Premisave confirmation code | Moving an app or taking up a business by its merchant number (2.4, 2.5). Goes to the address linked to the business, not to the developer who asked, and shows the business, the merchant number, who asked and how long the code lasts | No, a six digit code |
+| A production app was transferred to your account | To the receiving account when the code is confirmed | Portal address only |
+| Your production app was transferred | To the sending account when the code is confirmed, with the receiver's address in part only | Portal "secure my account" address only |
 
 The device is read from the `User-Agent` header and the address from the connection; neither is stored. Behind a reverse proxy set `server.forward-headers-strategy=native` so the address is the caller's and not the proxy's. A missing or odd header reads as "Unknown device".
 
@@ -216,12 +284,12 @@ Values put into a page are HTML escaped, so a name such as `<script>` cannot inj
 
 ## 2. Apps (portal API)
 
-An app belongs to one environment, `sandbox` or `production`, and has its own keys.
+An app belongs to one business and one environment, `sandbox` or `production`, and has its own keys. `merchantId` in the app object is the same value as `businessId`.
 
 ### 2.1 App object
 
 ```json
-{ "appId": "app_...", "merchantId": "mer_...", "environment": "sandbox", "name": "Checkout",
+{ "appId": "app_...", "businessId": "mer_...", "merchantId": "mer_...", "environment": "sandbox", "name": "Checkout",
   "description": null, "merchantNumber": "PRM-TEST-0001",
   "premisaveWallet": { "walletId": "...", "accountNumber": "..." },
   "status": "ACTIVE", "suspendedBy": "DEVELOPER", "suspensionReason": "...",
@@ -238,11 +306,12 @@ An app belongs to one environment, `sandbox` or `production`, and has its own ke
 
 | Field | Rule |
 |:-|:-|
+| `businessId` | The business the app is for. Optional while the account has exactly one business. With none the call is `409 BUSINESS_REQUIRED`, with several it is `400 VALIDATION_FAILED` on `businessId` and `data.businessIds` lists them |
 | `name` | Required, up to 120 |
 | `description` | Optional, up to 500 |
 | `environment` | Required: `sandbox` or `production` |
-| `merchantNumber` | Production: required, must be the business's own `PRM-` number. Sandbox: optional, one of the test numbers (default is the first) |
-| `premisaveWalletAccount` | Production: required, the wallet's account number or id. Sandbox: refused |
+| `merchantNumber` | Production: optional, the business's own number is used, and a different one is refused. Sandbox: optional, one of the test numbers (default is the first) |
+| `premisaveWalletAccount` | Production: the wallet's account number or id. May be left out when the account applied for the business and its application names a wallet (`walletAccountNumber`): that wallet is used. Required otherwise, including for a shared business. Sandbox: refused |
 | `enabledMethods` | Optional. Must be within the merchant's methods (production) |
 | `limits` | Optional `singleTransactionUsd`, `dailyVolumeUsd`, `monthlyVolumeUsd`, `dailyPayoutCount`. Must fit within the merchant's limits (production) |
 | `callbackUrl` | Optional. https only, http allowed in sandbox |
@@ -251,19 +320,59 @@ Method names are `MOBILE_MONEY`, `CARD`, `BANK_TRANSFER`, `PAYPAL`, `CRYPTO` and
 
 The response is the app object plus `apiKey`, the first key with its `secret`, shown once.
 
-Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED`, `404 WALLET_NOT_FOUND`, `409 MERCHANT_REQUIRED`, `409 WALLET_ALREADY_LINKED`, `422 WALLET_NOT_USABLE`, `422 LIMIT_REACHED` (10 apps per environment).
+Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED`, `404 BUSINESS_NOT_FOUND`, `404 WALLET_NOT_FOUND`, `409 BUSINESS_REQUIRED`, `409 INVALID_STATE` (the business has no merchant number yet), `409 WALLET_ALREADY_LINKED`, `422 WALLET_NOT_USABLE`, `422 LIMIT_REACHED` (10 apps per environment for each business).
 
 ### 2.3 Other app calls
 
 | Call | Notes |
 |:-|:-|
-| `GET /api/v1/apps` | Filters `environment`, `status` (`ACTIVE` or `SUSPENDED`), `page`, `size` |
+| `GET /api/v1/apps` | Filters `businessId`, `environment`, `status` (`ACTIVE` or `SUSPENDED`), `page`, `size` |
 | `GET /api/v1/apps/{appId}` | `404 APP_NOT_FOUND` for an unknown app or another developer's app |
 | `PUT /api/v1/apps/{appId}` | Change `name`, `description`, `enabledMethods`, `limits`, `callbackUrl`. Omitted fields are unchanged. Environment, merchant number and wallet cannot change |
 | `POST /api/v1/apps/{appId}/suspend` | Optional body `{ "reason" }`. While suspended the app can read but not create or change anything |
 | `POST /api/v1/apps/{appId}/reactivate` | `403 FORBIDDEN` if staff suspended it |
 
 Each change reaches the wallet within the 30 second sync interval at the latest, and immediately on the next request that app makes.
+
+### 2.4 Moving a production app to another developer account
+
+A business is applied for once, but the same merchant number can be used to go live from another developer account when the business owner agrees. The owner agrees by sharing a six digit code, which is emailed to the address linked to the business: the wallet account named on the application, or the business contact email when no wallet is linked. The developer asking never sees the code, so the owner has to give it to them.
+
+* `POST /api/v1/apps/{appId}/transfer` with `{ "toEmail": "colleague@example.com" }`, `201`. Starts the move and emails the code. Only a production app that belongs to the caller can move, and `toEmail` must be another active developer account that has room for one more business (`422 LIMIT_REACHED`) and is not the caller (`400 VALIDATION_FAILED`, field `toEmail`).
+* `POST /api/v1/transfers/{transferId}/confirm` with `{ "otp": "123456" }`. The caller sends the code the owner shared. On success:
+  * the app belongs to the other account, with the same merchant number and wallet link, and every API key it had is revoked, so the new owner makes their own and the old owner can no longer call the API with it;
+  * the other account is given use of the business (`access: SHARED`), so it can create more production apps with the same merchant number;
+  * the business stays on the sending account with its other apps;
+  * both accounts get an email.
+* `POST /api/v1/transfers/{transferId}/resend` emails a fresh code for a request still open. The old code stops working and the tries start again.
+* `DELETE /api/v1/transfers/{transferId}` cancels a request that has not been confirmed. Nothing moves.
+* `GET /api/v1/transfers` lists the caller's latest requests (`direction: OUTGOING`) and the apps on their way to the caller (`direction: INCOMING`). `GET /api/v1/transfers/{transferId}` returns one.
+
+The transfer object:
+
+```json
+{ "transferId": "trf_...", "type": "APP_TRANSFER", "direction": "OUTGOING", "status": "PENDING",
+  "app": { "appId": "app_...", "name": "Checkout backend" },
+  "business": { "businessId": "mer_...", "name": "Acme Limited", "merchantNumber": "PRM-0000000001" },
+  "to": "n***@example.com", "codeSentTo": "o****@acme.example.com", "attemptsLeft": 5,
+  "expiresAt": "2026-10-17T08:15:00Z", "createdAt": "2026-10-17T08:00:00Z", "completedAt": null }
+```
+
+`status` is `PENDING`, `COMPLETED`, `CANCELLED` or `EXPIRED`. An incoming request shows `from` (the sender's address in part) instead of `to`, and no `codeSentTo` or `attemptsLeft`.
+
+Rules for the code: it lasts 15 minutes, works once, and five wrong tries close the request. A new request for the same app replaces the old one. A developer can start one code a minute and ten requests an hour, wrong merchant numbers included. The code is stored only as a keyed hash. If the app, the other account or the business limit changed before confirming, the confirmation is refused and nothing moves.
+
+Errors: `400 VALIDATION_FAILED`, `400 OTP_INVALID` (`data.attemptsLeft`), `410 OTP_EXPIRED`, `404 APP_NOT_FOUND`, `404 TRANSFER_NOT_FOUND`, `409 INVALID_STATE` (not a production app, no address linked to the business, or the request is already done or closed), `422 LIMIT_REACHED`, `429 RATE_LIMITED` (`data.retryAfterSeconds`).
+
+### 2.5 Taking up a business by its merchant number
+
+A developer account can go live with an approved business that another account applied for, without any app moving. The business owner shares the same kind of code.
+
+* `POST /api/v1/transfers/claim` with `{ "merchantNumber": "PRM-0000000001" }`, `201`. The business must be approved with production switched on. The code is emailed to the address linked to the business.
+* Confirm, resend, cancel and list work as in 2.4 (`type` is `BUSINESS_CLAIM`).
+* On confirming, the account is given use of the business (`access: SHARED`) and creates a production app for it with `businessId`, using the business's own merchant number and its own wallet account (`premisaveWalletAccount`).
+
+A number that does not exist and a business that is not live get the same answer, `404 BUSINESS_NOT_FOUND`, so the call cannot be used to find out which numbers exist. Each wrong number counts towards the limit of ten requests an hour. `409 BUSINESS_EXISTS` when the business is already on the account, `422 LIMIT_REACHED` when the account has no room for another.
 
 ## 3. API keys (portal API)
 
@@ -278,7 +387,7 @@ Each change reaches the wallet within the 30 second sync interval at the latest,
 
 `/v1/live/**` and `/v1/sandbox/**`. Everything after the environment is the wallet's commercial API.
 
-Methods accepted: GET, POST, PUT, PATCH and DELETE. Other methods (OPTIONS, TRACE) are not forwarded to the wallet; the same list applies to `/api/v1/merchant/application/**`.
+Methods accepted: GET, POST, PUT, PATCH and DELETE. Other methods (OPTIONS, TRACE) are not forwarded to the wallet; the same list applies to the application calls in section 1.5.
 
 Authenticate with either:
 
@@ -313,10 +422,12 @@ Header `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>`. With no key configured every c
 
 | Call | Body | Notes |
 |:-|:-|:-|
+| `GET /internal/admin/developers` | query: `q`, `status`, `page`, `size` | Searches developer accounts, newest first. `q` is matched anywhere in the email, username, full name or company name, ignoring case, or against the developer id exactly (at most 100 characters). `status` is `PENDING`, `ACTIVE` or `DISABLED`. Each row has `developerId`, `email`, `username`, `fullName`, `companyName`, `country`, `status`, `emailVerified`, `businessIds`, `createdAt` and `lastLoginAt`. Use it to find the `developerId` to put on a new merchant |
+| `GET /internal/admin/developers/{developerId}` | none | One developer account with the full profile |
 | `GET /internal/admin/apps/{appId}` | none | Any app |
 | `PUT /internal/admin/apps/{appId}/status` | `{ "status": "ACTIVE" or "SUSPENDED", "reason" }` | `reason` required to suspend. A suspension from here is recorded as `suspendedBy: ADMIN` and the developer cannot lift it |
 | `PUT /internal/admin/developers/{developerId}/status` | `{ "status": "ACTIVE" or "DISABLED" }` | A disabled developer cannot sign in, their portal tokens are refused with `403 ACCOUNT_DISABLED`, and their keys are refused on `/v1` with the same code |
 
 ## 6. Error codes
 
-`VALIDATION_FAILED` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `ACCOUNT_PENDING` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `MERCHANT_EXISTS` 409, `MERCHANT_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.
+`VALIDATION_FAILED` 400, `OTP_INVALID` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `ACCOUNT_PENDING` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `BUSINESS_NOT_FOUND` 404, `TRANSFER_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `BUSINESS_EXISTS` 409, `BUSINESS_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `OTP_EXPIRED` 410, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.

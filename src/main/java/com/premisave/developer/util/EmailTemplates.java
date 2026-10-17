@@ -66,6 +66,45 @@ public final class EmailTemplates {
         return new Message(subject, page("password-changed", base(name, portalUrl), subject, "The password of your account was changed."));
     }
 
+    /**
+     * The code that confirms moving an app or taking up a business. It goes to the address linked to the business, which may
+     * belong to someone with no developer account, so the greeting is general when no name is known.
+     */
+    public static Message transferCode(String name, String code, String action, String business, String merchantNumber,
+                                       String requestedBy, int validMinutes, String portalUrl) {
+        Map<String, String> v = base(name, portalUrl);
+        v.put("code", code);
+        v.put("action", action);
+        v.put("business", business);
+        v.put("merchantNumber", merchantNumber);
+        v.put("requestedBy", requestedBy);
+        v.put("validFor", validMinutes == 1 ? "1 minute" : validMinutes + " minutes");
+        String subject = "Your Premisave confirmation code is " + code;
+        return new Message(subject, page("transfer-code", v, subject, "Share this code only if you expect this request."));
+    }
+
+    public static Message appReceived(String name, String fromName, String appName, String business, String merchantNumber,
+                                      String portalUrl) {
+        Map<String, String> v = base(name, portalUrl);
+        v.put("fromName", fromName);
+        v.put("appName", appName);
+        v.put("business", business);
+        v.put("merchantNumber", merchantNumber);
+        String subject = "A production app was transferred to your Premisave account";
+        return new Message(subject, page("app-received", v, subject, "Create a new API key before you use the app."));
+    }
+
+    public static Message appHandedOver(String name, String appName, String business, String merchantNumber, String toEmail,
+                                        String portalUrl) {
+        Map<String, String> v = base(name, portalUrl);
+        v.put("appName", appName);
+        v.put("business", business);
+        v.put("merchantNumber", merchantNumber);
+        v.put("toEmail", toEmail);
+        String subject = "Your Premisave production app was transferred";
+        return new Message(subject, page("app-handed-over", v, subject, "The app now belongs to another developer account."));
+    }
+
     private static Map<String, String> base(String name, String portalUrl) {
         Map<String, String> v = new HashMap<>();
         v.put("name", name == null || name.isBlank() ? "there" : name.trim());

@@ -19,6 +19,7 @@ public record DeveloperProperties(
         Wallet wallet,
         Proxy proxy,
         Apps apps,
+        Businesses businesses,
         Security security,
         Internal internal,
         Cors cors,
@@ -32,6 +33,7 @@ public record DeveloperProperties(
         if (wallet == null) wallet = new Wallet(null, null, null, null, null, null);
         if (proxy == null) proxy = new Proxy(null, null, null);
         if (apps == null) apps = new Apps(null, null);
+        if (businesses == null) businesses = new Businesses(null);
         if (security == null) security = new Security(null, null, null, null);
         if (internal == null) internal = new Internal(null);
         if (cors == null) cors = new Cors(null);
@@ -95,6 +97,13 @@ public record DeveloperProperties(
             String t = u.trim();
             while (t.endsWith("/")) t = t.substring(0, t.length() - 1);
             return t;
+        }
+    }
+
+    /** Businesses an account can apply for. Each is its own merchant with its own onboarding application. */
+    public record Businesses(Integer maxPerDeveloper) {
+        public Businesses {
+            if (maxPerDeveloper == null || maxPerDeveloper < 1) maxPerDeveloper = 10;
         }
     }
 

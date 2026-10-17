@@ -19,11 +19,14 @@ import com.premisave.developer.util.Ids;
 import com.premisave.developer.util.PasswordPolicy;
 import com.premisave.developer.util.PersonNames;
 import com.premisave.developer.util.ProfileFields;
+import com.premisave.developer.util.SearchText;
 import com.premisave.developer.util.Usernames;
 import com.premisave.developer.view.DeveloperViews;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -367,6 +370,21 @@ public class DeveloperService {
     public Developer require(String developerId) {
         return developers.findById(developerId)
                 .orElseThrow(() -> new DeveloperException(ErrorCode.NOT_FOUND, "Developer not found"));
+    }
+
+    /**
+     * Staff search over developer accounts: text is matched anywhere in the email, username, full name or company name,
+     * or equals the developer id exactly. Either filter may be left out; with neither, every account is listed.
+     */
+    public Page<Developer> search(String text, DeveloperStatus status, Pageable pageable) {
+        String q = SearchText.clean(text);
+        if (q == null) {
+            return status == null ? developers.findAll(pageable) : developers.findByStatus(status, pageable);
+        }
+        String pattern = SearchText.escape(q);
+        return status == null
+                ? developers.search(pattern, q, pageable)
+                : developers.searchByStatus(pattern, q, status, pageable);
     }
 
     public Developer setStatus(String developerId, DeveloperStatus status) {

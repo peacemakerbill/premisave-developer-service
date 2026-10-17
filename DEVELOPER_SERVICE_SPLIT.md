@@ -68,23 +68,28 @@ The settlement scheduler and the billing engine run with no request behind them,
 
 ## 4. App rules that moved to the developer service
 
-* A production app needs the merchant's own `PRM-` number and a `premisaveWalletAccount`. The developer service resolves it through the wallet. The wallet must exist (`404 WALLET_NOT_FOUND`) and not be frozen (`422 WALLET_NOT_USABLE`).
+* A production app needs a `premisaveWalletAccount`, which may be left out when the caller applied for the business and its application names a wallet; the business's own `PRM-` number is used, and `merchantNumber` may be left out. The developer service resolves it through the wallet. The wallet must exist (`404 WALLET_NOT_FOUND`) and not be frozen (`422 WALLET_NOT_USABLE`).
 * One live app per Premisave wallet (`409 WALLET_ALREADY_LINKED`), enforced by a pre-check and a unique sparse index.
 * A sandbox app uses one of the configured test merchant numbers (default `PRM-TEST-0001` to `PRM-TEST-0005`, never anything shaped like `PRM-` and ten digits) and refuses a wallet.
 * A production app is refused with `403 LIVE_NOT_ENABLED` while the merchant's production status is `PENDING_APPROVAL` (approval of the onboarding application switches it on). Any other status that is not `ACTIVE` in that environment is `403 MERCHANT_SUSPENDED`.
 * App methods must be a subset of the merchant's methods (production only), and app limits must fit within the merchant's limits.
 * The callback URL must be https. http is allowed for sandbox apps only. No user info and no fragment.
-* At most 10 apps per environment per developer and 5 active keys per app (`422 LIMIT_REACHED`).
+* At most 10 apps per environment for each business and 5 active keys per app (`422 LIMIT_REACHED`).
 * A developer can suspend and reactivate their own app. A suspension placed by staff (`suspendedBy: ADMIN`) cannot be lifted by the developer.
 * Rotating a key keeps the old key working as `ROTATING` for a grace period (default 24 hours, `0` revokes at once).
 
-## 5. Merchants from the developer side
+## 5. Businesses from the developer side
 
-A developer account is one person. Their business is a wallet merchant, created through the developer service:
+A developer account is one person, and one account can apply for many businesses. Each business is a wallet merchant with its own merchant number, its own onboarding application and its own apps:
 
-1. `POST /api/v1/merchant` on the developer service creates the merchant in the wallet (`developerAccountId` carries the developer id) and stores `merchantId` on the developer. If the call times out after the wallet created the merchant, the next attempt finds it again by `developerAccountId` instead of making a second one.
-2. Onboarding is then driven through `/api/v1/merchant/application/**` on the developer service, which forwards to the wallet's `/internal/commercial/v1/merchants/{merchantId}/application...` with `X-Actor-Id` set to the developer id. The merchant is always the developer's own, a developer cannot name another. Uploads are limited to 12 MB.
-3. Staff review stays on the wallet's staff endpoints, unchanged.
+1. `POST /api/v1/businesses` on the developer service creates the merchant in the wallet (`developerAccountId` carries the developer id) and adds the merchant id to the developer's `merchantIds`. The wallet refuses the same business twice for one account: the natural key is the developer id plus the business name and country, normalised to lower case letters and digits, so `Acme Ltd.` and `acme ltd` in `KE` are one business. A repeat answers `409 DUPLICATE_REQUEST` with the existing `merchantId`. If the call times out after the wallet created the merchant, the next attempt gets that answer and the developer service links the merchant it already has instead of making a second one.
+2. The wallet is the source of truth for which businesses an account has: `GET /internal/commercial/v1/merchants?developerAccountId=` lists them. `GET /api/v1/businesses` asks for that list and adds any business the developer document does not know yet, so a lost write repairs itself. The developer service caps an account at `developer.businesses.max-per-developer` (`DEVELOPER_MAX_BUSINESSES`, default 10).
+3. Onboarding is driven through `/api/v1/businesses/{businessId}/application/**` on the developer service, which forwards to the wallet's `/internal/commercial/v1/merchants/{merchantId}/application...` with `X-Actor-Id` set to the developer id. The business must be on the caller's account, otherwise `404 BUSINESS_NOT_FOUND`, the same answer as for a business that does not exist. A document is sent to the developer service as form data (`file` and `type`, up to 5 MB) and converted to the wallet's JSON upload.
+4. An app names its business with `businessId`. It can be left out while the account has exactly one.
+5. Staff review stays on the wallet's staff endpoints, unchanged.
+6. The application form carries the wallet account to link (`walletAccountNumber`), and whether the developer applies on behalf of the business (`onBehalf`, `applicantRole`, and an `AUTHORISATION_LETTER` document). The wallet stores the link as `linkedWalletId` and `linkedWalletAccount` on the application and checks that the wallet exists and is not frozen. The application summary in the merchant view carries `walletAccount` and `contactEmail`; the developer service uses them to address the transfer code and removes them before anything goes to a developer.
+7. The wallet owner follows the application from the wallet: `GET /wallet/merchant-applications`, `GET /wallet/merchant-applications/{applicationId}` and `GET /wallet/merchant-numbers`, with the owner's login token. The merchant number is hidden until the application is approved, the tax pin is masked and director ID numbers are left out.
+8. **One business, more than one account.** A business is applied for once, by one account (`merchantIds`). Another account can go live with the same merchant number when the owner agrees, in two ways, both confirmed with a six digit code emailed to the address linked to the business (the wallet account on the application, else the business contact email): moving a production app (`POST /api/v1/apps/{appId}/transfer`), or claiming the approved business by its number (`POST /api/v1/transfers/claim`). Either gives the other account use of the business in `sharedMerchantIds`: it can create production apps for it, but cannot open its application. A moved app keeps its merchant number and wallet link and all its API keys are revoked. The original account keeps the business and its other apps. The code lasts 15 minutes, works once, five wrong tries close the request, and requests are limited to one code a minute and ten an hour. Requests live in `transfer_requests`, with a TTL on `purgeAt`. The code is stored as an HMAC under `API_KEY_PEPPER`, so changing the pepper also ends any open transfer. See `DEVELOPER_API.md` sections 2.4 and 2.5.
 
 ## 6. Failure behaviour
 
@@ -114,6 +119,7 @@ Developer service (`developer.*`):
 | `proxy.max-upload-bytes` | none | 12582912 | Onboarding document upload |
 | `apps.max-per-environment` | none | 10 | |
 | `apps.test-merchant-numbers` | none | five defaults | |
+| `businesses.max-per-developer` | `DEVELOPER_MAX_BUSINESSES` | 10 | Businesses one account may apply for |
 | `apps.sync-interval-ms` | none | 30000 | |
 | `security.max-failed-logins`, `lock-minutes` | none | 5, 15 | |
 | `security.password-min-length` | none | 10 | |
@@ -138,6 +144,10 @@ Wallet: the `commercial.merchants` block is removed. Nothing is added. Keep `com
 ## 8. Data migration
 
 The old `merchant_apps` collection in the wallet database is no longer read or written. No real apps or keys existed yet, so there is nothing to migrate: recreate any test apps through the developer service and drop `merchant_apps` from the wallet database when convenient. The new wallet collection `commercial_app_snapshots` fills itself.
+
+**Transfers.** The developer database gets a `transfer_requests` collection and a `sharedMerchantIds` field on `developers` at first use. No migration is needed, and the wallet needs no new index: `linkedWalletAccount` on `merchant_applications` is indexed by the new field, and applications saved before the change simply have no link until the form is saved again with a `walletAccountNumber`, which the applicant can do while the application is a draft or returned. An application that is already in review or decided without a link cannot be edited, so its wallet owner cannot see it. For those, a transfer code goes to the business contact email.
+
+**One business per account to many.** The wallet's `merchant_profiles` collection had a unique index on `developerAccountId`. Drop it in the wallet database, or a second business for the same account fails with a duplicate key error: `db.merchant_profiles.dropIndex("developerAccountId")`. The wallet creates the new unique, sparse index `developer_business_key` (`developerAccountId` and `applicationKey`) at startup. Merchants created before the change have no `applicationKey`, so they are not covered by it until they are saved again; the duplicate check by name and country still sees them because the key is computed on the fly. Developer accounts that stored a single `merchantId` keep it, and it counts as the first business. The old `/api/v1/merchant` and `/api/v1/merchant/application/**` routes are gone, and the error codes `MERCHANT_EXISTS` and `MERCHANT_REQUIRED` are now `BUSINESS_EXISTS` and `BUSINESS_REQUIRED`.
 
 Existing merchants in the wallet have no developer account. A developer who signs up and wants to use an existing merchant needs the merchant id stored on their developer document; there is no endpoint for that in this slice.
 

@@ -49,7 +49,7 @@ public class AppService {
     public record Created(DeveloperApp app, ApiKeyService.Issued key) {}
 
     private final DeveloperAppRepository apps;
-    private final MerchantLinkService merchants;
+    private final BusinessService businesses;
     private final WalletApi wallet;
     private final ApiKeyService keys;
     private final AppContextSync sync;
@@ -57,15 +57,15 @@ public class AppService {
     private final Clock clock;
 
     @Autowired
-    public AppService(DeveloperAppRepository apps, MerchantLinkService merchants, WalletApi wallet, ApiKeyService keys,
+    public AppService(DeveloperAppRepository apps, BusinessService businesses, WalletApi wallet, ApiKeyService keys,
                       AppContextSync sync, DeveloperProperties props) {
-        this(apps, merchants, wallet, keys, sync, props.apps(), Clock.systemUTC());
+        this(apps, businesses, wallet, keys, sync, props.apps(), Clock.systemUTC());
     }
 
-    public AppService(DeveloperAppRepository apps, MerchantLinkService merchants, WalletApi wallet, ApiKeyService keys,
+    public AppService(DeveloperAppRepository apps, BusinessService businesses, WalletApi wallet, ApiKeyService keys,
                       AppContextSync sync, DeveloperProperties.Apps config, Clock clock) {
         this.apps = apps;
-        this.merchants = merchants;
+        this.businesses = businesses;
         this.wallet = wallet;
         this.keys = keys;
         this.sync = sync;
@@ -74,7 +74,7 @@ public class AppService {
     }
 
     public Created create(Developer developer, CreateAppRequest req) {
-        MerchantInfo merchant = merchants.info(developer);
+        MerchantInfo merchant = wallet.getMerchant(businesses.resolve(developer, req.businessId()));
         Environment env = parseEnvironment(req.environment());
         String status = merchant.statusFor(env);
         if (env == Environment.LIVE && "PENDING_APPROVAL".equals(status)) {
@@ -84,9 +84,9 @@ public class AppService {
             throw new DeveloperException(ErrorCode.MERCHANT_SUSPENDED,
                     "Your business is " + status.toLowerCase(Locale.ROOT) + " in this environment");
         }
-        if (apps.countByDeveloperIdAndEnvironment(developer.getDeveloperId(), env) >= config.maxPerEnvironment()) {
+        if (apps.countByMerchantIdAndEnvironment(merchant.merchantId(), env) >= config.maxPerEnvironment()) {
             throw new DeveloperException(ErrorCode.LIMIT_REACHED,
-                    "You can have " + config.maxPerEnvironment() + " " + env.headerValue() + " apps");
+                    "A business can have " + config.maxPerEnvironment() + " " + env.headerValue() + " apps");
         }
 
         DeveloperApp a = new DeveloperApp();
@@ -100,11 +100,19 @@ public class AppService {
 
         String number = normaliseNumber(req.merchantNumber());
         if (env == Environment.LIVE) {
-            if (number == null) throw DeveloperException.validation("merchantNumber", "is required for a production app");
-            if (!number.equals(merchant.merchantNumber())) {
-                throw DeveloperException.validation("merchantNumber", "does not match your business");
+            if (merchant.merchantNumber() == null) {
+                throw new DeveloperException(ErrorCode.INVALID_STATE, "This business has no merchant number yet. Try again shortly");
             }
-            WalletInfo w = resolveWallet(req.premisaveWalletAccount());
+            if (number != null && !number.equals(merchant.merchantNumber())) {
+                throw DeveloperException.validation("merchantNumber", "does not match this business. Leave it out to use "
+                        + merchant.merchantNumber());
+            }
+            number = merchant.merchantNumber();
+            String walletRef = req.premisaveWalletAccount();
+            if ((walletRef == null || walletRef.isBlank()) && developer.appliedFor(merchant.merchantId())) {
+                walletRef = businesses.linkedWalletAccount(merchant.merchantId());
+            }
+            WalletInfo w = resolveWallet(walletRef);
             if (apps.findByPremisaveWalletId(w.walletId()).isPresent()) throw walletTaken();
             a.setMerchantNumber(number);
             a.setPremisaveWalletId(w.walletId());
@@ -136,9 +144,19 @@ public class AppService {
         return new Created(a, key);
     }
 
-    public Page<DeveloperApp> list(Developer developer, String environment, AppStatus status, Pageable pageable) {
+    public Page<DeveloperApp> list(Developer developer, String environment, AppStatus status, String businessId,
+                                   Pageable pageable) {
         Environment env = environment == null || environment.isBlank() ? null : parseEnvironment(environment);
         String id = developer.getDeveloperId();
+        if (businessId != null && !businessId.isBlank()) {
+            String business = businesses.requireOwned(developer, businessId.trim());
+            if (env != null && status != null) {
+                return apps.findByDeveloperIdAndMerchantIdAndEnvironmentAndStatus(id, business, env, status, pageable);
+            }
+            if (env != null) return apps.findByDeveloperIdAndMerchantIdAndEnvironment(id, business, env, pageable);
+            if (status != null) return apps.findByDeveloperIdAndMerchantIdAndStatus(id, business, status, pageable);
+            return apps.findByDeveloperIdAndMerchantId(id, business, pageable);
+        }
         if (env != null && status != null) return apps.findByDeveloperIdAndEnvironmentAndStatus(id, env, status, pageable);
         if (env != null) return apps.findByDeveloperIdAndEnvironment(id, env, pageable);
         if (status != null) return apps.findByDeveloperIdAndStatus(id, status, pageable);
@@ -156,7 +174,7 @@ public class AppService {
         if (req.name() != null && !req.name().isBlank()) a.setName(req.name().trim());
         if (req.description() != null) a.setDescription(blankToNull(req.description()));
         if (req.callbackUrl() != null) a.setCallbackUrl(callbackUrl(req.callbackUrl(), a.getEnvironment()));
-        if (req.enabledMethods() != null || req.limits() != null) merchant = merchants.info(developer);
+        if (req.enabledMethods() != null || req.limits() != null) merchant = wallet.getMerchant(a.getMerchantId());
         if (req.enabledMethods() != null) a.setEnabledMethods(narrowedMethods(merchant, a.getEnvironment(), req.enabledMethods()));
         if (req.limits() != null) a.setLimits(narrowedLimits(merchant, a.getEnvironment(), req.limits()));
         a.touch(clock.instant());
@@ -207,7 +225,8 @@ public class AppService {
 
     private WalletInfo resolveWallet(String reference) {
         if (reference == null || reference.isBlank()) {
-            throw DeveloperException.validation("premisaveWalletAccount", "is required for a production app");
+            throw DeveloperException.validation("premisaveWalletAccount",
+                    "is required for a production app. Give a wallet account number, or link one on the business application");
         }
         WalletInfo w = wallet.resolveWallet(reference.trim());
         if (w.frozen()) {

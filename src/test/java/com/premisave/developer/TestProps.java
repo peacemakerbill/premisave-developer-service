@@ -28,7 +28,7 @@ public final class TestProps {
                 new DeveloperProperties.Jwt(JWT_SECRET, null, null),
                 keys(),
                 new DeveloperProperties.Wallet(baseUrl, null, null, "internal-key-for-tests", signingSecret, 5),
-                null, null, fastSecurity(), new DeveloperProperties.Internal("internal-admin-key-1234"),
+                null, null, null, fastSecurity(), new DeveloperProperties.Internal("internal-admin-key-1234"),
                 new DeveloperProperties.Cors(List.of()), null, null, null);
     }
 }

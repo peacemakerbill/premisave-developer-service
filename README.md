@@ -44,7 +44,9 @@
   - [Social Sign In](#social-sign-in)
   - [Logout and Token Revocation](#logout-and-token-revocation)
   - [Forgot Password](#forgot-password)
+  - [Apply for a Business](#apply-for-a-business)
   - [Create an App and Its First Key](#create-an-app-and-its-first-key)
+  - [Move an App to Another Account](#move-an-app-to-another-account)
   - [A Merchant Calls the Public API](#a-merchant-calls-the-public-api)
 - [API Reference](#api-reference)
 - [Getting Started](#getting-started)
@@ -102,13 +104,13 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - A profile picture (JPEG, PNG or WebP, up to 5 MB) stored in Cloudinary, replaced by uploading a new one and removed on request
 
 **Account Emails**
-- Five HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, and password changed
+- Eight HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, password changed, the code that confirms a transfer, and a notice to each account when a production app changes hands
 - Sent in the background, so a slow mail server never slows an endpoint, and a mail failure never fails a request
 - Gmail works out of the box with an App Password; with no mail server configured the service sends nothing and still answers normally
 
 **Apps and API Keys**
-- Up to 10 apps per environment, each `sandbox` or `production`, with its own keys
-- Production apps need the merchant's own number and a linked Premisave wallet, and one live app per wallet is enforced by a unique index
+- Up to 10 apps per environment for each business, each `sandbox` or `production`, with its own keys
+- Production apps need a linked Premisave wallet and use the business's own merchant number, and one live app per wallet is enforced by a unique index
 - Per-app narrowing of payment methods and limits that can never widen what the merchant already has
 - Keys come with a secret shown once. Rotation keeps the old key working for a grace period, revocation is immediate
 - App suspension by the developer or by staff. A suspension placed by staff cannot be lifted by the developer
@@ -120,13 +122,21 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - The wallet's errors are translated into this service's error codes, and an unreachable or slow wallet becomes `503` or `504`
 
 **Business and Onboarding**
-- One business per developer, created as a merchant in the wallet service once the email is confirmed
-- `/api/v1/merchant/application/**` passes the developer's onboarding application and document uploads (up to 12 MB) through to the wallet
+- One account can apply for many businesses (10 by default). Each is a merchant in the wallet service with its own merchant number and its own onboarding application, and applying needs a confirmed email
+- Plain payloads: a business needs only a `name` and a `country`. Every business comes back with a `nextStep` that says what to do next, such as `COMPLETE_APPLICATION` or `CREATE_APP`
+- `/api/v1/businesses/{businessId}/application/**` passes the application through to the wallet after checking the business is the caller's own. A document is sent as an ordinary file upload (form data, up to 5 MB)
+- An app says which business it belongs to with `businessId`; it can be left out while the account has just one
+- The application form names the wallet account to link (`walletAccountNumber`) and whether the developer applies on behalf of the business (`onBehalf`, `applicantRole`, plus an authorisation letter). The owner of that wallet follows the application and sees the merchant number from the wallet once it is approved. A production app defaults to that wallet
+
+**Transfers and Sharing**
+- A business is applied for once, and the same merchant number can be used to go live from another developer account with the owner's agreement. Move a production app to another account (`POST /api/v1/apps/{appId}/transfer`), or claim an approved business by its merchant number (`POST /api/v1/transfers/claim`)
+- Both are confirmed with a six digit code emailed to the address linked to the business (the wallet account on the application, else the business contact email), never to the developer asking. The code lasts 15 minutes, works once and closes after five wrong tries
+- A moved app keeps its merchant number and wallet link, and all its API keys are revoked. The other account is given use of the business (`access: SHARED`); the original account keeps the business and its other apps
 
 **Platform Concerns**
 - One response envelope everywhere and an `X-Request-Id` header on every response
 - Staff endpoints to suspend an app or disable a developer
-- Postman collection with 54 requests, ready to import
+- Postman collection with 66 requests, ready to import
 
 <br/>
 
@@ -211,7 +221,7 @@ sequenceDiagram
     end
 ```
 
-Sign up issues no token and returns no account data. The account is `PENDING` until the email link is used, which makes it `ACTIVE` (so does a password reset from an email link, or joining through a provider that vouches for the address). The portal shows `data.message` and tells the developer to open the confirmation link. Until then sign in answers `403 ACCOUNT_PENDING`, and a new link can be requested from the sign in page with `POST /api/v1/auth/resend-verification`. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
+Sign up issues no token and returns no account data. The account is `PENDING` until the email link is used, which makes it `ACTIVE` (so does a password reset from an email link, or joining through a provider that vouches for the address). The portal shows `data.message` and tells the developer to open the confirmation link. Until then sign in answers `403 ACCOUNT_PENDING`, and a new link can be requested from the sign in page with `POST /api/v1/auth/resend-verification`. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can apply for a business.
 
 ### Sign In
 
@@ -329,6 +339,40 @@ sequenceDiagram
     end
 ```
 
+### Apply for a Business
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor D as Developer
+    participant P as Portal
+    participant S as Developer Service
+    participant W as Wallet Service
+    participant M as MongoDB
+
+    D->>P: Apply for a business
+    P->>S: POST /api/v1/businesses {name, country}
+    alt Email not confirmed
+        S-->>P: 403 EMAIL_NOT_VERIFIED
+    else Account already has the maximum
+        S-->>P: 422 LIMIT_REACHED
+    else
+        S->>W: Create the merchant and its draft application
+        alt Same name and country already on the account
+            S-->>P: 409 BUSINESS_EXISTS with the businessId
+        else OK
+            S->>M: Add the businessId to the account
+            S-->>P: 201 business with its nextStep
+        end
+    end
+    D->>P: Fill in the form, add documents, submit
+    P->>S: PUT, POST (file) and POST /api/v1/businesses/{businessId}/application/...
+    S->>S: The business must belong to the caller, else 404 BUSINESS_NOT_FOUND
+    S->>W: Pass the call on to that business's application
+```
+
+Applying for another business is the same call with another name. The wallet service holds the list, so a business the account somehow lost track of is picked up the next time the list is read.
+
 ### Create an App and Its First Key
 
 ```mermaid
@@ -341,7 +385,8 @@ sequenceDiagram
     participant M as MongoDB
 
     D->>P: Create a production app
-    P->>S: POST /api/v1/apps (Bearer token)
+    P->>S: POST /api/v1/apps with a businessId (Bearer token)
+    S->>S: The business must belong to the caller
     S->>W: Resolve the Premisave wallet account
     alt Wallet missing or frozen
         S-->>P: 404 WALLET_NOT_FOUND or 422 WALLET_NOT_USABLE
@@ -354,6 +399,41 @@ sequenceDiagram
     end
     Note over S,W: A job every 30 seconds pushes the app context to the wallet until it confirms
 ```
+
+### Move an App to Another Account
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor D as Developer (sender)
+    actor O as Business owner
+    participant S as Developer Service
+    participant W as Wallet Service
+    participant E as Email
+    participant R as Receiving account
+
+    D->>S: POST /api/v1/apps/{appId}/transfer {toEmail}
+    S->>S: Production app of the caller, receiver active and with room
+    S->>W: Read the business (wallet account and contact email)
+    S->>E: Six digit code to the wallet account, else the contact email
+    S-->>D: 201 transfer PENDING (code not shown)
+    E-->>O: Code, business, merchant number, who asked
+    O->>D: Shares the code
+    D->>S: POST /api/v1/transfers/{id}/confirm {otp}
+    alt Wrong code
+        S-->>D: 400 OTP_INVALID with attemptsLeft (5 close the request)
+    else Right code in time
+        S->>S: Share the business with the receiver
+        S->>S: Revoke every key of the app
+        S->>S: Move the app to the receiver
+        S->>W: Push the app settings
+        S->>E: Notices to both accounts
+        S-->>D: 200 transfer COMPLETED
+        R->>S: Create a new key for the app
+    end
+```
+
+A claim by merchant number is the same, except that no app moves: the code confirms that the account may use the business.
 
 ### A Merchant Calls the Public API
 
@@ -428,13 +508,18 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | POST | `/api/v1/me/logout-all` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Revoke every token on every device |
 | POST | `/api/v1/me/resend-verification` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Resend the confirmation email |
 
-**Business** — `/api/v1/merchant`
+**Businesses** — `/api/v1/businesses`
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/api/v1/merchant` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Create the developer's business (needs a confirmed email) |
-| GET | `/api/v1/merchant` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | The business, as the wallet sees it |
-| ANY | `/api/v1/merchant/application/**` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Onboarding application pass-through (GET, POST, PUT, PATCH, DELETE) |
+| POST | `/api/v1/businesses` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Apply for a business (needs a confirmed email). Send it again with another name for the next business |
+| GET | `/api/v1/businesses` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Every business of the account, with its application summary and `nextStep` |
+| GET | `/api/v1/businesses/{businessId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | One business |
+| GET, PUT | `/api/v1/businesses/{businessId}/application` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Read or save the application form |
+| POST | `/api/v1/businesses/{businessId}/application/documents` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Upload a document as form data: `file` and `type` |
+| GET, DELETE | `/api/v1/businesses/{businessId}/application/documents/{documentId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Remove a document (`/content` downloads it) |
+| POST | `/api/v1/businesses/{businessId}/application/submit` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Send the application for review |
+| GET | `/api/v1/businesses/{businessId}/application/timeline` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | What has happened to the application |
 | GET | `/api/v1/meta/test-merchant-numbers` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Merchant numbers usable in sandbox apps |
 
 **Apps** — `/api/v1/apps`
@@ -442,11 +527,23 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
 | POST | `/api/v1/apps` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Create an app, returns its first key and secret |
-| GET | `/api/v1/apps` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | List apps (`environment`, `status`, `page`, `size`) |
+| GET | `/api/v1/apps` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | List apps (`businessId`, `environment`, `status`, `page`, `size`) |
 | GET | `/api/v1/apps/{appId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | One app |
 | PUT | `/api/v1/apps/{appId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Change name, methods, limits or callback URL |
 | POST | `/api/v1/apps/{appId}/suspend` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Suspend the app |
 | POST | `/api/v1/apps/{appId}/reactivate` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Lift a suspension the developer placed |
+
+**Transfers** — `/api/v1/apps/{appId}/transfer` and `/api/v1/transfers`
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/v1/apps/{appId}/transfer` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Start moving a production app to another developer account. Emails the code to the address linked to the business |
+| POST | `/api/v1/transfers/claim` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Ask to use an approved business by its merchant number. Same code |
+| POST | `/api/v1/transfers/{transferId}/confirm` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Confirm with the six digit code the business owner shared |
+| POST | `/api/v1/transfers/{transferId}/resend` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Email a new code for an open request |
+| DELETE | `/api/v1/transfers/{transferId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Cancel a request that is not confirmed |
+| GET | `/api/v1/transfers` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Requests the account started and apps on their way to it |
+| GET | `/api/v1/transfers/{transferId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | One request |
 
 **API Keys** — `/api/v1/apps/{appId}/keys`
 
@@ -470,6 +567,8 @@ Authenticate with `Authorization: Basic base64(key:secret)` or with the headers 
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
+| GET | `/internal/admin/developers` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Search developer accounts by email, username, name, company or developer id, filter by status, paged |
+| GET | `/internal/admin/developers/{developerId}` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | One developer account |
 | GET | `/internal/admin/apps/{appId}` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Any app |
 | PUT | `/internal/admin/apps/{appId}/status` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Suspend or reactivate an app (a reason is required to suspend) |
 | PUT | `/internal/admin/developers/{developerId}/status` | ![Internal](https://img.shields.io/badge/-Internal-2196F3?style=flat-square) | Disable or enable a developer |
@@ -543,6 +642,7 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `WALLET_SERVICE_URL` | Where the wallet service runs, default `http://localhost:8084` |
 | `INTERNAL_API_KEY` | The wallet's internal key. Must equal the wallet's `INTERNAL_API_KEY` |
 | `WALLET_SIGNING_SECRET` | Only when the wallet has request signing on. Must be one of its `commercial.signing.secrets` |
+| `DEVELOPER_MAX_BUSINESSES` | How many businesses one account may apply for, default `10` |
 | `DEVELOPER_INTERNAL_API_KEY` | Guards `/internal/admin`. Empty means those endpoints refuse every call |
 | `DEVELOPER_PORTAL_ORIGINS` | Browser origins allowed to call `/api/v1`, comma separated. `/v1` is never opened to browsers |
 | `DEVELOPER_PORTAL_URL` | Where the portal runs. Links in emails point here |
@@ -643,7 +743,7 @@ To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_
 | Reset your password | A forgot-password request for an active account |
 | Your password was changed | After a password change or reset |
 
-The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all five are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
+The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all eight are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
 
 <br/>
 
@@ -718,7 +818,7 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
-For manual testing, import both files from `postman/` into Postman: the collection has 54 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
+For manual testing, import both files from `postman/` into Postman: the collection has 66 requests grouped as account, email and password, social sign in, businesses and onboarding, apps, transfers and sharing, API keys, the public API and the admin API.
 
 To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-test`. See [Trying It in a Browser](#trying-it-in-a-browser).
 
@@ -729,7 +829,7 @@ To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-
 ```
 src/main/java/com/premisave/developer
 ├── PremisaveDeveloperServiceApplication.java
-├── controller    # REST endpoints: Auth, Me (profile, picture, business), OAuth, App, Key, Admin, the public /v1 entry
+├── controller    # REST endpoints: Auth, Me (profile, picture), Business, Business application, OAuth, App, Key, Admin, the public /v1 entry
 ├── service       # Business logic: accounts, email links, OAuth, apps, API keys, proxy, profile pictures, mail check
 ├── repository    # Spring Data MongoDB repositories, one per collection
 ├── model         # Mongo documents: Developer, DeveloperApp, ApiKey, EmailToken, RevokedToken, OAuthIdentity, Limits
@@ -745,11 +845,11 @@ src/main/java/com/premisave/developer
 
 src/main/resources
 ├── application.yml
-└── email         # layout.html and the five email bodies
+└── email         # layout.html and the eight email bodies
 
-postman           # Collection (54 requests) and local environment
+postman           # Collection (66 requests) and local environment
 oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
-email-previews    # The five emails rendered, open in a browser
+email-previews    # The eight emails rendered, open in a browser
 ```
 
 <br/>
@@ -787,11 +887,14 @@ Created at startup (`spring.data.mongodb.auto-index-creation: true`):
 | `developers` | `email` (unique), `username` (unique, sparse), `merchantId` (unique, sparse) |
 | `apps` | `developerId`, `premisaveWalletId` (unique, sparse, the one-live-app-per-wallet guarantee), `contextSyncPending` |
 | `api_keys` | `appId` |
+| `transfer_requests` | `requesterId`, `toDeveloperId`, TTL on `purgeAt` (finished and refused requests clean themselves up) |
 | `email_tokens` | `tokenHash` (unique), `developerId`, TTL on `expiresAt` |
 | `revoked_tokens` | TTL on `expiresAt`, so revoked tokens clean themselves up |
 | `oauth_identities` | Keyed by `provider:subject`, index on `developerId` |
 
 If your Mongo user cannot create indexes, create these by hand. The wallet guarantee and the username rule depend on the unique ones.
+
+**Upgrading from one business per account.** The wallet service's `merchant_profiles` collection used to have a unique index on `developerAccountId`. It has to go, or a second business for the same account fails with a duplicate key error. In the wallet's database run `db.merchant_profiles.dropIndex("developerAccountId")`. The wallet then creates `developer_business_key` (account plus a normalised name and country), which is what stops the same business being added twice. A fresh database needs nothing. Accounts that already have a business keep it, with no data change.
 
 <br/>
 
@@ -801,6 +904,8 @@ If your Mongo user cannot create indexes, create these by hand. The wallet guara
 - There is no per-IP rate limit on sign in, sign up, forgot password and the social sign in endpoints. Put one at the gateway. Accounts are protected by lockout and per-account link limits, not by source address.
 - Event and webhook delivery to merchant URLs is not built yet. Leave the wallet's `DEVELOPER_SERVICE_URL` empty so events wait in its outbox.
 - A provider cannot be linked from inside a signed-in account yet.
+- A transfer or claim code goes to one address, the wallet account on the application or else the business contact email. If the owner has lost access to it there is no other route yet: contact Premisave support.
+- Transfer requests cannot be listed by staff, and there is no staff route yet to reverse a completed transfer.
 - The GitHub login runs in the portal, so the portal must make and compare its own `state` value, as the test page does. This service never sees it.
 - Emails have no plain-text part and no localisation. They were checked in a Chromium-based browser only, so Outlook on desktop will show them plainer and without dark mode.
 - Nothing has been run against a real MongoDB, SMTP server, provider or wallet, and Maven has not been run on this code. See [Testing](#testing).

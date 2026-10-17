@@ -3,12 +3,10 @@ package com.premisave.developer.controller;
 import com.premisave.developer.config.DeveloperProperties;
 import com.premisave.developer.dto.ApiResponse;
 import com.premisave.developer.dto.ChangePasswordRequest;
-import com.premisave.developer.dto.CreateBusinessRequest;
 import com.premisave.developer.dto.UpdateProfileRequest;
 import com.premisave.developer.model.Developer;
 import com.premisave.developer.service.AccountEmailService;
 import com.premisave.developer.service.DeveloperService;
-import com.premisave.developer.service.MerchantLinkService;
 import com.premisave.developer.service.ProfilePictureService;
 import com.premisave.developer.util.Responses;
 import com.premisave.developer.view.DeveloperViews;
@@ -30,21 +28,19 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** The signed in developer, their business, and the test merchant numbers. */
+/** The signed in developer's account and the test merchant numbers. */
 @RestController("developerMeController")
 @RequestMapping("/api/v1")
 public class MeController {
 
     private final DeveloperService developers;
-    private final MerchantLinkService merchants;
     private final AccountEmailService accountEmail;
     private final ProfilePictureService pictures;
     private final DeveloperProperties props;
 
-    public MeController(DeveloperService developers, MerchantLinkService merchants, AccountEmailService accountEmail,
+    public MeController(DeveloperService developers, AccountEmailService accountEmail,
                         ProfilePictureService pictures, DeveloperProperties props) {
         this.developers = developers;
-        this.merchants = merchants;
         this.accountEmail = accountEmail;
         this.pictures = pictures;
         this.props = props;
@@ -103,17 +99,6 @@ public class MeController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> resendVerification(
             @RequestAttribute Developer developer) {
         return Responses.ok("Confirmation link sent", accountEmail.resendVerification(developer));
-    }
-
-    @PostMapping("/merchant")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> createBusiness(@RequestAttribute Developer developer,
-                                                                           @Valid @RequestBody CreateBusinessRequest req) {
-        return Responses.created("Business created", merchants.create(developer, req));
-    }
-
-    @GetMapping("/merchant")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> business(@RequestAttribute Developer developer) {
-        return Responses.ok("Business retrieved", merchants.view(developer));
     }
 
     @GetMapping("/meta/test-merchant-numbers")

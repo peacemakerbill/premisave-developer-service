@@ -146,7 +146,7 @@ class ProfilePictureServiceTest {
         DeveloperProperties props = new DeveloperProperties(
                 new DeveloperProperties.Jwt(TestProps.JWT_SECRET, null, null), TestProps.keys(),
                 new DeveloperProperties.Wallet("http://localhost:8084", null, null, "k", null, 5),
-                null, null, TestProps.fastSecurity(), null, null, null, null,
+                null, null, null, TestProps.fastSecurity(), null, null, null, null,
                 new DeveloperProperties.Cloudinary("c", "k", "s", null, 20_000));
         ProfilePictureService small = new ProfilePictureService(repo.repo, storage, props);
         Developer d = developer();

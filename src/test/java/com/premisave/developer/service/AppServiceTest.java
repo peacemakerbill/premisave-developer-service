@@ -54,6 +54,10 @@ class AppServiceTest {
         String liveStatus = "ACTIVE";
         Set<MethodType> merchantMethods = EnumSet.of(MethodType.CARD, MethodType.MOBILE_MONEY);
         Limits liveLimits = new Limits(new BigDecimal("500"), null, null, null);
+        /** Merchant numbers by business id. A business not listed has PRM-0000000001. */
+        final Map<String, String> numbers = new HashMap<>();
+        /** The wallet account named on a business's application, by business id. */
+        final Map<String, String> linked = new HashMap<>();
 
         FakeWallet() {
             super(null, null);
@@ -61,8 +65,18 @@ class AppServiceTest {
 
         @Override
         public MerchantInfo getMerchant(String merchantId) {
-            return new MerchantInfo(merchantId, "PRM-0000000001", sandboxStatus, liveStatus, merchantMethods,
+            return new MerchantInfo(merchantId, numbers.getOrDefault(merchantId, "PRM-0000000001"), sandboxStatus, liveStatus, merchantMethods,
                     new Limits(), liveLimits, Map.of());
+        }
+
+        @Override
+        public Map<String, Object> getMerchantView(String merchantId) {
+            Map<String, Object> view = new HashMap<>();
+            view.put("merchantId", merchantId);
+            Map<String, Object> onboarding = new HashMap<>();
+            onboarding.put("walletAccount", linked.get(merchantId));
+            view.put("onboarding", onboarding);
+            return view;
         }
 
         @Override
@@ -90,14 +104,14 @@ class AppServiceTest {
     AppServiceTest() {
         dev.setDeveloperId("dev_1");
         dev.setEmail("owner@acme.test");
-        dev.setMerchantId("mer_1");
+        dev.addBusiness("mer_1");
         wallet.wallets.put("owner@acme.test", new WalletInfo("w1", "owner@acme.test", false));
         wallet.wallets.put("w1", new WalletInfo("w1", "owner@acme.test", false));
         wallet.wallets.put("frozen@acme.test", new WalletInfo("w2", "frozen@acme.test", true));
         wallet.wallets.put("other@acme.test", new WalletInfo("w3", "other@acme.test", false));
         ApiKeyService keys = new ApiKeyService(keyRepo.repo, TestProps.keys(), clock);
         AppContextSync sync = new AppContextSync(wallet, appRepo.repo);
-        service = new AppService(appRepo.repo, new MerchantLinkService(devRepo.repo, wallet, false), wallet, keys, sync,
+        service = new AppService(appRepo.repo, new BusinessService(devRepo.repo, wallet, false, 10), wallet, keys, sync,
                 new DeveloperProperties.Apps(null, null), clock);
     }
 
@@ -110,7 +124,7 @@ class AppServiceTest {
     }
 
     private static CreateAppRequest withLimits(String env, LimitsDto limits) {
-        return new CreateAppRequest("Shop", null, env, null, env.equals("sandbox") ? null : "owner@acme.test", null, limits, null);
+        return new CreateAppRequest("Shop", null, env, null, env.equals("sandbox") ? null : "other@acme.test", null, limits, null);
     }
 
     private static org.springframework.data.domain.Page<DeveloperApp> marker(String label) {
@@ -163,13 +177,37 @@ class AppServiceTest {
     }
 
     @Test
-    void productionRefusesAMissingOrWrongMerchantNumberOrWallet() {
-        assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> service.create(dev, live(null, "owner@acme.test"))).code());
+    void productionRefusesAWrongMerchantNumberOrWallet() {
         assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> service.create(dev, live("PRM-TEST-0001", "owner@acme.test"))).code());
         assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> service.create(dev, live("PRM-0000000002", "owner@acme.test"))).code());
         assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> service.create(dev, live("PRM-0000000001", null))).code());
         assertEquals(ErrorCode.WALLET_NOT_FOUND, fails(() -> service.create(dev, live("PRM-0000000001", "nobody@acme.test"))).code());
         assertEquals(ErrorCode.WALLET_NOT_USABLE, fails(() -> service.create(dev, live("PRM-0000000001", "frozen@acme.test"))).code());
+        assertTrue(appRepo.store.isEmpty());
+    }
+
+    @Test
+    void aProductionAppUsesTheWalletOnTheApplicationWhenNoneIsGiven() {
+        wallet.linked.put("mer_1", "owner@acme.test");
+        AppService.Created c = service.create(dev, live(null, null));
+        assertEquals("owner@acme.test", c.app().getPremisaveWalletAccount());
+        assertEquals("w1", c.app().getPremisaveWalletId());
+    }
+
+    @Test
+    void aGivenWalletWinsOverTheOneOnTheApplication() {
+        wallet.linked.put("mer_1", "owner@acme.test");
+        assertEquals("other@acme.test", service.create(dev, live(null, "other@acme.test")).app().getPremisaveWalletAccount());
+    }
+
+    @Test
+    void aSharedBusinessNeverBorrowsTheWalletOfTheApplicant() {
+        wallet.linked.put("mer_9", "owner@acme.test");
+        Developer guest = new Developer();
+        guest.setDeveloperId("dev_2");
+        guest.addSharedBusiness("mer_9");
+        DeveloperException e = fails(() -> service.create(guest, new CreateAppRequest("mer_9", "Shop", null, "production", null, null, null, null, null)));
+        assertEquals(ErrorCode.VALIDATION_FAILED, e.code());
         assertTrue(appRepo.store.isEmpty());
     }
 
@@ -198,7 +236,7 @@ class AppServiceTest {
     void aDeveloperWithoutABusinessCannotCreateApps() {
         Developer none = new Developer();
         none.setDeveloperId("dev_2");
-        assertEquals(ErrorCode.MERCHANT_REQUIRED, fails(() -> service.create(none, sandbox(null))).code());
+        assertEquals(ErrorCode.BUSINESS_REQUIRED, fails(() -> service.create(none, sandbox(null))).code());
     }
 
     @Test
@@ -241,7 +279,7 @@ class AppServiceTest {
 
     @Test
     void anEnvironmentHasAMaximumNumberOfApps() {
-        AppService small = new AppService(appRepo.repo, new MerchantLinkService(devRepo.repo, wallet, false), wallet,
+        AppService small = new AppService(appRepo.repo, new BusinessService(devRepo.repo, wallet, false, 10), wallet,
                 new ApiKeyService(keyRepo.repo, TestProps.keys(), clock), new AppContextSync(wallet, appRepo.repo),
                 new DeveloperProperties.Apps(2, null), clock);
         small.create(dev, sandbox(null));
@@ -255,7 +293,7 @@ class AppServiceTest {
         AppService.Created c = service.create(dev, sandbox(null));
         Developer other = new Developer();
         other.setDeveloperId("dev_9");
-        other.setMerchantId("mer_9");
+        other.addBusiness("mer_9");
         assertEquals(ErrorCode.APP_NOT_FOUND, fails(() -> service.get(other, c.app().getAppId())).code());
         assertEquals(ErrorCode.APP_NOT_FOUND, fails(() -> service.suspend(other, c.app().getAppId(), null)).code());
         assertEquals(ErrorCode.APP_NOT_FOUND, fails(() -> service.update(other, c.app().getAppId(), new UpdateAppRequest("x", null, null, null, null))).code());
@@ -322,10 +360,91 @@ class AppServiceTest {
                 "findByDeveloperIdAndStatus", a -> marker("status"),
                 "findByDeveloperId", a -> marker("none")));
         AppService s = new AppService(repo, null, wallet, null, null, new DeveloperProperties.Apps(null, null), clock);
-        assertEquals("both", label(s.list(dev, "live", AppStatus.ACTIVE, null)));
-        assertEquals("env", label(s.list(dev, "sandbox", null, null)));
-        assertEquals("status", label(s.list(dev, null, AppStatus.SUSPENDED, null)));
-        assertEquals("none", label(s.list(dev, " ", null, null)));
-        assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> s.list(dev, "mars", null, null)).code());
+        assertEquals("both", label(s.list(dev, "live", AppStatus.ACTIVE, null, null)));
+        assertEquals("env", label(s.list(dev, "sandbox", null, null, null)));
+        assertEquals("status", label(s.list(dev, null, AppStatus.SUSPENDED, null, null)));
+        assertEquals("none", label(s.list(dev, " ", null, null, null)));
+        assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> s.list(dev, "mars", null, null, null)).code());
+    }
+
+    private static CreateAppRequest sandboxFor(String businessId) {
+        return new CreateAppRequest(businessId, "Shop", null, "sandbox", null, null, null, null, null);
+    }
+
+    private static CreateAppRequest liveFor(String businessId, String number) {
+        return new CreateAppRequest(businessId, "Shop", null, "production", number, "owner@acme.test", null, null, null);
+    }
+
+    private Developer twoBusinesses() {
+        Developer d = new Developer();
+        d.setDeveloperId("dev_2");
+        d.addBusiness("mer_1");
+        d.addBusiness("mer_2");
+        wallet.numbers.put("mer_2", "PRM-0000000002");
+        return d;
+    }
+
+    @Test
+    void aProductionAppMayLeaveTheMerchantNumberOutAndGetTheBusinessesOwn() {
+        AppService.Created c = service.create(dev, live(null, "owner@acme.test"));
+        assertEquals("PRM-0000000001", c.app().getMerchantNumber());
+    }
+
+    @Test
+    void aProductionAppIsRefusedWhenTheBusinessHasNoMerchantNumberYet() {
+        wallet.numbers.put("mer_1", null);
+        assertEquals(ErrorCode.INVALID_STATE, fails(() -> service.create(dev, live(null, "owner@acme.test"))).code());
+    }
+
+    @Test
+    void anAccountWithSeveralBusinessesMustSayWhichOne() {
+        Developer d = twoBusinesses();
+        DeveloperException e = fails(() -> service.create(d, sandbox(null)));
+        assertEquals(ErrorCode.VALIDATION_FAILED, e.code());
+        assertEquals(List.of("mer_1", "mer_2"), e.extra().get("businessIds"));
+        assertTrue(appRepo.store.isEmpty());
+    }
+
+    @Test
+    void anAppIsCreatedForTheBusinessNamedAndUsesItsNumber() {
+        Developer d = twoBusinesses();
+        assertEquals("mer_2", service.create(d, sandboxFor("mer_2")).app().getMerchantId());
+        AppService.Created live = service.create(d, liveFor("mer_2", null));
+        assertEquals("mer_2", live.app().getMerchantId());
+        assertEquals("PRM-0000000002", live.app().getMerchantNumber());
+        assertEquals(ErrorCode.VALIDATION_FAILED, fails(() -> service.create(d, liveFor("mer_2", "PRM-0000000001"))).code());
+    }
+
+    @Test
+    void aBusinessThatIsNotTheCallersLooksLikeOneThatDoesNotExist() {
+        assertEquals(ErrorCode.BUSINESS_NOT_FOUND, fails(() -> service.create(dev, sandboxFor("mer_9"))).code());
+        assertTrue(appRepo.store.isEmpty());
+    }
+
+    @Test
+    void theAppLimitIsPerBusinessNotPerAccount() {
+        Developer d = twoBusinesses();
+        AppService small = new AppService(appRepo.repo, new BusinessService(devRepo.repo, wallet, false, 10), wallet,
+                new ApiKeyService(keyRepo.repo, TestProps.keys(), clock), new AppContextSync(wallet, appRepo.repo),
+                new DeveloperProperties.Apps(1, null), clock);
+        small.create(d, sandboxFor("mer_1"));
+        assertEquals(ErrorCode.LIMIT_REACHED, fails(() -> small.create(d, sandboxFor("mer_1"))).code());
+        assertNotNull(small.create(d, sandboxFor("mer_2")));
+    }
+
+    @Test
+    void listCanBeNarrowedToOneOfTheCallersBusinesses() {
+        DeveloperAppRepository repo = com.premisave.developer.Fake.of(DeveloperAppRepository.class, Map.of(
+                "findByDeveloperIdAndMerchantIdAndEnvironmentAndStatus", a -> marker("all " + a[1]),
+                "findByDeveloperIdAndMerchantIdAndEnvironment", a -> marker("env " + a[1]),
+                "findByDeveloperIdAndMerchantIdAndStatus", a -> marker("status " + a[1]),
+                "findByDeveloperIdAndMerchantId", a -> marker("business " + a[1])));
+        AppService s = new AppService(repo, new BusinessService(devRepo.repo, wallet, false, 10), wallet, null, null,
+                new DeveloperProperties.Apps(null, null), clock);
+        assertEquals("all mer_1", label(s.list(dev, "live", AppStatus.ACTIVE, "mer_1", null)));
+        assertEquals("env mer_1", label(s.list(dev, "sandbox", null, " mer_1 ", null)));
+        assertEquals("status mer_1", label(s.list(dev, null, AppStatus.SUSPENDED, "mer_1", null)));
+        assertEquals("business mer_1", label(s.list(dev, null, null, "mer_1", null)));
+        assertEquals(ErrorCode.BUSINESS_NOT_FOUND, fails(() -> s.list(dev, null, null, "mer_9", null)).code());
     }
 }

@@ -50,6 +50,7 @@ public class AppController {
             @RequestAttribute Developer developer,
             @RequestParam(required = false) String environment,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String businessId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         AppStatus appStatus = null;
@@ -61,7 +62,7 @@ public class AppController {
             }
         }
         return Responses.page("Apps retrieved",
-                apps.list(developer, environment, appStatus, PageViews.pageable(page, size)), AppViews::app);
+                apps.list(developer, environment, appStatus, businessId, PageViews.pageable(page, size)), AppViews::app);
     }
 
     @GetMapping("/{appId}")

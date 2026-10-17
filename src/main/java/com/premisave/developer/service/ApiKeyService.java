@@ -94,6 +94,20 @@ public class ApiKeyService {
         return k;
     }
 
+    /** Revokes every key of an app that is not revoked already, and says how many it ended. Used when the app changes hands. */
+    public int revokeAll(String appId) {
+        Instant now = clock.instant();
+        int ended = 0;
+        for (ApiKey k : keys.findByAppId(appId)) {
+            if (k.getStatus() == KeyStatus.REVOKED) continue;
+            k.setStatus(KeyStatus.REVOKED);
+            k.setRevokedAt(now);
+            keys.save(k);
+            ended++;
+        }
+        return ended;
+    }
+
     /** Returns the key when the pair is valid and usable, otherwise throws the same INVALID_API_KEY for every reason. */
     public ApiKey authenticate(String clientKey, String clientSecret) {
         Instant now = clock.instant();

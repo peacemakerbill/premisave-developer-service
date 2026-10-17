@@ -36,7 +36,24 @@ public final class DeveloperViews {
         m.put("profilePictureUrl", d.getProfilePictureUrl());
         m.put("providers", d.getAuthProviders().stream().sorted().toList());
         m.put("status", d.getStatus().name());
-        m.put("merchantId", d.getMerchantId());
+        m.put("businessIds", d.businessIds());
+        m.put("createdAt", iso(d.getCreatedAt()));
+        m.put("lastLoginAt", iso(d.getLastLoginAt()));
+        return m;
+    }
+
+    /** The short form staff see when searching for a developer, for example to pick the developer id of a new merchant. */
+    public static Map<String, Object> summary(Developer d) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("developerId", d.getDeveloperId());
+        m.put("email", d.getEmail());
+        m.put("username", d.getUsername());
+        m.put("fullName", d.getFullName());
+        m.put("companyName", d.getCompanyName());
+        m.put("country", d.getCountry());
+        m.put("status", d.getStatus().name());
+        m.put("emailVerified", d.isEmailVerified());
+        m.put("businessIds", d.businessIds());
         m.put("createdAt", iso(d.getCreatedAt()));
         m.put("lastLoginAt", iso(d.getLastLoginAt()));
         return m;

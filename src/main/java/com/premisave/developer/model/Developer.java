@@ -7,7 +7,9 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /** A person who builds on the platform. Signs in with email and password, or through Google, Facebook or GitHub. */
@@ -60,9 +62,21 @@ public class Developer {
     private Set<String> authProviders = new LinkedHashSet<>();
     private DeveloperStatus status = DeveloperStatus.ACTIVE;
 
-    /** The wallet service merchant created for this developer, once the business details are given. */
+    /**
+     * The business of an account from before an account could have many. Nothing writes it any more; businessIds() still
+     * counts it, so such accounts keep their business without a migration.
+     */
     @Indexed(unique = true, sparse = true)
     private String merchantId;
+
+    /** The wallet service merchants of this account, one for each business it applied for, oldest first. */
+    private List<String> merchantIds = new ArrayList<>();
+
+    /**
+     * Businesses this account may use without having applied for them: it claimed an approved merchant number, or an app of
+     * the business was transferred to it. It can create production apps for them but cannot open their application.
+     */
+    private List<String> sharedMerchantIds = new ArrayList<>();
 
     private int failedLogins;
     private Instant lockedUntil;
@@ -142,6 +156,50 @@ public class Developer {
     public void setStatus(DeveloperStatus v) { this.status = v; }
     public String getMerchantId() { return merchantId; }
     public void setMerchantId(String v) { this.merchantId = v; }
+    public List<String> getMerchantIds() { return merchantIds; }
+    public void setMerchantIds(List<String> v) { this.merchantIds = v == null ? new ArrayList<>() : new ArrayList<>(v); }
+
+    public List<String> getSharedMerchantIds() { return sharedMerchantIds; }
+    public void setSharedMerchantIds(List<String> v) { this.sharedMerchantIds = v == null ? new ArrayList<>() : new ArrayList<>(v); }
+
+    /** The businesses this account applied for, oldest first, counting the one from before accounts could have many. */
+    public List<String> appliedBusinessIds() {
+        Set<String> ids = new LinkedHashSet<>();
+        if (merchantId != null) ids.add(merchantId);
+        if (merchantIds != null) ids.addAll(merchantIds);
+        return List.copyOf(ids);
+    }
+
+    /** Every business this account can use: the ones it applied for, then the ones shared with it. */
+    public List<String> businessIds() {
+        Set<String> ids = new LinkedHashSet<>(appliedBusinessIds());
+        if (sharedMerchantIds != null) ids.addAll(sharedMerchantIds);
+        return List.copyOf(ids);
+    }
+
+    /** True when this account applied for the business, as opposed to having been given use of it. */
+    public boolean appliedFor(String businessId) {
+        return businessId != null && appliedBusinessIds().contains(businessId);
+    }
+
+    /** Gives this account use of a business it did not apply for. Does nothing when it already has the business. */
+    public void addSharedBusiness(String businessId) {
+        if (ownsBusiness(businessId)) return;
+        if (sharedMerchantIds == null) sharedMerchantIds = new ArrayList<>();
+        sharedMerchantIds.add(businessId);
+    }
+
+    public boolean ownsBusiness(String businessId) {
+        return businessId != null && businessIds().contains(businessId);
+    }
+
+    /** Records a business of this account. Does nothing when it is already there. */
+    public void addBusiness(String businessId) {
+        if (ownsBusiness(businessId)) return;
+        if (merchantIds == null) merchantIds = new ArrayList<>();
+        merchantIds.add(businessId);
+    }
+
     public int getFailedLogins() { return failedLogins; }
     public void setFailedLogins(int v) { this.failedLogins = v; }
     public Instant getLockedUntil() { return lockedUntil; }

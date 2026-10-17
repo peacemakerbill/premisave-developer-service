@@ -102,7 +102,7 @@ class DeveloperServiceTest {
         assertTrue(d.getPasswordHash().startsWith("pbkdf2-sha256$"));
         assertFalse(d.getPasswordHash().contains("a long password"));
         assertTrue(d.getDeveloperId().startsWith("dev_"));
-        assertNull(d.getMerchantId());
+        assertTrue(d.businessIds().isEmpty());
         assertFalse(DeveloperViews.developer(d).containsKey("passwordHash"));
     }
 

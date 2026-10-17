@@ -34,6 +34,18 @@ public class WalletApi {
         return call("POST", BASE + "/merchants", body);
     }
 
+    /** Every business of a developer account, oldest first, as { "businesses": [ merchant views ] }. */
+    public Map<String, Object> listMerchants(String developerAccountId) {
+        String q = URLEncoder.encode(developerAccountId, StandardCharsets.UTF_8);
+        return call("GET", BASE + "/merchants?developerAccountId=" + q, null);
+    }
+
+    /** One business by its PRM merchant number, as the wallet service shows it. Unknown numbers are MERCHANT_NOT_FOUND. */
+    public Map<String, Object> getMerchantViewByNumber(String merchantNumber) {
+        String n = URLEncoder.encode(merchantNumber, StandardCharsets.UTF_8);
+        return call("GET", BASE + "/merchants/by-number/" + n, null);
+    }
+
     public MerchantInfo getMerchant(String merchantId) {
         return MerchantInfo.from(call("GET", BASE + "/merchants/" + merchantId, null));
     }

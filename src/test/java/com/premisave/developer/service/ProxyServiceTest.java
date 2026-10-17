@@ -295,7 +295,7 @@ class ProxyServiceTest {
             DeveloperProperties props = new DeveloperProperties(
                     new DeveloperProperties.Jwt(TestProps.JWT_SECRET, null, null), TestProps.keys(),
                     new DeveloperProperties.Wallet(up.url(), null, null, "internal-key-for-tests", null, 1),
-                    null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
             Developer d = new Developer();
             d.setDeveloperId("dev_1");
             devRepo.store.put("dev_1", d);

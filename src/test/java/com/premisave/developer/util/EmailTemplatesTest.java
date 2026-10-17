@@ -22,7 +22,46 @@ class EmailTemplatesTest {
                 EmailTemplates.signIn("Jane", "Email and password", "Chrome on Windows", "203.0.113.9",
                         Instant.parse("2026-10-16T08:05:00Z"), PORTAL),
                 EmailTemplates.reset("Jane", LINK, 60, PORTAL),
-                EmailTemplates.passwordChanged("Jane", PORTAL));
+                EmailTemplates.passwordChanged("Jane", PORTAL),
+                EmailTemplates.transferCode("Jane", "123456", "move the production app \"Shop\"", "Acme Ltd", "PRM-0000000001",
+                        "Olivia Tester", 15, PORTAL),
+                EmailTemplates.appReceived("Jane", "Olivia", "Shop", "Acme Ltd", "PRM-0000000001", PORTAL),
+                EmailTemplates.appHandedOver("Jane", "Shop", "Acme Ltd", "PRM-0000000001", "n***@dev.test", PORTAL));
+    }
+
+    @Test
+    void theTransferCodeEmailShowsTheCodeWhatItIsForAndHowLongItLasts() {
+        String html = all().get(5).html();
+        assertTrue(html.contains(">123456<"));
+        assertTrue(html.contains("move the production app &quot;Shop&quot;"));
+        assertTrue(html.contains("Acme Ltd"));
+        assertTrue(html.contains("PRM-0000000001"));
+        assertTrue(html.contains("Olivia Tester"));
+        assertTrue(html.contains("15 minutes"));
+        assertTrue(all().get(5).subject().contains("123456"));
+        assertFalse(html.contains("token="));
+    }
+
+    @Test
+    void theTransferCodeEmailGreetsAnUnnamedOwnerGenerally() {
+        String html = EmailTemplates.transferCode(null, "123456", "x", "Acme", "PRM-1", "O", 1, PORTAL).html();
+        assertTrue(html.contains("Hello there"));
+        assertTrue(html.contains("1 minute"));
+    }
+
+    @Test
+    void theReceivedEmailSaysKeysMustBeMadeAgain() {
+        String html = all().get(6).html();
+        assertTrue(html.contains("Olivia"));
+        assertTrue(html.contains("revoked"));
+        assertTrue(html.contains("href=\"" + PORTAL + "\""));
+    }
+
+    @Test
+    void theHandedOverEmailOffersToSecureTheAccount() {
+        String html = all().get(7).html();
+        assertTrue(html.contains("n***@dev.test"));
+        assertTrue(html.contains("href=\"" + PORTAL + "/forgot-password\""));
     }
 
     @Test

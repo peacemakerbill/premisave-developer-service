@@ -149,7 +149,7 @@ class MailStartupCheckTest {
         com.premisave.developer.config.DeveloperProperties.Mail mail = new com.premisave.developer.config.DeveloperProperties.Mail(
                 "noreply@premisave.com", "https://portal.example.com", null, null, 60, 5, true, false, true);
         com.premisave.developer.config.DeveloperProperties props = new com.premisave.developer.config.DeveloperProperties(
-                base.jwt(), base.keys(), base.wallet(), base.proxy(), base.apps(), base.security(), base.internal(), base.cors(),
+                base.jwt(), base.keys(), base.wallet(), base.proxy(), base.apps(), base.businesses(), base.security(), base.internal(), base.cors(),
                 mail, base.oauth(), base.cloudinary());
         new MailStartupCheck(Optional.of(sender), props, "me@gmail.com").run();
         assertEquals("noreply@premisave.com", sender.sent.get(0).getFrom());

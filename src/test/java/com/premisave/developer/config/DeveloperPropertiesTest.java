@@ -158,7 +158,14 @@ class DeveloperPropertiesTest {
         static DeveloperProperties defaults() {
             return new DeveloperProperties(
                     new DeveloperProperties.Jwt("x".repeat(32), null, null), new DeveloperProperties.Keys("y".repeat(16), null, null),
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null);
         }
+    }
+
+    @Test
+    void anAccountMayHaveTenBusinessesUnlessToldOtherwise() {
+        assertEquals(10, new DeveloperProperties.Businesses(null).maxPerDeveloper());
+        assertEquals(10, new DeveloperProperties.Businesses(0).maxPerDeveloper());
+        assertEquals(3, new DeveloperProperties.Businesses(3).maxPerDeveloper());
     }
 }

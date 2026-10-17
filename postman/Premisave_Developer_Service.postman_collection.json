@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4cbbd84f-c000-5012-8afe-d8f22abb5bb5",
     "name": "Premisave Developer Service",
-    "description": "Premisave Developer Service: developer accounts, apps, API keys and the public /v1 entry.\n\nSetup: import the collection, set base_url_dev, run Sign up (or Sign in); the token is saved as access_token. Confirm the email address (folder Email and password) before Create business. Run Create business, then Create app (sandbox): the key and secret are saved as api_key and api_secret and used by folder 04. Folder 05 needs admin_api_key (DEVELOPER_INTERNAL_API_KEY on the server) and developer_id.\n\nA secret is shown once. If you lose it, create or rotate a key.",
+    "description": "Premisave Developer Service: developer accounts, businesses, apps, API keys and the public /v1 entry.\n\nSetup: import the collection, set base_url_dev, run Sign up (or Sign in); the token is saved as access_token. Confirm the email address (folder Email and password) before applying for a business. Run Apply for a business (folder 01), fill in and submit its application, then Create app (sandbox): the key and secret are saved as api_key and api_secret and used by folder 05. One account can apply for many businesses; business_id is the one the calls work on. Folder 06 needs admin_api_key (DEVELOPER_INTERNAL_API_KEY on the server) and developer_id.\n\nTo hand a production app to another developer account, or to take up an approved business by its merchant number, use folder 03: a code is emailed to the business owner, who shares it with you, and you confirm it with the otp variable.\n\nA secret is shown once. If you lose it, create or rotate a key.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -145,8 +145,8 @@
                   "try { body = pm.response.json(); } catch (e) {}",
                   "const d = body.data || {};",
                   "{",
-                  "  const v = (function () { return d.merchantId; })();",
-                  "  if (v) { pm.collectionVariables.set('merchant_id', String(v)); console.log('merchant_id = ' + v); }",
+                  "  const v = (function () { return d.businessIds && d.businessIds.length === 1 ? d.businessIds[0] : null; })();",
+                  "  if (v) { pm.collectionVariables.set('business_id', String(v)); console.log('business_id = ' + v); }",
                   "}",
                   "{",
                   "  const v = d.developerId;",
@@ -471,114 +471,6 @@
           "response": []
         },
         {
-          "name": "Create business",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant",
-              "host": [
-                "{{base_url_dev}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "merchant"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"businessName\": \"Acme Limited\",\n  \"displayName\": \"ACME LIMITED\",\n  \"country\": \"KE\",\n  \"contactEmail\": \"finance@acme.example.com\",\n  \"contactPhone\": \"254712345678\",\n  \"defaultCurrency\": \"USD\",\n  \"requestedMethods\": [\n    \"MOBILE_MONEY\",\n    \"CARD\"\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Creates the merchant in the wallet service, with its merchant number and a draft onboarding application. One business per account (409 MERCHANT_EXISTS). 403 EMAIL_NOT_VERIFIED until the email address is confirmed."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let body = {};",
-                  "try { body = pm.response.json(); } catch (e) {}",
-                  "const d = body.data || {};",
-                  "{",
-                  "  const v = (function () { return d.merchantId; })();",
-                  "  if (v) { pm.collectionVariables.set('merchant_id', String(v)); console.log('merchant_id = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.merchantNumber; })();",
-                  "  if (v) { pm.collectionVariables.set('merchant_number', String(v)); console.log('merchant_number = ' + v); }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Get business",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant",
-              "host": [
-                "{{base_url_dev}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "merchant"
-              ]
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let body = {};",
-                  "try { body = pm.response.json(); } catch (e) {}",
-                  "const d = body.data || {};",
-                  "{",
-                  "  const v = (function () { return d.merchantNumber; })();",
-                  "  if (v) { pm.collectionVariables.set('merchant_number', String(v)); console.log('merchant_number = ' + v); }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "List test merchant numbers",
           "request": {
             "method": "GET",
@@ -833,7 +725,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/auth/oauth/providers",
+              "raw": "{{base_url_dev}}/api/v1/auth/social/providers",
               "host": [
                 "{{base_url_dev}}"
               ],
@@ -841,72 +733,16 @@
                 "api",
                 "v1",
                 "auth",
-                "oauth",
+                "social",
                 "providers"
               ]
             },
-            "description": "The providers that are configured on the server, for example google, facebook, github."
+            "description": "The providers switched on in this service and their public client IDs: { providers: [...], clientIds: { google, facebook, github } }. No secrets are returned."
           },
           "response": []
         },
         {
-          "name": "Authorize address",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url_dev}}/api/v1/auth/oauth/{{oauth_provider}}/authorize?redirectUri={{oauth_redirect_uri}}",
-              "host": [
-                "{{base_url_dev}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "oauth",
-                "{{oauth_provider}}",
-                "authorize"
-              ],
-              "query": [
-                {
-                  "key": "redirectUri",
-                  "value": "{{oauth_redirect_uri}}",
-                  "disabled": false
-                }
-              ]
-            },
-            "description": "Set oauth_provider to google, facebook or github, and oauth_redirect_uri to an address listed in DEVELOPER_OAUTH_REDIRECT_URIS. Open the returned authorizationUrl (saved as oauth_authorization_url) in a browser, sign in with the provider, and copy the code from the address the provider sends you back to."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let body = {};",
-                  "try { body = pm.response.json(); } catch (e) {}",
-                  "const d = body.data || {};",
-                  "{",
-                  "  const v = (function () { return d.state; })();",
-                  "  if (v) { pm.collectionVariables.set('oauth_state', String(v)); console.log('oauth_state = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.authorizationUrl; })();",
-                  "  if (v) { pm.collectionVariables.set('oauth_authorization_url', String(v)); console.log('oauth_authorization_url = ' + v); }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Callback (sign up or sign in)",
+          "name": "Google (sign up or sign in)",
           "request": {
             "method": "POST",
             "header": [
@@ -920,7 +756,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/auth/oauth/{{oauth_provider}}/callback",
+              "raw": "{{base_url_dev}}/api/v1/auth/social/google",
               "host": [
                 "{{base_url_dev}}"
               ],
@@ -928,21 +764,142 @@
                 "api",
                 "v1",
                 "auth",
-                "oauth",
-                "{{oauth_provider}}",
-                "callback"
+                "social",
+                "google"
               ]
             },
+            "description": "Body: the Google ID token (the credential from Google Identity Services). Get one by running oauth-test/social-login-test.html in Get the token only mode, or from the OAuth 2.0 Playground with the openid and email scopes. The service checks it with Google and requires that it was issued to GOOGLE_CLIENT_ID. Returns the usual session plus newAccount and provider. A first sign in with a new email creates the account. 403 ACCOUNT_PENDING (data.next is CONFIRM_EMAIL) when the account still has to confirm its email, 401 OAUTH_FAILED when the provider rejects the token, 409 ACCOUNT_EXISTS when the provider does not vouch for an email that already has an account, 422 OAUTH_EMAIL_REQUIRED when the provider gives no usable email.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"{{oauth_code}}\",\n  \"state\": \"{{oauth_state}}\",\n  \"redirectUri\": \"{{oauth_redirect_uri}}\"\n}",
+              "raw": "{\n  \"token\": \"{{google_id_token}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.accessToken; })();",
+                  "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
+                  "}",
+                  "{",
+                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
+                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Facebook (sign up or sign in)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/auth/social/facebook",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "social",
+                "facebook"
+              ]
             },
-            "description": "Returns the usual session plus newAccount and provider. A code works once and only for a short time. 409 ACCOUNT_EXISTS when the provider does not vouch for an email that already has an account (Facebook), 422 OAUTH_EMAIL_REQUIRED when the provider gives no usable email."
+            "description": "Body: a Facebook user access token. Get one from the test page (Facebook button, or paste one) or from the Graph API Explorer with the email permission, using the same app as FACEBOOK_CLIENT_ID. The service asks Facebook whether the token was issued to this app. Facebook never vouches for the email, so a new account starts PENDING until the email is confirmed. Returns the usual session plus newAccount and provider. A first sign in with a new email creates the account. 403 ACCOUNT_PENDING (data.next is CONFIRM_EMAIL) when the account still has to confirm its email, 401 OAUTH_FAILED when the provider rejects the token, 409 ACCOUNT_EXISTS when the provider does not vouch for an email that already has an account, 422 OAUTH_EMAIL_REQUIRED when the provider gives no usable email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{facebook_access_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.accessToken; })();",
+                  "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
+                  "}",
+                  "{",
+                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
+                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GitHub (sign up or sign in)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/auth/social/github",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "social",
+                "github"
+              ]
+            },
+            "description": "Body: token is the one-time code GitHub puts in the address when it sends you back (the test page shows it in Get the token only mode). GitHub does not give a browser an access token, so the service trades the code with the client secret. A code works once and for about 10 minutes. Returns the usual session plus newAccount and provider. A first sign in with a new email creates the account. 403 ACCOUNT_PENDING (data.next is CONFIRM_EMAIL) when the account still has to confirm its email, 401 OAUTH_FAILED when the provider rejects the token, 409 ACCOUNT_EXISTS when the provider does not vouch for an email that already has an account, 422 OAUTH_EMAIL_REQUIRED when the provider gives no usable email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{github_code}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": [],
           "event": [
@@ -968,11 +925,210 @@
           ]
         }
       ],
-      "description": "The code comes from the provider after a browser sign in, so this folder cannot run unattended."
+      "description": "The provider token is made in the browser, so no OAuth screen is needed here. Run oauth-test/social-login-test.html (Get the token only mode), copy the token into the matching collection variable and send the request. Google sends an ID token, Facebook an access token, GitHub a one-time code."
     },
     {
-      "name": "01 Onboarding application",
+      "name": "01 Businesses and onboarding",
+      "description": "One account can apply for many businesses. Each has its own merchant number and its own application. business_id is the business the calls in this folder work on.",
       "item": [
+        {
+          "name": "Apply for a business",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/businesses",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Limited\",\n  \"tradingName\": \"Acme\",\n  \"country\": \"KE\",\n  \"currency\": \"KES\",\n  \"paymentMethods\": [\n    \"MOBILE_MONEY\",\n    \"CARD\"\n  ],\n  \"contactEmail\": \"finance@acme.example.com\",\n  \"contactPhone\": \"254712345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Adds a business to the account and opens its application as a draft. Only name and country are required; the contact email defaults to the account email. An account can apply for many businesses (up to DEVELOPER_MAX_BUSINESSES, 10 by default). Applying again for the same name and country answers 409 BUSINESS_EXISTS with the existing businessId. 403 EMAIL_NOT_VERIFIED until the email address is confirmed. The reply has a nextStep that says what to do next."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.businessId; })();",
+                  "  if (v) { pm.collectionVariables.set('business_id', String(v)); console.log('business_id = ' + v); }",
+                  "}",
+                  "{",
+                  "  const v = (function () { return d.merchantNumber; })();",
+                  "  if (v) { pm.collectionVariables.set('merchant_number', String(v)); console.log('merchant_number = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply for another business",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/businesses",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Beta Traders\",\n  \"country\": \"UG\",\n  \"currency\": \"UGX\",\n  \"paymentMethods\": [\n    \"MOBILE_MONEY\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The same account applying for a second business. It gets its own business id, merchant number and application. The id is saved as other_business_id, so the calls below keep working on the first business."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.businessId; })();",
+                  "  if (v) { pm.collectionVariables.set('other_business_id', String(v)); console.log('other_business_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List businesses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/businesses",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses"
+              ]
+            },
+            "description": "Every business of the account with its status, application summary and nextStep."
+          },
+          "response": []
+        },
+        {
+          "name": "Get business",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{business_id}}"
+              ]
+            },
+            "description": "One business. 404 BUSINESS_NOT_FOUND if it is not on this account."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.merchantNumber; })();",
+                  "  if (v) { pm.collectionVariables.set('merchant_number', String(v)); console.log('merchant_number = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Get application",
           "request": {
@@ -988,18 +1144,19 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application"
               ]
             },
-            "description": "Status, form, documents, returnItems, missing items and readyToSubmit."
+            "description": "Status, form, documents, returnItems, missing items and readyToSubmit for this business."
           },
           "response": []
         },
@@ -1022,26 +1179,28 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application"
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"businessType\": \"LIMITED_COMPANY\",\n  \"registeredName\": \"Acme Traders Ltd\",\n  \"tradingName\": \"Acme\",\n  \"registrationNumber\": \"CPR/2020/1234\",\n  \"taxPin\": \"P051234567Z\",\n  \"country\": \"KE\",\n  \"city\": \"Nairobi\",\n  \"physicalAddress\": \"Moi Avenue 12\",\n  \"website\": \"https://acme.example.com\",\n  \"industry\": \"Retail\",\n  \"businessDescription\": \"Sells household goods online\",\n  \"expectedMonthlyVolumeUsd\": 25000,\n  \"contactName\": \"Jane Doe\",\n  \"contactEmail\": \"finance@acme.example.com\",\n  \"contactPhone\": \"254712345678\",\n  \"directors\": [\n    {\n      \"fullName\": \"Jane Doe\",\n      \"idNumber\": \"12345678\",\n      \"role\": \"Director\",\n      \"ownershipPercent\": 100\n    }\n  ]\n}",
+              "raw": "{\n  \"businessType\": \"LIMITED_COMPANY\",\n  \"registeredName\": \"Acme Traders Ltd\",\n  \"tradingName\": \"Acme\",\n  \"registrationNumber\": \"CPR/2020/1234\",\n  \"taxPin\": \"P051234567Z\",\n  \"country\": \"KE\",\n  \"city\": \"Nairobi\",\n  \"physicalAddress\": \"Moi Avenue 12\",\n  \"website\": \"https://acme.example.com\",\n  \"industry\": \"Retail\",\n  \"businessDescription\": \"Sells household goods online\",\n  \"expectedMonthlyVolumeUsd\": 25000,\n  \"contactName\": \"Jane Doe\",\n  \"contactEmail\": \"finance@acme.example.com\",\n  \"contactPhone\": \"254712345678\",\n  \"walletAccountNumber\": \"{{wallet_account}}\",\n  \"onBehalf\": false,\n  \"directors\": [\n    {\n      \"fullName\": \"Jane Doe\",\n      \"idNumber\": \"12345678\",\n      \"role\": \"Director\",\n      \"ownershipPercent\": 100\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "Saves the form. Send only what changed. walletAccountNumber is the Premisave wallet account (the owner's email) that this business is linked to: the owner can follow the application, and later see the merchant number, from that wallet, and the code for moving an app or sharing the business is emailed there. It is required to submit. If you are applying for someone else's business, set onBehalf to true, say your role in applicantRole (for example Developer at the agency) and upload an authorisation letter. The tax pin and director ID numbers are stored masked in the replies."
           },
           "response": []
         },
@@ -1057,35 +1216,40 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/documents",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "documents"
               ]
             },
+            "description": "Form data, not JSON. In Postman choose Body, form-data, then pick the file on the file row. type can be written as business registration, business-registration or BUSINESS_REGISTRATION. 400 if the file is empty, over 5 MB or not a PDF, PNG or JPEG. Needs Google Drive configured on the wallet, otherwise 503.",
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"type\": \"BUSINESS_REGISTRATION\",\n  \"fileName\": \"registration.pdf\",\n  \"contentType\": \"application/pdf\",\n  \"contentBase64\": \"JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "business registration",
+                  "type": "text",
+                  "description": "What the document is, in ordinary words. Optional, defaults to other."
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "A PDF, PNG or JPEG of at most 5 MB."
                 }
-              }
-            },
-            "description": "Base64 in the JSON body, up to 12 MB. Needs Google Drive configured on the wallet, otherwise 503."
+              ]
+            }
           },
           "response": [],
           "event": [
@@ -1118,36 +1282,58 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/documents",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "documents"
               ]
             },
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"type\": \"TAX_COMPLIANCE\",\n  \"fileName\": \"tax-certificate.pdf\",\n  \"contentType\": \"application/pdf\",\n  \"contentBase64\": \"JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "tax compliance",
+                  "type": "text",
+                  "description": "What the document is, in ordinary words. Optional, defaults to other."
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "A PDF, PNG or JPEG of at most 5 MB."
                 }
-              }
+              ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.documentId; })();",
+                  "  if (v) { pm.collectionVariables.set('document_id', String(v)); console.log('document_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Upload document (director ID)",
@@ -1161,36 +1347,124 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/documents",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "documents"
               ]
             },
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"type\": \"DIRECTOR_ID\",\n  \"fileName\": \"director-id.pdf\",\n  \"contentType\": \"application/pdf\",\n  \"contentBase64\": \"JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "director id",
+                  "type": "text",
+                  "description": "What the document is, in ordinary words. Optional, defaults to other."
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "A PDF, PNG or JPEG of at most 5 MB."
                 }
-              }
+              ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.documentId; })();",
+                  "  if (v) { pm.collectionVariables.set('document_id', String(v)); console.log('document_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload document (authorisation letter)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "businesses",
+                "{{business_id}}",
+                "application",
+                "documents"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "authorisation letter",
+                  "type": "text",
+                  "description": "What the document is, in ordinary words. Optional, defaults to other."
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "A PDF, PNG or JPEG of at most 5 MB."
+                }
+              ]
+            },
+            "description": "Needed when onBehalf is true: a letter from the business that lets you apply for it. A PDF, PNG or JPEG of at most 5 MB."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.documentId; })();",
+                  "  if (v) { pm.collectionVariables.set('document_id', String(v)); console.log('document_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Download document",
@@ -1207,14 +1481,15 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/documents/{{document_id}}/content",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents/{{document_id}}/content",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "documents",
                 "{{document_id}}",
@@ -1239,14 +1514,15 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/documents/{{document_id}}",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/documents/{{document_id}}",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "documents",
                 "{{document_id}}"
@@ -1267,35 +1543,23 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/submit",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/submit",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "submit"
               ]
             },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"message\": \"Ready for review\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "422 APPLICATION_INCOMPLETE lists everything still missing."
+            "description": "Sends the application for review once nothing is missing. After this, nextStep is WAIT_FOR_REVIEW."
           },
           "response": []
         },
@@ -1314,14 +1578,15 @@
               }
             ],
             "url": {
-              "raw": "{{base_url_dev}}/api/v1/merchant/application/timeline",
+              "raw": "{{base_url_dev}}/api/v1/businesses/{{business_id}}/application/timeline",
               "host": [
                 "{{base_url_dev}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "merchant",
+                "businesses",
+                "{{business_id}}",
                 "application",
                 "timeline"
               ]
@@ -1329,8 +1594,7 @@
           },
           "response": []
         }
-      ],
-      "description": "Pass-through to the wallet service for the signed in developer's own business. Staff review is done on the wallet service."
+      ]
     },
     {
       "name": "02 Apps",
@@ -1366,14 +1630,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Checkout backend\",\n  \"description\": \"Test checkout\",\n  \"environment\": \"sandbox\",\n  \"merchantNumber\": \"{{test_merchant_number}}\",\n  \"enabledMethods\": [\n    \"MOBILE_MONEY\",\n    \"CARD\"\n  ],\n  \"limits\": {\n    \"singleTransactionUsd\": \"1000.00\",\n    \"dailyVolumeUsd\": \"20000.00\"\n  },\n  \"callbackUrl\": \"https://merchant.example.com/hooks/premisave\"\n}",
+              "raw": "{\n  \"businessId\": \"{{business_id}}\",\n  \"name\": \"Checkout backend\",\n  \"description\": \"Test checkout\",\n  \"environment\": \"sandbox\",\n  \"merchantNumber\": \"{{test_merchant_number}}\",\n  \"enabledMethods\": [\n    \"MOBILE_MONEY\",\n    \"CARD\"\n  ],\n  \"limits\": {\n    \"singleTransactionUsd\": \"1000.00\",\n    \"dailyVolumeUsd\": \"20000.00\"\n  },\n  \"callbackUrl\": \"https://merchant.example.com/hooks/premisave\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Returns the first key and its secret once. The collection saves them as api_key and api_secret. A wallet cannot be sent for a sandbox app."
+            "description": "Returns the first key and its secret once. The collection saves them as api_key and api_secret. businessId says which business the app belongs to; it can be left out when the account has only one. A wallet cannot be sent for a sandbox app."
           },
           "response": [],
           "event": [
@@ -1433,14 +1697,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Checkout backend\",\n  \"environment\": \"production\",\n  \"merchantNumber\": \"{{merchant_number}}\",\n  \"premisaveWalletAccount\": \"{{wallet_account}}\",\n  \"enabledMethods\": [\n    \"MOBILE_MONEY\"\n  ]\n}",
+              "raw": "{\n  \"businessId\": \"{{business_id}}\",\n  \"name\": \"Checkout backend\",\n  \"environment\": \"production\",\n  \"premisaveWalletAccount\": \"{{wallet_account}}\",\n  \"enabledMethods\": [\n    \"MOBILE_MONEY\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Needs production approved (403 LIVE_NOT_ENABLED before), the business's own number and the wallet account number or id. 409 WALLET_ALREADY_LINKED if a production app already uses that wallet."
+            "description": "Needs production approved (403 LIVE_NOT_ENABLED before) and the wallet account number or id. businessId says which business the app belongs to; it can be left out when the account has only one. merchantNumber can be left out: the business's own number is used, and a different one is refused. 409 WALLET_ALREADY_LINKED if a production app already uses that wallet."
           },
           "response": [],
           "event": [
@@ -1494,6 +1758,11 @@
                 "apps"
               ],
               "query": [
+                {
+                  "key": "businessId",
+                  "value": "{{business_id}}",
+                  "disabled": true
+                },
                 {
                   "key": "environment",
                   "value": "sandbox",
@@ -1667,7 +1936,298 @@
       ]
     },
     {
-      "name": "03 API keys",
+      "name": "03 Transfers and sharing",
+      "item": [
+        {
+          "name": "Transfer a production app",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/apps/{{live_app_id}}/transfer",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "apps",
+                "{{live_app_id}}",
+                "transfer"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toEmail\": \"{{to_email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Starts moving a production app to another developer account, named by the email it signs in with. A six digit code is emailed to the address linked to the business (the wallet account named on its application, or the business contact email). You never see the code: the business owner has to share it with you. The code lasts 15 minutes and 5 wrong tries close the request. Only production apps can be moved. When it is confirmed the app keeps its merchant number and wallet link, its API keys are revoked, the other account is given use of the business, and you keep the business and its other apps."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.transferId; })();",
+                  "  if (v) { pm.collectionVariables.set('transfer_id', String(v)); console.log('transfer_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers/{{transfer_id}}/confirm",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Send the six digit code the business owner shared with you. Works once. 400 OTP_INVALID for a wrong code (attemptsLeft says how many tries remain), 410 OTP_EXPIRED after the time is up, 409 INVALID_STATE when the request is already done or closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Send a new code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers/{{transfer_id}}/resend",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}",
+                "resend"
+              ]
+            },
+            "description": "Emails a fresh code for a request that is still open. The old code stops working and the tries start again. At most one code a minute, and ten requests an hour (429 RATE_LIMITED, retryAfterSeconds says when)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel transfer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            },
+            "description": "Closes a request that has not been confirmed. Nothing moves."
+          },
+          "response": []
+        },
+        {
+          "name": "List transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers"
+              ]
+            },
+            "description": "Your latest requests (direction OUTGOING) and the apps on their way to you (direction INCOMING). An incoming one shows the sender's address in part only and nothing about the code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers/{{transfer_id}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "{{transfer_id}}"
+              ]
+            },
+            "description": "One request. status is PENDING, COMPLETED, CANCELLED or EXPIRED."
+          },
+          "response": []
+        },
+        {
+          "name": "Claim a business by merchant number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/transfers/claim",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "transfers",
+                "claim"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantNumber\": \"{{merchant_number}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Asks to use a business that another account applied for and that is approved and live, so you can go live with the same merchant number. Nothing moves: the business owner shares the emailed code and you confirm it with Confirm transfer, then create a production app for the business (businessId). A number that does not exist and a business that is not live get the same answer, 404 BUSINESS_NOT_FOUND, and wrong numbers count towards a limit of ten requests an hour."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "{",
+                  "  const v = (function () { return d.transferId; })();",
+                  "  if (v) { pm.collectionVariables.set('transfer_id', String(v)); console.log('transfer_id = ' + v); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Move a production app to another developer account, or take up an approved business by its merchant number. Both are confirmed with a code emailed to the address linked to the business."
+    },
+    {
+      "name": "04 API keys",
       "item": [
         {
           "name": "List keys",
@@ -1852,7 +2412,7 @@
       ]
     },
     {
-      "name": "04 Public API (key and secret)",
+      "name": "05 Public API (key and secret)",
       "item": [
         {
           "name": "Payment methods (sandbox, Basic auth)",
@@ -2123,7 +2683,7 @@
       "description": "Set api_key and api_secret from a sandbox app's key. Everything after /v1/{live|sandbox} is the wallet's commercial API (COMMERCIAL_API_ENDPOINTS.md)."
     },
     {
-      "name": "05 Admin (internal key)",
+      "name": "06 Admin (internal key)",
       "item": [
         {
           "name": "Get app",
@@ -2237,6 +2797,101 @@
                   "language": "json"
                 }
               }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search developers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{admin_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/internal/admin/developers?q=jane@",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "internal",
+                "admin",
+                "developers"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "jane@",
+                  "disabled": false
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "disabled": true
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Finds developer accounts by email, username, name or company, or by the exact developer id. Use it to get the developerId for a new merchant."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let body = {};",
+                  "try { body = pm.response.json(); } catch (e) {}",
+                  "const d = body.data || {};",
+                  "let v = (function () { return d.content && d.content[0] && d.content[0].developerId; })();",
+                  "if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get developer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{admin_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/internal/admin/developers/{{developer_id}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "internal",
+                "admin",
+                "developers",
+                "{{developer_id}}"
+              ]
             }
           },
           "response": []
@@ -2362,9 +3017,12 @@
       "type": "string"
     },
     {
-      "key": "merchant_id",
-      "value": "",
-      "type": "string"
+      "key": "business_id",
+      "value": ""
+    },
+    {
+      "key": "other_business_id",
+      "value": ""
     },
     {
       "key": "merchant_number",
@@ -2432,27 +3090,32 @@
       "type": "string"
     },
     {
-      "key": "oauth_provider",
-      "value": "google",
-      "type": "string"
-    },
-    {
-      "key": "oauth_redirect_uri",
-      "value": "http://localhost:3000/auth/callback/google",
-      "type": "string"
-    },
-    {
-      "key": "oauth_state",
+      "key": "google_id_token",
       "value": "",
       "type": "string"
     },
     {
-      "key": "oauth_code",
+      "key": "facebook_access_token",
       "value": "",
       "type": "string"
     },
     {
-      "key": "oauth_authorization_url",
+      "key": "github_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transfer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "to_email",
+      "value": "colleague@example.com",
+      "type": "string"
+    },
+    {
+      "key": "otp",
       "value": "",
       "type": "string"
     }

@@ -22,7 +22,21 @@ public interface DeveloperAppRepository extends MongoRepository<DeveloperApp, St
     Page<DeveloperApp> findByDeveloperIdAndEnvironmentAndStatus(String developerId, Environment environment,
                                                                 AppStatus status, Pageable pageable);
 
+    Page<DeveloperApp> findByDeveloperIdAndMerchantId(String developerId, String merchantId, Pageable pageable);
+
+    Page<DeveloperApp> findByDeveloperIdAndMerchantIdAndEnvironment(String developerId, String merchantId,
+                                                                    Environment environment, Pageable pageable);
+
+    Page<DeveloperApp> findByDeveloperIdAndMerchantIdAndStatus(String developerId, String merchantId, AppStatus status,
+                                                               Pageable pageable);
+
+    Page<DeveloperApp> findByDeveloperIdAndMerchantIdAndEnvironmentAndStatus(String developerId, String merchantId,
+                                                                             Environment environment, AppStatus status,
+                                                                             Pageable pageable);
+
     long countByDeveloperIdAndEnvironment(String developerId, Environment environment);
+
+    long countByMerchantIdAndEnvironment(String merchantId, Environment environment);
 
     Optional<DeveloperApp> findByPremisaveWalletId(String premisaveWalletId);
 

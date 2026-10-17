@@ -15,6 +15,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +63,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleParam(Exception ex, HttpServletRequest request) {
         return ResponseEntity.status(400).body(ApiResponse.error(
                 "A query parameter is missing or has the wrong type", base(ErrorCode.VALIDATION_FAILED, request)));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleTooLarge(MaxUploadSizeExceededException ex,
+                                                                           HttpServletRequest request) {
+        return ResponseEntity.status(413).body(ApiResponse.error(
+                "That file is too large. Documents can be up to 5 MB", base(ErrorCode.PAYLOAD_TOO_LARGE, request)));
     }
 
     @ExceptionHandler(Exception.class)

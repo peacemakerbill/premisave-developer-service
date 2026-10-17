@@ -10,6 +10,11 @@ spring:
   data:
     mongodb:
       auto-index-creation: true
+  servlet:
+    multipart:
+      # Business documents are uploaded as form files. The service refuses more than 5 MB per document.
+      max-file-size: 8MB
+      max-request-size: 9MB
   mail:
     # The mail server, in the same form as the wallet service. Each value comes from a MAIL_* name in capital
     # letters, from .env or the environment. With no username nothing is sent: mail counts as off.
@@ -51,6 +56,8 @@ developer:
     rate-limit-per-minute: 600
     max-body-bytes: 1048576
     max-upload-bytes: 12582912
+  businesses:
+    max-per-developer: ${DEVELOPER_MAX_BUSINESSES:10}
   apps:
     max-per-environment: 10
     sync-interval-ms: 30000
