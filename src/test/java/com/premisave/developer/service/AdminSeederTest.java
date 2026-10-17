@@ -55,7 +55,7 @@ class AdminSeederTest {
     private static final Candidate BOB = new Candidate("bob@premisave.test", "Bob", "Otieno", PASSWORD);
 
     private AdminSeeder seeder(Candidate first, Candidate second) {
-        return new AdminSeeder(repo.repo, accounts, hasher, audit, 10, clock, first, second);
+        return new AdminSeeder(repo.repo, accounts, accountEmail, hasher, audit, 10, clock, first, second);
     }
 
     private Developer existing(String id, String email, DeveloperRole role) {
@@ -90,6 +90,46 @@ class AdminSeederTest {
     }
 
     @Test
+    void eachNewAdministratorIsEmailedThatTheAccountExistsWithoutAPassword() {
+        AdminSeeder.Result r = seeder(ANN, BOB).seed();
+        assertEquals(2, mailer.sent.size());
+        assertEquals(List.of("ann@premisave.test", "bob@premisave.test"), mailer.sent.stream().map(m -> m.to()).sorted().toList());
+        for (TestRepos.RecordingMailer.Sent m : mailer.sent) {
+            assertEquals("You are now a Premisave administrator", m.subject());
+            assertTrue(m.html().contains("Administrator"));
+            assertTrue(m.html().contains(m.to()));
+            assertFalse(m.html().contains(PASSWORD));
+        }
+        assertTrue(mailer.sent.stream().anyMatch(m -> m.html().contains("Hello Ann,")));
+        assertTrue(mailer.sent.stream().anyMatch(m -> m.html().contains("Hello Bob,")));
+        assertTrue(r.message().contains("An email was sent to each"));
+    }
+
+    @Test
+    void nothingIsEmailedWhenTheSeedIsSkippedOrInvalid() {
+        existing("dev_x", "someone@else.test", DeveloperRole.ADMIN);
+        seeder(ANN, BOB).seed();
+        seeder(new Candidate("", "", "", ""), BOB).seed();
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    @Test
+    void aMailServerThatIsDownDoesNotStopTheAccountsFromBeingCreated() {
+        mailer.fail = true;
+        assertEquals(Outcome.CREATED, seeder(ANN, BOB).seed().outcome());
+        assertEquals(2, repo.store.size());
+    }
+
+    @Test
+    void withNoMailServerTheLogSaysNoEmailWasSent() {
+        MailService off = new MailService(null, Runnable::run, false);
+        AccountEmailService quiet = new AccountEmailService(repo.repo, tokens, off, hasher, TestProps.mail(), 10, clock);
+        AdminSeeder.Result r = new AdminSeeder(repo.repo, accounts, quiet, hasher, audit, 10, clock, ANN, BOB).seed();
+        assertEquals(Outcome.CREATED, r.outcome());
+        assertTrue(r.message().contains("Mail is off"));
+    }
+
+    @Test
     void theCreationIsWrittenToTheAuditTrail() {
         seeder(ANN, BOB).seed();
         assertEquals(2, actions.store.size());
@@ -113,6 +153,14 @@ class AdminSeederTest {
         assertEquals(Outcome.ALREADY_THERE, r.outcome());
         assertEquals(1, repo.store.size());
         assertTrue(r.message().contains("1 administrator already exists"));
+    }
+
+    @Test
+    void onceAnAdministratorExistsEmptySettingsAreNotAnError() {
+        existing("dev_x", "someone@else.test", DeveloperRole.ADMIN);
+        AdminSeeder.Result r = seeder(new Candidate("", "", "", ""), new Candidate(null, null, null, null)).seed();
+        assertEquals(Outcome.ALREADY_THERE, r.outcome());
+        assertEquals(1, repo.store.size());
     }
 
     @Test
@@ -163,7 +211,7 @@ class AdminSeederTest {
                         throw e.getCause();
                     }
                 });
-        AdminSeeder.Result r = new AdminSeeder(racing, accounts, hasher, audit, 10, clock, ANN, BOB).seed();
+        AdminSeeder.Result r = new AdminSeeder(racing, accounts, accountEmail, hasher, audit, 10, clock, ANN, BOB).seed();
         assertEquals(Outcome.ALREADY_THERE, r.outcome());
         assertTrue(repo.store.isEmpty());
         assertTrue(actions.store.isEmpty());
@@ -171,7 +219,7 @@ class AdminSeederTest {
 
     @Test
     void theRunnerNeverLetsAFailureStopTheService() {
-        AdminSeeder broken = new AdminSeeder(null, accounts, hasher, audit, 10, clock, ANN, BOB);
+        AdminSeeder broken = new AdminSeeder(null, accounts, accountEmail, hasher, audit, 10, clock, ANN, BOB);
         broken.run(null);
         assertTrue(repo.store.isEmpty());
     }

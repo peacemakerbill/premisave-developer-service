@@ -272,7 +272,7 @@ Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expire
 
 ### 1.11 The emails the service sends
 
-Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all nine are in `email-previews/`; open them in a browser.
+Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all ten are in `email-previews/`; open them in a browser.
 
 | Email | When | Contains a link |
 |---|---|---|

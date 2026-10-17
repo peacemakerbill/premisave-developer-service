@@ -104,7 +104,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - A profile picture (JPEG, PNG or WebP, up to 5 MB) stored in Cloudinary, replaced by uploading a new one and removed on request
 
 **Account Emails**
-- Nine HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, password changed, the code that confirms a transfer, a notice to each account when a production app changes hands, and the mail check test message
+- Ten HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, password changed, the code that confirms a transfer, a notice to each account when a production app changes hands, the mail check test message, and a notice to each administrator created at startup
 - Sent in the background, so a slow mail server never slows an endpoint, and a mail failure never fails a request
 - Gmail works out of the box with an App Password; with no mail server configured the service sends nothing and still answers normally
 
@@ -610,7 +610,7 @@ Every path below works under both prefixes. `/api/v1/admin` takes the bearer tok
 Every account has a `role`: `DEVELOPER` (the default, also for accounts that existed before roles) or `ADMIN`. The role is read from the database on each request, so a demotion applies at once.
 
 - **First administrator.** Put the address in `DEVELOPER_ADMIN_EMAILS`. When that account signs in with a confirmed email address it becomes an `ADMIN`. Afterwards administrators grant and remove the role with `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in, so take it off the list when you demote that person.
-- **Two administrators at startup.** It is on by default (`DEVELOPER_SEED_ADMINS_ENABLED=false` switches it off). Fill in the `DEVELOPER_SEED_ADMIN1_*` and `DEVELOPER_SEED_ADMIN2_*` settings. At startup the service creates both accounts, active, with a confirmed address and the given password. If any administrator already exists, or either address is already used by an account, it logs that it skipped and creates nothing, so a restart never creates them twice and never touches an existing account. A missing or invalid setting also creates nothing and is logged with the name of the setting, unless an administrator already exists, in which case it skips quietly and the settings can be left empty. Neither case stops the service from starting. Passwords are hashed and never logged. Remove the passwords from `.env` once the accounts exist, and change them after the first sign in. The creation is written to the audit trail as the actor `startup-seed`.
+- **Two administrators at startup.** It is on by default (`DEVELOPER_SEED_ADMINS_ENABLED=false` switches it off). Fill in the `DEVELOPER_SEED_ADMIN1_*` and `DEVELOPER_SEED_ADMIN2_*` settings. At startup the service creates both accounts, active, with a confirmed address and the given password. If any administrator already exists, or either address is already used by an account, it logs that it skipped and creates nothing, so a restart never creates them twice and never touches an existing account. A missing or invalid setting also creates nothing and is logged with the name of the setting, unless an administrator already exists, in which case it skips quietly and the settings can be left empty. Neither case stops the service from starting. Each new administrator is emailed that the account exists and is shown the sign in address; the email never holds the password, and with mail off nothing is sent and the log says so. Passwords are hashed and never logged. Remove the passwords from `.env` once the accounts exist, and change them after the first sign in. The creation is written to the audit trail as the actor `startup-seed`.
 - **No lockout.** An administrator cannot change their own role, disable or delete their own account, and the last active administrator can never be demoted, disabled or deleted.
 - **Safe deletes.** A developer who still has apps, or who applied for a business, cannot be deleted; disable the account instead. An app is deleted only after the wallet service has been told it is closing.
 - **Audit.** Every admin change is written to the `admin_actions` collection with who did it, what, to what and when, and is searchable with `GET /admin/audit`. Calls made with the internal key are recorded as the actor `internal-key`.
@@ -787,7 +787,7 @@ To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_
 | Reset your password | A forgot-password request for an active account |
 | Your password was changed | After a password change or reset |
 
-The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all nine are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
+The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all ten are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
 
 <br/>
 
@@ -889,11 +889,11 @@ src/main/java/com/premisave/developer
 
 src/main/resources
 ├── application.yml
-└── email         # layout.html and the nine email bodies
+└── email         # layout.html and the ten email bodies
 
 postman           # Collection (101 requests) and local environment
 oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
-email-previews    # The nine emails rendered, open in a browser
+email-previews    # The ten emails rendered, open in a browser
 ```
 
 <br/>

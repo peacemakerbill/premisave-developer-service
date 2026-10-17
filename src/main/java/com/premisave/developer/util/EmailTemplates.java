@@ -105,6 +105,15 @@ public final class EmailTemplates {
         return new Message(subject, page("app-handed-over", v, subject, "The app now belongs to another developer account."));
     }
 
+    /** Sent to an administrator account created at startup. Holds no password: it says whom to ask, or offers a reset link. */
+    public static Message adminCreated(String name, String email, String portalUrl) {
+        Map<String, String> v = base(name, portalUrl);
+        v.put("email", email);
+        v.put("role", "Administrator");
+        String subject = "You are now a Premisave administrator";
+        return new Message(subject, page("admin-created", v, subject, "An administrator account was created for you."));
+    }
+
     /** The test message the mail check sends at startup, so a person sees what the service's emails look like. */
     public static Message mailCheck(String sentTo, String sentFrom, String server, Instant at, String portalUrl) {
         Map<String, String> v = base(null, portalUrl);

@@ -30,6 +30,29 @@ class EmailTemplatesTest {
     }
 
     @Test
+    void theAdministratorEmailGreetsByNameShowsTheSignInAddressAndHoldsNoPassword() {
+        EmailTemplates.Message m = EmailTemplates.adminCreated("Ann", "ann@premisave.test", PORTAL);
+        assertEquals("You are now a Premisave administrator", m.subject());
+        assertTrue(m.html().startsWith("<!DOCTYPE html>"));
+        assertTrue(m.html().contains("<title>" + m.subject() + "</title>"));
+        assertTrue(m.html().contains("Hello Ann,"));
+        assertTrue(m.html().contains("ann@premisave.test"));
+        assertTrue(m.html().contains("Administrator"));
+        assertTrue(m.html().contains("href=\"" + PORTAL + "\""));
+        assertTrue(m.html().contains("href=\"" + PORTAL + "/forgot-password\""));
+        assertTrue(m.html().contains("Your password is not in this email"));
+        assertFalse(m.html().contains("{{"));
+    }
+
+    @Test
+    void theAdministratorEmailEscapesTheNameAndAddress() {
+        EmailTemplates.Message m = EmailTemplates.adminCreated("<b>Ann</b>", "a&b@premisave.test", PORTAL);
+        assertFalse(m.html().contains("<b>Ann</b>"));
+        assertTrue(m.html().contains("&lt;b&gt;Ann&lt;/b&gt;"));
+        assertTrue(m.html().contains("a&amp;b@premisave.test"));
+    }
+
+    @Test
     void theMailCheckEmailShowsWhereItWentAndWhatToDoToStopIt() {
         EmailTemplates.Message m = EmailTemplates.mailCheck("jane@example.com", "noreply@premisave.com", "smtp.gmail.com:587",
                 Instant.parse("2026-10-18T08:05:00Z"), PORTAL);

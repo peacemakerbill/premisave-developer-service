@@ -188,6 +188,18 @@ public class AccountEmailService {
         }
     }
 
+    /** Tells an administrator account created at startup that it exists. Holds no password. Never throws. */
+    public void sendAdminCreated(Developer d) {
+        mail.later("administrator account email", () -> {
+            try {
+                EmailTemplates.Message m = EmailTemplates.adminCreated(greeting(d), d.getEmail(), config.portalBaseUrl());
+                mail.send(d.getEmail(), m.subject(), m.html(), null);
+            } catch (RuntimeException e) {
+                log.warn("Could not send the administrator email to developer {}: {}", d.getDeveloperId(), e.toString());
+            }
+        });
+    }
+
     /** Sent once the address is confirmed: what to do next. Never throws. */
     public void sendWelcome(Developer d) {
         mail.later("welcome email", () -> deliverWelcome(d));

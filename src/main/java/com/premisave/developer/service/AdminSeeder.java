@@ -35,8 +35,8 @@ import java.util.List;
  * an account that is already there. A setting that is missing or not valid is logged and nothing is created. Neither
  * outcome stops the service from starting.
  *
- * The accounts are active with a confirmed address and the password given in the settings. The password is hashed
- * before it is stored and is never written to the log.
+ * The accounts are active with a confirmed address and the password given in the settings, and each person is emailed that
+ * the account exists. The password is hashed before it is stored and is never written to the log or put in the email.
  */
 @Component("developerAdminSeeder")
 @ConditionalOnProperty(name = "developer.seed-admins.enabled", havingValue = "true")
@@ -56,6 +56,7 @@ public class AdminSeeder implements ApplicationRunner {
 
     private final DeveloperRepository developers;
     private final DeveloperService accounts;
+    private final AccountEmailService accountEmail;
     private final PasswordHasher hasher;
     private final AdminAudit audit;
     private final int passwordMinLength;
@@ -64,8 +65,8 @@ public class AdminSeeder implements ApplicationRunner {
     private final Candidate second;
 
     @Autowired
-    public AdminSeeder(DeveloperRepository developers, DeveloperService accounts, PasswordHasher hasher, AdminAudit audit,
-                       DeveloperProperties props,
+    public AdminSeeder(DeveloperRepository developers, DeveloperService accounts, AccountEmailService accountEmail,
+                       PasswordHasher hasher, AdminAudit audit, DeveloperProperties props,
                        @Value("${developer.seed-admins.first.email:}") String firstEmail,
                        @Value("${developer.seed-admins.first.first-name:}") String firstFirstName,
                        @Value("${developer.seed-admins.first.last-name:}") String firstLastName,
@@ -74,15 +75,16 @@ public class AdminSeeder implements ApplicationRunner {
                        @Value("${developer.seed-admins.second.first-name:}") String secondFirstName,
                        @Value("${developer.seed-admins.second.last-name:}") String secondLastName,
                        @Value("${developer.seed-admins.second.password:}") String secondPassword) {
-        this(developers, accounts, hasher, audit, props.security().passwordMinLength(), Clock.systemUTC(),
+        this(developers, accounts, accountEmail, hasher, audit, props.security().passwordMinLength(), Clock.systemUTC(),
                 new Candidate(firstEmail, firstFirstName, firstLastName, firstPassword),
                 new Candidate(secondEmail, secondFirstName, secondLastName, secondPassword));
     }
 
-    public AdminSeeder(DeveloperRepository developers, DeveloperService accounts, PasswordHasher hasher, AdminAudit audit,
-                       int passwordMinLength, Clock clock, Candidate first, Candidate second) {
+    public AdminSeeder(DeveloperRepository developers, DeveloperService accounts, AccountEmailService accountEmail,
+                       PasswordHasher hasher, AdminAudit audit, int passwordMinLength, Clock clock, Candidate first, Candidate second) {
         this.developers = developers;
         this.accounts = accounts;
+        this.accountEmail = accountEmail;
         this.hasher = hasher;
         this.audit = audit;
         this.passwordMinLength = passwordMinLength;
@@ -133,9 +135,12 @@ public class AdminSeeder implements ApplicationRunner {
         }
         for (Developer d : made) {
             audit.record(STARTUP, "DEVELOPER_CREATED", "DEVELOPER", d.getDeveloperId(), "role ADMIN, created at startup");
+            accountEmail.sendAdminCreated(d);
         }
         return report(Outcome.CREATED, "Admin seed: created 2 administrators, " + wanted.get(0).email() + " and "
-                + wanted.get(1).email() + ". Sign in and change the passwords.");
+                + wanted.get(1).email() + ". "
+                + (accountEmail.canSendEmail() ? "An email was sent to each. " : "Mail is off, so no email was sent. ")
+                + "Sign in and change the passwords.");
     }
 
     /** Fills wanted with the cleaned candidates, or returns what is wrong with the settings. */
