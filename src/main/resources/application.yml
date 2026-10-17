@@ -10,6 +10,13 @@ spring:
   data:
     mongodb:
       auto-index-creation: true
+  mail:
+    # Timeouts for the mail server, so a server that does not answer cannot hold a thread forever. These do not
+    # switch mail on: only spring.mail.host does that, and it is set in .env or the environment.
+    properties:
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developer}
 
@@ -66,6 +73,12 @@ developer:
     log-links: ${DEVELOPER_MAIL_LOG_LINKS:false}
     # Email the owner on every successful sign in, with the time, device and network address
     notify-sign-in: ${DEVELOPER_MAIL_NOTIFY_SIGN_IN:true}
+    # Checks the mail settings after the service has started and writes the result to the log: whether mail is on,
+    # whether the mail server accepts the login, and, if send-test-to is an address, sends one test email there.
+    # It never stops the service from starting. Turn it off once mail works.
+    startup-check:
+      enabled: ${DEVELOPER_MAIL_STARTUP_CHECK:false}
+      send-test-to: ${DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO:}
   oauth:
     # Exact portal addresses a provider may send people back to. Empty turns social sign in off for every provider.
     allowed-redirect-uris: ${DEVELOPER_OAUTH_REDIRECT_URIS:}

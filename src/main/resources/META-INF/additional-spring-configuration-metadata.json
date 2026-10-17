@@ -1,5 +1,37 @@
-{"properties": [{
-  "name": "developer.apps.sync-interval-ms",
-  "type": "java.lang.String",
-  "description": "A description for 'developer.apps.sync-interval-ms'"
-}]}
+{
+  "properties": [
+    {
+      "name": "developer.apps.sync-interval-ms",
+      "type": "java.lang.Long",
+      "description": "How often, in milliseconds, the service retries pushing app changes to the wallet service until it confirms them.",
+      "defaultValue": 30000
+    },
+    {
+      "name": "developer.mail.startup-check.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Check the mail settings after the service has started and log the result: whether mail is on, whether the mail server accepts the login, and, when send-test-to is set, send one test email. It never stops the service from starting.",
+      "defaultValue": false
+    },
+    {
+      "name": "developer.mail.startup-check.send-test-to",
+      "type": "java.lang.String",
+      "description": "Email address that receives one test email at every start while the startup check is enabled. Leave empty to send none.",
+      "defaultValue": ""
+    },
+    {
+      "name": "spring.mail.properties.mail.smtp.connectiontimeout",
+      "type": "java.lang.Integer",
+      "description": "Milliseconds to wait when connecting to the mail server before giving up. Jakarta Mail waits forever when this is not set."
+    },
+    {
+      "name": "spring.mail.properties.mail.smtp.timeout",
+      "type": "java.lang.Integer",
+      "description": "Milliseconds to wait for the mail server to answer once connected before giving up. Jakarta Mail waits forever when this is not set."
+    },
+    {
+      "name": "spring.mail.properties.mail.smtp.writetimeout",
+      "type": "java.lang.Integer",
+      "description": "Milliseconds to wait while sending data to the mail server before giving up. Jakarta Mail waits forever when this is not set."
+    }
+  ]
+}

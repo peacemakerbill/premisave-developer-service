@@ -548,6 +548,8 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `spring.mail.properties.mail.smtp.auth`, `...starttls.enable` | Set both to `true` for Gmail and most providers |
 | `DEVELOPER_MAIL_NOTIFY_SIGN_IN` | Email the owner on every sign in, default `true` |
 | `DEVELOPER_MAIL_LOG_LINKS` | Development only: write confirmation and reset links to the log when no mail server is set |
+| `DEVELOPER_MAIL_STARTUP_CHECK` | Check the mail settings at every start and log the result, default `false`. See [Email Setup](#email-setup) |
+| `DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO` | With the check on, also send one test email to this address at every start. Empty means none |
 | `DEVELOPER_OAUTH_REDIRECT_URIS` | Exact portal callback addresses, comma separated. Empty turns social sign in off |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign in |
 | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Facebook sign in |
@@ -586,6 +588,20 @@ Things to know:
 - Gmail sends as the signed-in account whatever `From` says, so keep `DEVELOPER_MAIL_FROM` equal to the username.
 - A personal Gmail account allows about 500 messages a day. That is enough for development but not for a launch. Use a transactional email service (any SMTP provider) in production.
 - For local work without a mail server, `DEVELOPER_MAIL_LOG_LINKS=true` writes the confirmation and reset links to the log. Links are credentials, so never use it in production.
+
+**Check mail at startup**
+
+Set `DEVELOPER_MAIL_STARTUP_CHECK=true` in `.env` and the service checks its mail settings every time it starts, a moment after it is ready, and writes the result to the log. Look for lines beginning `Mail check:`:
+
+| Log line | Meaning |
+|---|---|
+| `mail is OFF. Spring has no spring.mail.host` | Mail is not configured. Add `spring.mail.host=smtp.gmail.com` to `.env` and restart |
+| `mail is ON. Server smtp.gmail.com:587, user ..., password 16 characters` | Mail is configured. The password is never printed, only its length |
+| `the mail server accepted the login` | The username and App Password are right |
+| `the mail server did not accept the login` | Wrong username or password. For Gmail use the 16 character App Password |
+| `test email sent to ...` | A test email was sent. Check the inbox and the spam folder |
+
+To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO=you@example.com`. Clear it, or set the check to `false`, once mail works, or every start sends a message. The check runs in the background, so a slow mail server never delays startup, and nothing it finds stops the service from starting. Mail server connections also time out after 10 seconds. To run the same check as a test instead, see [Testing](#testing).
 
 **The emails**
 
@@ -636,6 +652,15 @@ mvn clean test
 ```
 
 The tests use fakes for the repositories and a local HTTP server standing in for the wallet, so they need no database and no network. This code base was compiled and its tests run only with `javac` against stubs, never with Maven or a real MongoDB, SMTP server, wallet or provider. Run this first on your machine.
+
+To check that email is really switched on in your setup, run the mail check. It starts the application, reads your `.env`, and reports whether `spring.mail.host` was picked up and whether the mail server accepts the login. It sends nothing unless you add an address, and it is skipped in a normal build:
+
+```bash
+mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true
+mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-to=you@example.com
+```
+
+In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
 For manual testing, import both files from `postman/` into Postman: the collection has 51 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
 
