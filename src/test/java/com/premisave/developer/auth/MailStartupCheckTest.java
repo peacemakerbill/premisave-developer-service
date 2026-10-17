@@ -95,14 +95,14 @@ class MailStartupCheckTest {
     @Test
     void anAddressSendsOneTestEmailFromTheMailUser() {
         FakeSender sender = new FakeSender();
-        MailStartupCheck.Result r = check(sender, " grahambill011@gmail.com ").run();
+        MailStartupCheck.Result r = check(sender, " tester@example.com ").run();
         assertEquals(MailStartupCheck.Outcome.TEST_SENT, r.outcome());
         assertEquals(1, sender.sent.size());
         SimpleMailMessage m = sender.sent.get(0);
-        assertEquals("grahambill011@gmail.com", m.getTo()[0]);
+        assertEquals("tester@example.com", m.getTo()[0]);
         assertEquals("me@gmail.com", m.getFrom());
         assertEquals("Premisave developer service: mail check", m.getSubject());
-        assertTrue(r.message().contains("grahambill011@gmail.com"));
+        assertTrue(r.message().contains("tester@example.com"));
     }
 
     @Test
