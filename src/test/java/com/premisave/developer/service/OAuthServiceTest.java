@@ -9,11 +9,9 @@ import com.premisave.developer.dto.ChangePasswordRequest;
 import com.premisave.developer.dto.LoginRequest;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.enums.ErrorCode;
-import com.premisave.developer.enums.OAuthProvider;
 import com.premisave.developer.exception.DeveloperException;
 import com.premisave.developer.model.Developer;
 import com.premisave.developer.security.JwtService;
-import com.premisave.developer.security.OAuthState;
 import com.premisave.developer.security.PasswordHasher;
 
 import org.junit.jupiter.api.Test;
@@ -34,8 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OAuthServiceTest {
 
-    private static final String URI = "https://portal.example.com/auth/callback";
-
     private final Instant now = Instant.parse("2026-10-16T08:00:00Z");
     private final Clock clock = new Clock() {
         @Override public ZoneId getZone() { return ZoneOffset.UTC; }
@@ -55,25 +51,34 @@ class OAuthServiceTest {
     private final DeveloperService accounts = new DeveloperService(devs.repo, hasher, jwt, TestProps.fastSecurity(),
             revoked.repo, accountEmail, clock);
     private final FakeTransport http = new FakeTransport();
-    private final OAuthState states = new OAuthState(TestProps.JWT_SECRET, 10, clock);
-    private final OAuthService service = new OAuthService(new OAuthClient(OAuthClientTest.config(), http), states,
-            ids.repo, devs.repo, accounts, accountEmail, OAuthClientTest.config(), clock);
+    private final OAuthService service = new OAuthService(new OAuthClient(OAuthClientTest.config(), http),
+            ids.repo, devs.repo, accounts, accountEmail, clock);
 
+    /** Google says this ID token belongs to the given person. */
     private void google(String sub, String email, boolean verified, String name) {
-        http.on("https://oauth2.googleapis.com/token", 200, "{\"access_token\":\"t\"}")
-            .on("https://openidconnect.googleapis.com/", 200, "{\"sub\":\"" + sub + "\",\"name\":" + (name == null ? "null" : "\"" + name + "\"")
-                    + ",\"email\":" + (email == null ? "null" : "\"" + email + "\"") + ",\"email_verified\":" + verified + "}");
+        http.on("https://oauth2.googleapis.com/tokeninfo", 200, "{\"aud\":\"gid\",\"iss\":\"https://accounts.google.com\",\"sub\":\"" + sub
+                + "\",\"name\":" + (name == null ? "null" : "\"" + name + "\"")
+                + ",\"email\":" + (email == null ? "null" : "\"" + email + "\"") + ",\"email_verified\":\"" + verified + "\"}");
     }
 
+    /** Facebook says this access token was issued to this app for the given person. */
     private void facebook(String id, String email) {
-        http.on("https://graph.facebook.com/v21.0/oauth/access_token", 200, "{\"access_token\":\"t\"}")
+        http.on("https://graph.facebook.com/v21.0/debug_token", 200,
+                    "{\"data\":{\"app_id\":\"fid\",\"is_valid\":true,\"user_id\":\"" + id + "\"}}")
             .on("https://graph.facebook.com/v21.0/me", 200, "{\"id\":\"" + id + "\",\"name\":\"Fb User\""
                     + (email == null ? "" : ",\"email\":\"" + email + "\"") + "}");
     }
 
+    /** GitHub trades the code and reports this person, with this address verified. */
+    private void github(String id, String login, String email) {
+        http.on("https://github.com/login/oauth/access_token", 200, "{\"access_token\":\"gho_t\"}")
+            .on("https://api.github.com/user/emails", 200, email == null ? "[]"
+                    : "[{\"email\":\"" + email + "\",\"primary\":true,\"verified\":true}]")
+            .on("https://api.github.com/user", 200, "{\"id\":" + id + ",\"login\":\"" + login + "\",\"name\":null}");
+    }
+
     private Map<String, Object> signIn(String provider) {
-        String state = states.create(OAuthProvider.parse(provider), URI);
-        return service.callback(provider, "code-1", state, URI);
+        return service.signIn(provider, "token-1", null);
     }
 
     @SuppressWarnings("unchecked")
@@ -97,48 +102,88 @@ class OAuthServiceTest {
     // ---- the way in
 
     @Test
-    void theProviderListShowsOnlyWhatIsSwitchedOn() {
-        assertEquals(java.util.List.of("google", "facebook", "github"), service.providers().get("providers"));
+    @SuppressWarnings("unchecked")
+    void theProviderListShowsWhatIsSwitchedOnWithPublicClientIdsOnly() {
+        Map<String, Object> out = service.providers();
+        assertEquals(java.util.List.of("google", "facebook", "github"), out.get("providers"));
+        Map<String, Object> ids = (Map<String, Object>) out.get("clientIds");
+        assertEquals("gid", ids.get("google"));
+        assertEquals("fid", ids.get("facebook"));
+        assertEquals("hid", ids.get("github"));
+        assertFalse(out.toString().contains("secret"));
     }
 
     @Test
-    void authorizeGivesAnAddressAndAStateBoundToTheReturnAddress() {
-        Map<String, Object> out = service.authorize("google", URI);
-        assertEquals("google", out.get("provider"));
-        String url = (String) out.get("authorizationUrl");
-        String state = (String) out.get("state");
-        assertTrue(url.contains("state=" + java.net.URLEncoder.encode(state, java.nio.charset.StandardCharsets.UTF_8)));
-        states.verify(state, OAuthProvider.GOOGLE, URI);
+    @SuppressWarnings("unchecked")
+    void anUnknownOrSwitchedOffProviderIsRefused() {
+        assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> service.signIn("myspace", "t", null)).code());
+        OAuthService off = new OAuthService(new OAuthClient(new com.premisave.developer.config.DeveloperProperties.OAuth(null, null, null), http),
+                ids.repo, devs.repo, accounts, accountEmail, clock);
+        for (String p : new String[] {"google", "facebook", "github"}) {
+            assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> off.signIn(p, "t", null)).code());
+        }
+        assertEquals(java.util.List.of(), off.providers().get("providers"));
+        assertTrue(((Map<String, Object>) off.providers().get("clientIds")).isEmpty());
+        assertTrue(http.calls.isEmpty());
     }
 
     @Test
-    void aReturnAddressThatIsNotListedIsRefused() {
-        for (String bad : new String[] {"https://evil.example.com/cb", URI + "/", "http://portal.example.com/auth/callback", "", null}) {
-            DeveloperException e = assertThrows(DeveloperException.class, () -> service.authorize("google", bad));
+    void aBlankTokenIsRefusedBeforeTheProviderIsContacted() {
+        for (String bad : new String[] {null, "", "   "}) {
+            DeveloperException e = assertThrows(DeveloperException.class, () -> service.signIn("google", bad, null));
             assertEquals(ErrorCode.VALIDATION_FAILED, e.code());
         }
-        String state = states.create(OAuthProvider.GOOGLE, "https://evil.example.com/cb");
-        assertEquals(ErrorCode.VALIDATION_FAILED,
-                assertThrows(DeveloperException.class, () -> service.callback("google", "c", state, "https://evil.example.com/cb")).code());
         assertTrue(http.calls.isEmpty());
     }
 
     @Test
-    void anUnknownOrSwitchedOffProviderIsRefused() {
-        assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> service.authorize("myspace", URI)).code());
-        OAuthService off = new OAuthService(new OAuthClient(new com.premisave.developer.config.DeveloperProperties.OAuth(null, null, null,
-                java.util.List.of(URI), null), http), states, ids.repo, devs.repo, accounts, accountEmail,
-                new com.premisave.developer.config.DeveloperProperties.OAuth(null, null, null, java.util.List.of(URI), null), clock);
-        assertEquals(ErrorCode.OAUTH_NOT_CONFIGURED, assertThrows(DeveloperException.class, () -> off.authorize("google", URI)).code());
-        assertEquals(java.util.List.of(), off.providers().get("providers"));
+    void aTokenTheProviderDoesNotAcceptCreatesNothing() {
+        http.on("https://oauth2.googleapis.com/tokeninfo", 400, "{\"error\":\"invalid_token\"}");
+        assertEquals(ErrorCode.OAUTH_FAILED, assertThrows(DeveloperException.class, () -> signIn("google")).code());
+        assertTrue(devs.store.isEmpty());
+        assertTrue(ids.store.isEmpty());
     }
 
     @Test
-    void aBadStateIsRefusedBeforeTheProviderIsContacted() {
-        String other = states.create(OAuthProvider.GITHUB, URI);
-        assertEquals(ErrorCode.OAUTH_FAILED, assertThrows(DeveloperException.class, () -> service.callback("google", "c", other, URI)).code());
-        assertEquals(ErrorCode.OAUTH_FAILED, assertThrows(DeveloperException.class, () -> service.callback("google", "c", "forged", URI)).code());
-        assertTrue(http.calls.isEmpty());
+    void aGoogleTokenIssuedToAnotherClientCreatesNothing() {
+        http.on("https://oauth2.googleapis.com/tokeninfo", 200, "{\"aud\":\"someone-elses\",\"iss\":\"accounts.google.com\",\"sub\":\"1\","
+                + "\"email\":\"a@b.com\",\"email_verified\":\"true\"}");
+        assertEquals(ErrorCode.OAUTH_FAILED, assertThrows(DeveloperException.class, () -> signIn("google")).code());
+        assertTrue(devs.store.isEmpty());
+    }
+
+    @Test
+    void theTokenIsTrimmedBeforeItIsSentToTheProvider() {
+        google("g-1", "jane@gmail.com", true, "Jane Doe");
+        service.signIn("google", "  the.id.token \n", null);
+        assertEquals("https://oauth2.googleapis.com/tokeninfo?id_token=the.id.token", http.calls.get(0).url());
+    }
+
+    @Test
+    void githubSignInTradesTheCodeAndCreatesAConfirmedAccount() {
+        github("583231", "octocat", "Octo@Example.com");
+        Map<String, Object> s = service.signIn("github", "the-code", "http://localhost:3000/social-login-test.html");
+        assertEquals(true, s.get("newAccount"));
+        assertEquals("github", s.get("provider"));
+        Map<String, Object> dev = developerOf(s);
+        assertEquals("octo@example.com", dev.get("email"));
+        assertEquals("ACTIVE", dev.get("status"));
+        assertEquals(true, dev.get("emailVerified"));
+        assertEquals(java.util.List.of("github"), dev.get("providers"));
+        assertTrue(ids.store.containsKey("github:583231"));
+        assertEquals("http://localhost:3000/social-login-test.html", http.calls.get(0).form().get("redirect_uri"));
+    }
+
+    @Test
+    void theSamePersonCanSignInWithEachProviderAndKeepsOneAccountWhenTheAddressMatches() {
+        google("g-1", "jane@example.com", true, "Jane Doe");
+        String id = (String) developerOf(signIn("google")).get("developerId");
+        github("77", "janedoe", "jane@example.com");
+        Map<String, Object> viaGithub = service.signIn("github", "code", null);
+        assertEquals(false, viaGithub.get("newAccount"));
+        assertEquals(id, developerOf(viaGithub).get("developerId"));
+        assertEquals(java.util.List.of("github", "google"), developerOf(viaGithub).get("providers"));
+        assertEquals(1, devs.store.size());
     }
 
     // ---- a new person
@@ -287,8 +332,8 @@ class OAuthServiceTest {
 
     @Test
     void aSubjectMissingFromTheProfileIsRefused() {
-        http.on("https://oauth2.googleapis.com/token", 200, "{\"access_token\":\"t\"}")
-            .on("https://openidconnect.googleapis.com/", 200, "{\"email\":\"a@b.com\",\"email_verified\":true}");
+        http.on("https://oauth2.googleapis.com/tokeninfo", 200, "{\"aud\":\"gid\",\"iss\":\"accounts.google.com\","
+                + "\"email\":\"a@b.com\",\"email_verified\":\"true\"}");
         assertEquals(ErrorCode.OAUTH_FAILED, assertThrows(DeveloperException.class, () -> signIn("google")).code());
     }
 

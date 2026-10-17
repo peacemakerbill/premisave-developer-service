@@ -128,9 +128,8 @@ Developer service (`developer.*`):
 | `mail.log-links` | `DEVELOPER_MAIL_LOG_LINKS` | false | Development only, links are credentials |
 | `mail.notify-sign-in` | `DEVELOPER_MAIL_NOTIFY_SIGN_IN` | true | Email the owner on every successful sign in |
 | `spring.mail.*` | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | host `smtp.gmail.com`, port `587`, username and password empty | An empty username means no email is sent. Same capital-letter style as the wallet. `DEVELOPER_MAIL_STARTUP_CHECK=true` logs whether mail works at every start |
-| `oauth.allowed-redirect-uris` | `DEVELOPER_OAUTH_REDIRECT_URIS` | empty | Exact portal callback addresses. Empty turns social sign in off |
-| `oauth.state-ttl-minutes` | none | 10 | |
-| `oauth.google`, `facebook`, `github` `.client-id`, `.client-secret` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_*`, `GITHUB_*` | empty | A provider is on with both set. `authorize-url`, `token-url`, `user-info-url` (and `emails-url` for GitHub) can be overridden |
+| `oauth.google.client-id` | `GOOGLE_CLIENT_ID` | empty | Google is on with the client ID alone, because ID tokens are checked against Google and this ID |
+| `oauth.facebook`, `oauth.github` `.client-id`, `.client-secret` | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | empty | A provider is on with both set. `verify-url`, `token-url`, `user-info-url` (and `emails-url` for GitHub) can be overridden |
 | server port | `SERVER_PORT` | 8091 | |
 | database | `MONGODB_URI` | `mongodb://localhost:27017/premisave_developer` | A separate database from the wallet |
 
@@ -167,16 +166,16 @@ How it works:
 * **Mail login as pasted.** Quotes round `spring.mail.username` or `spring.mail.password`, and the spaces of a Google App Password (16 lower case letters in groups of four), are removed before the SMTP login (`MailCredentials`, applied by a bean post processor on the mail sender). Other passwords are used exactly as written.
 * **Mail check at startup.** With `developer.mail.startup-check.enabled=true` (env `DEVELOPER_MAIL_STARTUP_CHECK`) a background thread runs after startup, logs whether mail is on, logs in to the mail server without sending, and when `send-test-to` is an address sends one test email. It never stops startup and never logs the password. SMTP connect, read and write timeouts are 10 seconds.
 * **Business gate.** Creating a business needs a confirmed email (`developer.mail.require-verified-for-business`, default true), because the business is a legal entity that will receive payments and staff will contact the address.
-* **Social sign in.** Authorization code flow on the JDK HTTP client, no extra libraries. The state is a signed value (HMAC, key derived from the JWT secret but separate from it) holding the provider, a hash of the redirect address, a random nonce and an expiry, so no server side session is needed and it works across instances. The redirect address must be in an allow list. Account matching follows the table in `DEVELOPER_API.md` 1.9; the central rule is that an existing account is only joined when the provider vouches for the address, and an unconfirmed local account loses its password when it is joined, because whoever typed that password never proved they own the mailbox.
+* **Social sign in.** One endpoint per provider (`/api/v1/auth/social/google`, `/facebook`, `/github`), each taking a JSON `{ token }`, on the JDK HTTP client with no extra libraries. The browser makes the provider token: a Google ID token, a Facebook user access token, or a GitHub one-time code (a browser cannot get a GitHub access token without the client secret, so this service trades the code). Nothing is trusted without a provider check: Google's token info must show this service's client ID as the audience, Facebook's `debug_token` must show the token is valid for this app and belongs to the profile read with it, and GitHub's trade uses the secret held here. No state is kept on the server, so there is no redirect allow list and it works across instances. Account matching follows the table in `DEVELOPER_API.md` 1.9; the central rule is that an existing account is only joined when the provider vouches for the address, and an unconfirmed local account loses its password when it is joined, because whoever typed that password never proved they own the mailbox.
 
 Known gaps:
 
 * `GET /api/v1/me/username-available` needs a sign in but has no rate limit of its own, so a signed in developer could probe many usernames. Limit it at the gateway.
-* No per IP rate limit on the sign in, sign up, forgot password and callback endpoints. Put a limit at the gateway. Accounts are protected by the lockout and the per account link limits, not by source address.
+* No per IP rate limit on the sign in, sign up, forgot password and social sign in endpoints. Put a limit at the gateway. Accounts are protected by the lockout and the per account link limits, not by source address.
 * A reset request for a known address does a database insert that an unknown address does not, so a very precise timer could tell them apart. The answer, status and body are identical.
 * Links carry the token in the query string. The portal must remove it from the address bar and send `Referrer-Policy: no-referrer` (`DEVELOPER_API.md` 1.10).
 * A provider cannot be linked from inside a signed in account. A Facebook address that matches an existing account is refused instead of linked, and the developer signs in the old way. Linking from account settings would fix that.
-* The state is not tied to the browser by a cookie; the portal must compare it with the value it stored. No PKCE.
+* The GitHub login runs in the portal, so the portal must make and compare its own `state` value. This service never sees it.
 * Emails are HTML files under `src/main/resources/email/` filled by a small placeholder replacer (escaped values, one pass). There is no template engine, no localisation and no plain text alternative part.
 * Facebook's Graph API version is pinned in the default endpoint addresses (`v21.0`). I could not confirm that this is Facebook's current version, so check it and override the three addresses if needed.
 

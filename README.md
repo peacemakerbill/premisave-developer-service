@@ -126,7 +126,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 **Platform Concerns**
 - One response envelope everywhere and an `X-Request-Id` header on every response
 - Staff endpoints to suspend an app or disable a developer
-- Postman collection with 53 requests, ready to import
+- Postman collection with 54 requests, ready to import
 
 <br/>
 
@@ -256,25 +256,20 @@ sequenceDiagram
     participant X as Google / Facebook / GitHub
     participant M as MongoDB
 
-    P->>S: GET /api/v1/auth/oauth/providers
-    S-->>P: The providers that are configured
+    P->>S: GET /api/v1/auth/social/providers
+    S-->>P: Providers that are on and their public client IDs
     D->>P: Click Continue with Google
-    P->>S: GET /api/v1/auth/oauth/google/authorize?redirectUri=...
-    S-->>P: authorizationUrl and a signed state
-    P->>X: Send the browser to authorizationUrl
+    P->>X: Start the provider login in the browser
     D->>X: Approve access
-    X-->>P: Back to redirectUri with code and state
-    P->>P: Compare state with the stored value
-    P->>S: POST /api/v1/auth/oauth/google/callback with code, state, redirectUri
-    S->>X: Exchange the code for an access token (client secret stays here)
-    X-->>S: Access token
-    S->>X: Fetch profile and email
-    X-->>S: Profile and email
+    X-->>P: Google ID token, Facebook access token or GitHub one-time code
+    P->>S: POST /api/v1/auth/social/google with { token }
+    S->>X: Check the token (GitHub: trade the code, client secret stays here)
+    X-->>S: Who the token belongs to, with the email
     S->>M: Match or create the account
     S-->>P: 200 session, newAccount, provider
 ```
 
-An existing account is joined only when the provider vouches for the email address (Google and GitHub do, Facebook does not). The full matching table is in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
+Each provider has its own endpoint, and the body is JSON with the token the browser got. Google sends an ID token, Facebook a user access token, and GitHub a one-time code (a browser cannot get a GitHub access token without the client secret, so this service trades the code). An existing account is joined only when the provider vouches for the email address (Google and GitHub do, Facebook does not). The full matching table is in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
 
 ### Logout and Token Revocation
 
@@ -414,9 +409,10 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | POST | `/api/v1/auth/resend-verification` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Ask for a new confirmation email |
 | POST | `/api/v1/auth/forgot-password` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Start a password reset |
 | POST | `/api/v1/auth/reset-password` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Complete a password reset |
-| GET | `/api/v1/auth/oauth/providers` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Providers that are configured |
-| GET | `/api/v1/auth/oauth/{provider}/authorize` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Get the provider sign in address and state |
-| POST | `/api/v1/auth/oauth/{provider}/callback` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Finish a Google, Facebook or GitHub sign in |
+| GET | `/api/v1/auth/social/providers` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Providers that are on, with their public client IDs |
+| POST | `/api/v1/auth/social/google` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a Google ID token: `{ "token": "..." }` |
+| POST | `/api/v1/auth/social/facebook` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a Facebook access token: `{ "token": "..." }` |
+| POST | `/api/v1/auth/social/github` | ![Public](https://img.shields.io/badge/-Public-4CAF50?style=flat-square) | Sign up or sign in with a GitHub code: `{ "token": "<code>", "redirectUri": "..." }` |
 
 **Account** — `/api/v1/me`
 
@@ -559,10 +555,9 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO` | With the check on, also send one test email to this address at every start. Empty means none |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Where profile pictures are stored, from the Cloudinary dashboard. With any of them empty, profile pictures are off and the rest of the service works. See [Profile Pictures](#profile-pictures) |
 | `CLOUDINARY_FOLDER`, `CLOUDINARY_MAX_BYTES` | Folder for the pictures (default `premisave/developers`) and the largest picture accepted (default 5 MB, never more than 10 MB) |
-| `DEVELOPER_OAUTH_REDIRECT_URIS` | Exact portal callback addresses, comma separated. Empty turns social sign in off |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign in |
-| `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Facebook sign in |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign in |
+| `GOOGLE_CLIENT_ID` | Google sign in. Only the client ID is needed, because Google ID tokens are checked against Google and this ID |
+| `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Facebook sign in. Both are needed, to ask Facebook which app a token was issued to |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign in. Both are needed, to trade the one-time code for an access token |
 
 Further tuning is in `application.yml` under `developer.*`: token lifetime (`developer.jwt.access-ttl-minutes`, 60), key rotation grace (`developer.keys.rotation-grace-hours`, 24), rate limit (`developer.proxy.rate-limit-per-minute`, 600), apps per environment (10), keys per app (5), lockout (5 failures, 15 minutes), password length (10), link lifetimes (24 hours and 60 minutes) and the app sync interval (30 seconds).
 
@@ -654,43 +649,44 @@ The emails are HTML files in `src/main/resources/email/` (`layout.html` is the f
 
 ## Social Sign In Setup
 
-Google, Facebook and GitHub follow one pattern. The portal asks this service for an authorization address, sends the browser to the provider, and posts the returned `code` back to this service, which exchanges it using the client secret and returns its own JWT. The secrets never reach the browser.
+Each provider has its own endpoint that takes a JSON body with the token, so the browser (or the test page) does the provider login and this service only checks the result:
 
-A provider is on when it has both a client ID and a secret. Nothing works until `DEVELOPER_OAUTH_REDIRECT_URIS` lists the exact portal addresses the provider may send people back to, for example:
+| Provider | Endpoint | Body | What the browser gets |
+|---|---|---|---|
+| Google | `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | An ID token from Google Identity Services |
+| Facebook | `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | A user access token from the Facebook SDK |
+| GitHub | `POST /api/v1/auth/social/github` | `{ "token": "<code>", "redirectUri": "<callback URL>" }` | A one-time code from the GitHub redirect |
 
-```properties
-DEVELOPER_OAUTH_REDIRECT_URIS=http://localhost:3000/auth/callback/google,http://localhost:3000/auth/callback/facebook,http://localhost:3000/auth/callback/github
-```
+GitHub differs because a browser cannot get an access token without the client secret. The browser gets a one-time code and this service trades it. The secrets never reach the browser, and no provider access token is stored.
 
-Register the same addresses with each provider. There are no wildcards, and the address sent at the start must match the one sent at the end exactly.
+A provider is on when it has what it needs: Google needs the client ID, Facebook and GitHub need the client ID and the secret. The client IDs are public, and `GET /api/v1/auth/social/providers` returns them so a portal needs no ID of its own. There is no redirect allow list to configure. The portal's origin only has to be in `DEVELOPER_PORTAL_ORIGINS` so the browser may call these endpoints.
 
 | Provider | Create the app in | Scopes requested | `.env` values |
 |---|---|---|---|
-| Google | Google Cloud console, APIs and Services, Credentials, OAuth client ID of type **Web application** | `openid email profile` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| Google | Google Cloud console, APIs and Services, Credentials, OAuth client ID of type **Web application** | `openid email profile` | `GOOGLE_CLIENT_ID` |
 | Facebook | Meta for Developers, an app with the Facebook Login use case | `email,public_profile` | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` |
 | GitHub | GitHub, Settings, Developer settings, OAuth Apps | `read:user user:email` | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
 
 Notes per provider:
 
-- **Google.** Add each callback address under **Authorized redirect URIs**. While the consent screen is in Testing, add the accounts you sign in with under Test users.
-- **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. A first Facebook sign in creates the account as `PENDING`, sends the confirmation link and answers `403 ACCOUNT_PENDING` with no session; the developer signs in with Facebook again after opening the link. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.authorize-url`, `token-url` and `user-info-url` if needed.
-- **GitHub.** Set the Authorization callback URL to the portal address. Only verified addresses from the account's email list are used, with the primary one preferred.
+- **Google.** Add the portal origin, for example `http://localhost:3000`, under **Authorized JavaScript origins**. No redirect address is needed. The service accepts an ID token only when Google says it was issued to `GOOGLE_CLIENT_ID`. While the consent screen is in Testing, add the accounts you sign in with under Test users.
+- **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. A first Facebook sign in creates the account as `PENDING`, sends the confirmation link and answers `403 ACCOUNT_PENDING` with no session; the developer signs in with Facebook again after opening the link. The service asks Facebook's `debug_token` endpoint whether the token is valid and was issued to this app, so a token from another app is refused. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.verify-url` and `user-info-url` if needed.
+- **GitHub.** Set the Authorization callback URL to the page that receives the code, for example `http://localhost:3000/social-login-test.html`. Start the login with that same address as `redirect_uri` and send it as `redirectUri` in the body. Only verified addresses from the account's email list are used, with the primary one preferred.
 
-The check for a working setup is `GET /api/v1/auth/oauth/providers`, which lists the providers that are on. The full flow, matching rules and error codes are in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
+The check for a working setup is `GET /api/v1/auth/social/providers`, which lists the providers that are on. The full flow, matching rules and error codes are in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
 
 ### Trying It in a Browser
 
-The `oauth-test` folder holds a single page, `social-login-test.html`, that runs the whole flow against this service so you can test Google, Facebook and GitHub sign up and sign in without building the portal first. It needs no client ID or secret, because those stay in `.env`. It asks `GET /api/v1/auth/oauth/providers` which providers are on and enables only those buttons.
+The `oauth-test` folder holds a single page, `social-login-test.html`, that gets the token from each provider in the browser and sends it to the matching endpoint, so you can test Google, Facebook and GitHub sign up and sign in without building the portal first. It needs no client ID or secret of its own: it asks `GET /api/v1/auth/social/providers` which providers are on and which public client IDs to use, and enables only those buttons.
 
-1. Add the page's return address and origin to `.env`, then restart the service:
+1. Add the page's origin to `.env`, together with the provider values from the previous section, then restart the service:
 
 ```properties
-DEVELOPER_OAUTH_REDIRECT_URIS=http://localhost:3000/social-login-test.html
 DEVELOPER_PORTAL_ORIGINS=http://localhost:3000
 ```
 
-2. Register `http://localhost:3000/social-login-test.html` as the redirect or callback address in the Google, Facebook and GitHub consoles. It must match character for character.
-3. Serve the folder and open the page. Opening the file directly does not work, because the providers need a real address to send people back to:
+2. In the provider consoles, add `http://localhost:3000` as an Authorized JavaScript origin for Google, and register `http://localhost:3000/social-login-test.html` as the Authorization callback URL for GitHub. It must match character for character. Facebook needs nothing extra beyond a development-mode app and an admin or tester account.
+3. Serve the folder and open the page. Opening the file directly does not work, because the providers need a real origin:
 
 ```bash
 cd oauth-test
@@ -699,7 +695,7 @@ python3 -m http.server 3000
 
 Then open `http://localhost:3000/social-login-test.html`.
 
-The page has two modes. **Sign in to Premisave** runs the flow to the end, shows the access token and the developer that came back, and lets you call `GET /api/v1/me` and `POST /api/v1/me/logout`. **Get the code only** stops when the provider returns, and shows the code and state with a ready request body for `POST /api/v1/auth/oauth/{provider}/callback`, so you can send it from Postman. A code works once. If the state the provider returns is not the one this service issued, the page refuses it, which is the check the portal must also make.
+The page has two modes. **Sign in to Premisave** runs the flow to the end, shows the access token and the developer that came back, and lets you call `GET /api/v1/me` and `POST /api/v1/me/logout`. **Get the token only** stops when the provider returns, and shows the token with a ready request body, so you can send it from Postman (the collection has one request per provider, using the variables `google_id_token`, `facebook_access_token` and `github_code`). Provider tokens expire quickly, and a GitHub code works once. If the browser blocks the Facebook login popup on an http page, create a user token in the Graph API Explorer with the email permission and paste it into the page.
 
 Run the first sign in with a new email to see the account created, then run it again to see the same account signed in. Check `newAccount` and `status` in the result.
 
@@ -722,7 +718,7 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
-For manual testing, import both files from `postman/` into Postman: the collection has 53 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
+For manual testing, import both files from `postman/` into Postman: the collection has 54 requests grouped as account, email and password, social sign in, onboarding, apps, API keys, the public API and the admin API.
 
 To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-test`. See [Trying It in a Browser](#trying-it-in-a-browser).
 
@@ -741,7 +737,7 @@ src/main/java/com/premisave/developer
 ├── dto           # Request bodies, the response envelope, and small value types passed between layers
 ├── view          # Turns models into the maps the API returns (developer, app, key, page)
 ├── client        # Calls to other systems: the wallet, sign in providers, Cloudinary, SMTP, and the HTTP transports
-├── security      # Password hashing, JWT, OAuth state, the rate limiter, the two interceptors
+├── security      # Password hashing, JWT, the rate limiter, the two interceptors
 ├── config        # Properties (developer.*), web and security beans, mail and picture storage wiring
 ├── filter        # The request id filter
 ├── exception     # DeveloperException and the global error handler
@@ -751,7 +747,7 @@ src/main/resources
 ├── application.yml
 └── email         # layout.html and the five email bodies
 
-postman           # Collection (53 requests) and local environment
+postman           # Collection (54 requests) and local environment
 oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
 email-previews    # The five emails rendered, open in a browser
 ```
@@ -765,7 +761,7 @@ email-previews    # The five emails rendered, open in a browser
 - **API secrets are shown once.** Only a keyed hash (HMAC-SHA256 with the pepper) and the last characters for display are stored. Secret and internal key comparisons are constant time, and unknown keys cost one hash so timing does not reveal which keys exist.
 - **Email links are single use.** A link carries 32 random bytes, only a keyed hash is stored, and redeeming deletes the row in one atomic step, so two requests cannot both succeed with one link.
 - **No account enumeration by answer.** Forgot password, resend confirmation and sign in give the same answer for known and unknown emails.
-- **A tamper-proof OAuth state.** It is signed, expires after 10 minutes, and is bound to the provider and the redirect address. Redirect addresses must be on an allow list, provider replies are capped at 256 KB, redirects are not followed, and calls time out after 10 seconds.
+- **Tokens are checked, never trusted.** A Google ID token must be issued by Google to this service's client ID. A Facebook token must be valid for this app and belong to the profile it returns. A GitHub code is traded with the secret held here. Provider replies are capped at 256 KB, redirects are not followed, calls time out after 10 seconds, and the provider's access token is used once and not stored.
 - **Safe account joining.** A social sign in joins an existing account only when the provider vouches for the email. If that account never confirmed its address, its password is removed and its sessions end, because whoever typed that password never proved they own the mailbox.
 - **Strict public path handling.** `/v1` refuses dot segments, encoded dots and slashes, backslashes, semicolons, whitespace and control characters, caps bodies at 1 MB, forwards a small allow list of headers, and never forwards the client's credentials.
 - **Usernames and profile text are checked.** ASCII-only usernames defeat look-alike letters, brand names are blocked through separators, and free text refuses `<`, `>` and control characters. Values placed in emails are HTML-escaped.
@@ -802,10 +798,10 @@ If your Mongo user cannot create indexes, create these by hand. The wallet guara
 ## Known Gaps
 
 - `GET /api/v1/me/username-available` needs a sign in but has no rate limit of its own. Limit it at the gateway.
-- There is no per-IP rate limit on sign in, sign up, forgot password and the OAuth callback. Put one at the gateway. Accounts are protected by lockout and per-account link limits, not by source address.
+- There is no per-IP rate limit on sign in, sign up, forgot password and the social sign in endpoints. Put one at the gateway. Accounts are protected by lockout and per-account link limits, not by source address.
 - Event and webhook delivery to merchant URLs is not built yet. Leave the wallet's `DEVELOPER_SERVICE_URL` empty so events wait in its outbox.
 - A provider cannot be linked from inside a signed-in account yet.
-- The OAuth state is not tied to the browser by a cookie, so the portal must compare it with the value it stored. There is no PKCE.
+- The GitHub login runs in the portal, so the portal must make and compare its own `state` value, as the test page does. This service never sees it.
 - Emails have no plain-text part and no localisation. They were checked in a Chromium-based browser only, so Outlook on desktop will show them plainer and without dark mode.
 - Nothing has been run against a real MongoDB, SMTP server, provider or wallet, and Maven has not been run on this code. See [Testing](#testing).
 

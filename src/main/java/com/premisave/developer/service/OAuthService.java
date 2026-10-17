@@ -13,7 +13,6 @@ import com.premisave.developer.model.Developer;
 import com.premisave.developer.model.OAuthIdentity;
 import com.premisave.developer.repository.DeveloperRepository;
 import com.premisave.developer.repository.OAuthIdentityRepository;
-import com.premisave.developer.security.OAuthState;
 import com.premisave.developer.util.Ids;
 import com.premisave.developer.util.PersonNames;
 
@@ -30,8 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Sign up and sign in with Google, Facebook or GitHub. One flow serves both: a returning identity signs in, a new
- * address creates an account.
+ * Sign up and sign in with Google, Facebook or GitHub. The browser gets the provider's token (or, for GitHub, its one
+ * time code) and posts it here. One flow serves both: a returning identity signs in, a new address creates an account.
  *
  * An existing account is joined to a provider only when the provider vouches for the address. If that account was
  * created with a password and never confirmed, the password is removed at the same time, so whoever typed the address
@@ -42,69 +41,63 @@ import java.util.Optional;
 public class OAuthService {
 
     private final OAuthClient client;
-    private final OAuthState states;
     private final OAuthIdentityRepository identities;
     private final DeveloperRepository developers;
     private final DeveloperService accounts;
     private final AccountEmailService accountEmail;
-    private final DeveloperProperties.OAuth config;
     private final Clock clock;
 
     @Autowired
     public OAuthService(OAuthIdentityRepository identities, DeveloperRepository developers, DeveloperService accounts,
                         AccountEmailService accountEmail, DeveloperProperties props) {
-        this(new OAuthClient(props.oauth(), new JdkHttpTransport()),
-                new OAuthState(props.jwt().secret(), props.oauth().stateTtlMinutes(), Clock.systemUTC()),
-                identities, developers, accounts, accountEmail, props.oauth(), Clock.systemUTC());
+        this(new OAuthClient(props.oauth(), new JdkHttpTransport()), identities, developers, accounts, accountEmail,
+                Clock.systemUTC());
     }
 
-    public OAuthService(OAuthClient client, OAuthState states, OAuthIdentityRepository identities,
-                        DeveloperRepository developers, DeveloperService accounts, AccountEmailService accountEmail,
-                        DeveloperProperties.OAuth config, Clock clock) {
+    public OAuthService(OAuthClient client, OAuthIdentityRepository identities, DeveloperRepository developers,
+                        DeveloperService accounts, AccountEmailService accountEmail, Clock clock) {
         this.client = client;
-        this.states = states;
         this.identities = identities;
         this.developers = developers;
         this.accounts = accounts;
         this.accountEmail = accountEmail;
-        this.config = config;
         this.clock = clock;
     }
 
-    /** Which providers the portal may offer. */
+    /**
+     * Which providers are on, and the public client id the browser needs for each. A client id is not a secret: it is
+     * in the address of every provider's login page.
+     */
     public Map<String, Object> providers() {
         List<String> on = new ArrayList<>();
+        Map<String, Object> ids = new LinkedHashMap<>();
         for (OAuthProvider p : OAuthProvider.values()) {
-            if (client.enabled(p)) on.add(p.key());
+            if (client.enabled(p)) {
+                on.add(p.key());
+                ids.put(p.key(), client.clientId(p));
+            }
         }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("providers", on);
+        m.put("clientIds", ids);
         return m;
     }
 
-    /** The address to send the person to, and the state to keep for the return. */
-    public Map<String, Object> authorize(String providerName, String redirectUri) {
-        OAuthProvider p = enabled(providerName);
-        String uri = allowedRedirect(redirectUri);
-        String state = states.create(p, uri);
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("provider", p.key());
-        m.put("authorizationUrl", client.authorizationUrl(p, uri, state));
-        m.put("state", state);
-        return m;
+    /** Signs in or up with a token the browser got from the provider. */
+    public Map<String, Object> signIn(String providerName, String token, String redirectUri) {
+        return signIn(providerName, token, redirectUri, ClientInfo.UNKNOWN);
     }
 
-    /** Finishes the flow: checks the state, reads the profile, and signs the person in or up. */
-    public Map<String, Object> callback(String providerName, String code, String state, String redirectUri) {
-        return callback(providerName, code, state, redirectUri, ClientInfo.UNKNOWN);
-    }
-
-    public Map<String, Object> callback(String providerName, String code, String state, String redirectUri,
-                                        ClientInfo caller) {
+    /**
+     * Checks the token with the provider, reads the profile, and signs the person in or up. token is Google's ID token,
+     * Facebook's access token or GitHub's one time code. redirectUri is only used for GitHub.
+     */
+    public Map<String, Object> signIn(String providerName, String token, String redirectUri, ClientInfo caller) {
         OAuthProvider p = enabled(providerName);
-        String uri = allowedRedirect(redirectUri);
-        states.verify(state, p, uri);
-        OAuthProfile profile = client.fetchProfile(p, code, uri);
+        if (token == null || token.isBlank()) {
+            throw DeveloperException.validation("token", "is required");
+        }
+        OAuthProfile profile = client.fetchProfile(p, token.trim(), redirectUri);
         if (profile.subject() == null || profile.subject().isBlank()) {
             throw new DeveloperException(ErrorCode.OAUTH_FAILED, "The provider did not identify you. Start again.");
         }
@@ -240,13 +233,6 @@ public class OAuthService {
             throw new DeveloperException(ErrorCode.OAUTH_NOT_CONFIGURED, "Sign in with " + OAuthClient.label(p) + " is not available");
         }
         return p;
-    }
-
-    private String allowedRedirect(String redirectUri) {
-        if (redirectUri == null || !config.isAllowedRedirect(redirectUri)) {
-            throw DeveloperException.validation("redirectUri", "is not one of the allowed return addresses");
-        }
-        return redirectUri.trim();
     }
 
     private static String displayName(String name, String email) {

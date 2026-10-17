@@ -76,15 +76,17 @@ class DeveloperPropertiesTest {
     }
 
     @Test
-    void aProviderIsOnOnlyWithBothAClientIdAndASecret() {
-        DeveloperProperties.OAuth none = new DeveloperProperties.OAuth(null, null, null, null, null);
+    void aProviderNeedsAClientIdAndMostAlsoASecret() {
+        DeveloperProperties.OAuth none = new DeveloperProperties.OAuth(null, null, null);
         assertFalse(none.google().enabled());
+        assertFalse(none.google().hasClientId());
         assertFalse(none.facebook().enabled());
         assertFalse(none.github().enabled());
-        DeveloperProperties.Provider idOnly = new DeveloperProperties.Provider("id", " ", null, null, null, null, null);
-        DeveloperProperties.Provider both = new DeveloperProperties.Provider(" id ", " secret ", null, null, null, null, null);
-        DeveloperProperties.OAuth some = new DeveloperProperties.OAuth(idOnly, both, null, null, null);
+        DeveloperProperties.Provider idOnly = new DeveloperProperties.Provider("id", " ", null, null, null, null);
+        DeveloperProperties.Provider both = new DeveloperProperties.Provider(" id ", " secret ", null, null, null, null);
+        DeveloperProperties.OAuth some = new DeveloperProperties.OAuth(idOnly, both, null);
         assertFalse(some.google().enabled());
+        assertTrue(some.google().hasClientId());
         assertTrue(some.facebook().enabled());
         assertEquals("id", some.facebook().clientId());
         assertEquals("secret", some.facebook().clientSecret());
@@ -92,29 +94,23 @@ class DeveloperPropertiesTest {
 
     @Test
     void providerAddressesDefaultToTheStandardOnesAndCanBePinned() {
-        DeveloperProperties.OAuth defaults = new DeveloperProperties.OAuth(null, null, null, null, null);
-        assertEquals("https://oauth2.googleapis.com/token", defaults.google().tokenUrl());
+        DeveloperProperties.OAuth defaults = new DeveloperProperties.OAuth(null, null, null);
+        assertEquals("https://oauth2.googleapis.com/tokeninfo", defaults.google().verifyUrl());
+        assertEquals("https://github.com/login/oauth/access_token", defaults.github().tokenUrl());
         assertEquals("https://api.github.com/user/emails", defaults.github().emailsUrl());
-        assertEquals("openid email profile", defaults.google().scope());
+        assertEquals("https://graph.facebook.com/v21.0/debug_token", defaults.facebook().verifyUrl());
         DeveloperProperties.Provider pinned = new DeveloperProperties.Provider("id", "s",
-                null, "https://graph.facebook.com/v22.0/oauth/access_token", null, null, null);
-        DeveloperProperties.OAuth custom = new DeveloperProperties.OAuth(null, pinned, null, null, null);
-        assertEquals("https://graph.facebook.com/v22.0/oauth/access_token", custom.facebook().tokenUrl());
-        assertEquals(DeveloperProperties.OAuth.FACEBOOK_DEFAULTS.authorizeUrl(), custom.facebook().authorizeUrl());
+                null, "https://graph.facebook.com/v22.0/debug_token", null, null);
+        DeveloperProperties.OAuth custom = new DeveloperProperties.OAuth(null, pinned, null);
+        assertEquals("https://graph.facebook.com/v22.0/debug_token", custom.facebook().verifyUrl());
+        assertEquals(DeveloperProperties.OAuth.FACEBOOK_DEFAULTS.userInfoUrl(), custom.facebook().userInfoUrl());
     }
 
     @Test
-    void onlyListedReturnAddressesAreAllowedAndNoneMeansNone() {
-        DeveloperProperties.OAuth open = new DeveloperProperties.OAuth(null, null, null, null, null);
-        assertFalse(open.isAllowedRedirect("https://portal.example.com/cb"));
-        assertEquals(10, open.stateTtlMinutes());
-        DeveloperProperties.OAuth o = new DeveloperProperties.OAuth(null, null, null,
-                List.of(" https://portal.example.com/cb ", "", "https://portal.example.com/cb"), 0);
-        assertEquals(List.of("https://portal.example.com/cb"), o.allowedRedirectUris());
-        assertTrue(o.isAllowedRedirect("https://portal.example.com/cb"));
-        assertFalse(o.isAllowedRedirect("https://portal.example.com/cb/"));
-        assertFalse(o.isAllowedRedirect("https://portal.example.com/CB"));
-        assertFalse(o.isAllowedRedirect(null));
+    void aProviderNeverPrintsItsSecret() {
+        String text = new DeveloperProperties.Provider("public-id", "very-secret-value", null, null, null, null).toString();
+        assertTrue(text.contains("public-id"));
+        assertFalse(text.contains("very-secret-value"));
     }
 
     @Test

@@ -100,14 +100,12 @@ developer:
       enabled: ${DEVELOPER_MAIL_STARTUP_CHECK:false}
       send-test-to: ${DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO:}
   oauth:
-    # Exact portal addresses a provider may send people back to. Empty turns social sign in off for every provider.
-    allowed-redirect-uris: ${DEVELOPER_OAUTH_REDIRECT_URIS:}
-    state-ttl-minutes: 10
-    # A provider is on when it has both a client id and a secret. The endpoint addresses default to the
-    # provider's standard ones; override them only to pin a version (for example Facebook's Graph API version).
+    # Social sign in. The browser gets the provider's token and posts it to this service, which checks it with the
+    # provider. Google is on with a client id alone. Facebook and GitHub need the client id and the secret.
+    # The endpoint addresses default to the providers' standard ones; override them only to pin a version
+    # (for example Facebook's Graph API version).
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
-      client-secret: ${GOOGLE_CLIENT_SECRET:}
     facebook:
       client-id: ${FACEBOOK_CLIENT_ID:}
       client-secret: ${FACEBOOK_CLIENT_SECRET:}

@@ -297,7 +297,7 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     </div>
 
     <div id="fileBanner" class="banner" hidden>
-      This page was opened from a file. The providers need a real address to send you back to, so serve this folder instead:
+      This page was opened from a file. Google, Facebook and GitHub all need a real origin, so serve this folder instead:
       run <code>python3 -m http.server 3000</code> inside <code>oauth-test</code> and open <code>http://localhost:3000/social-login-test.html</code>.
     </div>
 
@@ -309,8 +309,8 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     <div class="rail-block">
       <p class="rail-title">What should a login do</p>
       <div class="mode" role="group" aria-label="Mode">
-        <button type="button" id="modeSignin" aria-pressed="true"><b>Sign in to Premisave</b><span>Send the provider code to the backend and get a session</span></button>
-        <button type="button" id="modeCode" aria-pressed="false"><b>Get the code only</b><span>Keep it here so you can send it from Postman</span></button>
+        <button type="button" id="modeSignin" aria-pressed="true"><b>Sign in to Premisave</b><span>Send the provider token to the backend and get a session</span></button>
+        <button type="button" id="modeToken" aria-pressed="false"><b>Get the token only</b><span>Keep it here so you can send it from Postman</span></button>
       </div>
       <p class="hint" id="modeHint" style="color:var(--rail-muted)"></p>
     </div>
@@ -318,19 +318,20 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     <div class="rail-block">
       <details class="cfg" id="configCard">
         <summary>Configuration</summary>
-        <p class="hint">No client ID or secret is needed on this page. They stay in the backend .env. This page only needs to know where the backend is.</p>
+        <p class="hint">The client IDs come from the backend, so there is nothing to paste here. Secrets never reach this page.</p>
         <label for="backend">Backend base URL</label>
         <input type="text" id="backend" placeholder="http://localhost:8091">
-        <label for="redirectUri">Return address to register (provider consoles and backend)</label>
+        <label for="originLine">Add this origin to the backend .env</label>
+        <div class="inline">
+          <input type="text" id="originLine" readonly>
+          <button class="ghost small" type="button" id="copyOriginBtn">Copy</button>
+        </div>
+        <label for="redirectUri">GitHub callback URL to register on your OAuth App</label>
         <div class="inline">
           <input type="text" id="redirectUri" readonly>
           <button class="ghost small" type="button" id="copyRedirectBtn">Copy</button>
         </div>
-        <label for="envLines">Backend .env lines for this page</label>
-        <div class="inline" style="align-items:flex-start">
-          <textarea id="envLines" readonly rows="3"></textarea>
-          <button class="ghost small" type="button" id="copyEnvBtn">Copy</button>
-        </div>
+        <p class="hint">Google: add the origin above under Authorized JavaScript origins. Facebook: add it under the app's allowed domains if asked.</p>
         <button class="primary" id="saveBtn" type="button" style="margin-top:16px;width:100%">Save and reload</button>
       </details>
     </div>
@@ -346,14 +347,14 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
   <main class="main">
     <div class="lead">
       <h2>Try every sign up and sign in path</h2>
-      <p>Pick a provider, approve the login, and watch the code travel to the Premisave developer service. The first login with a new email creates the account. The same login again signs in to it.</p>
+      <p>Pick a provider, approve the login, and watch the token travel to the Premisave developer service. The first login with a new email creates the account. The same login again signs in to it.</p>
     </div>
 
     <section class="card" aria-label="Login progress">
       <div class="card-head"><h3>Where this login is</h3></div>
       <ol class="pipe" id="pipe">
-        <li data-step="authorize"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14L21 3"/><path d="M21 3h-6M21 3v6"/><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></svg></div><div class="t">Authorize address</div><div class="s" data-s>Pick a provider</div></li>
-        <li data-step="approve"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div><div class="t">Approve</div><div class="s" data-s>Waiting</div></li>
+        <li data-step="login"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div><div class="t">Approve</div><div class="s" data-s>Pick a provider</div></li>
+        <li data-step="token"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="t">Provider token</div><div class="s" data-s>Waiting</div></li>
         <li data-step="verify"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="t">Premisave checks it</div><div class="s" data-s>Waiting</div></li>
         <li data-step="session"><div class="node"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M16 7l3 3"/></svg></div><div class="t">Session token</div><div class="s" data-s>Waiting</div></li>
       </ol>
@@ -363,8 +364,8 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       <div class="pcard google">
         <div class="pband"></div>
         <div class="pbody">
-          <div class="phead"><div class="badge google" data-icon="google"></div><div><div class="pname">Google</div><div class="pdesc">Authorization code, exchanged by Premisave</div></div></div>
-          <div class="slot"><button class="btn-gg btn-ico" type="button" id="googleBtn" data-provider="google"><span data-label>Continue with Google</span></button></div>
+          <div class="phead"><div class="badge google" data-icon="google"></div><div><div class="pname">Google</div><div class="pdesc">ID token, checked by Premisave</div></div></div>
+          <div class="slot" id="googleButton"></div>
           <div class="status" id="googleStatus"></div>
         </div>
       </div>
@@ -372,29 +373,37 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       <div class="pcard facebook">
         <div class="pband"></div>
         <div class="pbody">
-          <div class="phead"><div class="badge facebook" data-icon="facebook"></div><div><div class="pname">Facebook</div><div class="pdesc">Authorization code, exchanged by Premisave</div></div></div>
-          <div class="slot"><button class="btn-fb btn-ico" type="button" id="facebookBtn" data-provider="facebook"><span data-label>Continue with Facebook</span></button></div>
+          <div class="phead"><div class="badge facebook" data-icon="facebook"></div><div><div class="pname">Facebook</div><div class="pdesc">Access token, checked by Premisave</div></div></div>
+          <div class="slot"><button class="btn-fb btn-ico" type="button" id="facebookBtn"><span id="facebookLabel">Continue with Facebook</span></button></div>
           <div class="status" id="facebookStatus"></div>
+          <div class="pfoot">
+            <label for="fbPaste">Or paste a token from the Graph API Explorer</label>
+            <div class="inline">
+              <input type="text" id="fbPaste" placeholder="EAAB...">
+              <button class="ghost small" type="button" id="fbPasteBtn">Use</button>
+            </div>
+            <div class="hint">Facebook may refuse its login popup on an http page. If so, create a user token in the Graph API Explorer with the email permission and paste it here.</div>
+          </div>
         </div>
       </div>
 
       <div class="pcard github">
         <div class="pband"></div>
         <div class="pbody">
-          <div class="phead"><div class="badge github" data-icon="github"></div><div><div class="pname">GitHub</div><div class="pdesc">Authorization code, exchanged by Premisave</div></div></div>
-          <div class="slot"><button class="btn-gh btn-ico" type="button" id="githubBtn" data-provider="github"><span data-label>Continue with GitHub</span></button></div>
+          <div class="phead"><div class="badge github" data-icon="github"></div><div><div class="pname">GitHub</div><div class="pdesc">One-time code, exchanged by Premisave</div></div></div>
+          <div class="slot"><button class="btn-gh btn-ico" type="button" id="githubBtn"><span id="githubLabel">Continue with GitHub</span></button></div>
           <div class="status" id="githubStatus"></div>
         </div>
       </div>
     </section>
 
-    <section class="card" id="codesCard" hidden>
+    <section class="card" id="tokensCard" hidden>
       <div class="card-head">
-        <h3>Provider codes</h3>
-        <button class="ghost small" type="button" id="clearCodesBtn">Clear all</button>
+        <h3>Provider tokens</h3>
+        <button class="ghost small" type="button" id="clearTokensBtn">Clear all</button>
       </div>
-      <p class="hint">Shown in full. Copy the request body into Postman and send it to the matching endpoint. A code works only once and expires within minutes, and the state expires after the time set in the backend (10 minutes by default). Using the code once, here or in Postman, consumes it.</p>
-      <div class="tlist" id="codeList"></div>
+      <p class="hint">Shown in full. Copy the request body into Postman and send it to the matching endpoint. Provider tokens expire quickly, and a GitHub code works only once, so using it here or in Postman consumes it.</p>
+      <div class="tlist" id="tokenList"></div>
     </section>
 
     <section class="card" id="sessionCard" hidden>
@@ -421,21 +430,20 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     </section>
   </main>
 </div>
-
 <script>
 (function () {
   'use strict';
 
   var STORE_KEY = 'premisaveOauthTestConfig';
-  var PENDING_KEY = 'premisaveOauthTestPending';
   var MODE_KEY = 'premisaveOauthTestMode';
-  var CODES_KEY = 'premisaveOauthTestCodes';
-  var API = '/api/v1/auth/oauth';
+  var TOKENS_KEY = 'premisaveOauthTestTokens';
+  var GITHUB_STATE_KEY = 'premisaveOauthTestGithubState';
+  var API = '/api/v1/auth/social';
 
   var PROVIDERS = {
-    google: { label: 'Google', note: 'Single use. Google codes expire within minutes.' },
-    facebook: { label: 'Facebook', note: 'Single use. Facebook codes expire within minutes.' },
-    github: { label: 'GitHub', note: 'Single use and valid for about 10 minutes.' }
+    google: { label: 'Google', kind: 'ID token', note: 'Short lived. A Google ID token is good for about an hour.' },
+    facebook: { label: 'Facebook', kind: 'access token', note: 'Short lived. Facebook user tokens from the login popup last for hours, tokens from the Graph API Explorer for about an hour.' },
+    github: { label: 'GitHub', kind: 'one-time code', note: 'Single use and valid for about 10 minutes. GitHub does not give a browser an access token, so Premisave trades this code for one.' }
   };
 
   var ICONS = {
@@ -444,10 +452,13 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     github: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>'
   };
 
+
   var accessToken = null;
   var lastSession = null;
-  var enabled = {};
+  var info = { providers: [], clientIds: {} };
   var backendUp = null;
+  var googleReady = false;
+  var facebookReady = false;
 
   function $(id) { return document.getElementById(id); }
 
@@ -472,20 +483,21 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     return {};
   }
 
+
   var cfg = readConfig();
   cfg.backend = (cfg.backend || 'http://localhost:8091').replace(/\/+$/, '');
 
-  var mode = sessionGet(MODE_KEY) === 'code' ? 'code' : 'signin';
+  var mode = sessionGet(MODE_KEY) === 'token' ? 'token' : 'signin';
 
-  var codes = [];
+  var tokens = [];
   try {
-    var storedCodes = JSON.parse(sessionGet(CODES_KEY));
-    if (Array.isArray(storedCodes)) { codes = storedCodes; }
+    var storedTokens = JSON.parse(sessionGet(TOKENS_KEY));
+    if (Array.isArray(storedTokens)) { tokens = storedTokens; }
   } catch (e) { }
-  function saveCodes() { sessionSet(CODES_KEY, JSON.stringify(codes)); }
+  function saveTokens() { sessionSet(TOKENS_KEY, JSON.stringify(tokens)); }
 
-  /* The address the provider sends the person back to. It must match, character for character, what is
-     registered with the provider and what DEVELOPER_OAUTH_REDIRECT_URIS holds. */
+  /* The address GitHub sends the person back to. It must match, character for character, the callback URL
+     registered on the GitHub OAuth App. */
   function redirectUri() { return location.origin + location.pathname; }
 
   /* Clipboard */
@@ -520,7 +532,7 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
   /* Progress */
 
   function pipeReset() {
-    var defaults = { authorize: 'Pick a provider', approve: 'Waiting', verify: 'Waiting', session: 'Waiting' };
+    var defaults = { login: 'Pick a provider', token: 'Waiting', verify: 'Waiting', session: 'Waiting' };
     Array.prototype.forEach.call(document.querySelectorAll('#pipe li'), function (li) {
       li.className = '';
       li.querySelector('[data-s]').textContent = defaults[li.getAttribute('data-step')];
@@ -608,20 +620,29 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     $('backendText').textContent = text;
   }
 
+  function isOn(p) { return info.providers.indexOf(p) !== -1 && !!info.clientIds[p]; }
+
   function showProviderButtons() {
+    var token = mode === 'token';
+    $('facebookLabel').textContent = token ? 'Get Facebook token' : 'Continue with Facebook';
+    $('githubLabel').textContent = token ? 'Get GitHub code' : 'Continue with GitHub';
     ['google', 'facebook', 'github'].forEach(function (p) {
-      var btn = $(p + 'Btn');
-      var on = backendUp && enabled[p] === true;
-      btn.disabled = !on;
-      btn.querySelector('[data-label]').textContent = (mode === 'code' ? 'Get ' + PROVIDERS[p].label + ' code' : 'Continue with ' + PROVIDERS[p].label);
+      var on = backendUp && isOn(p);
+      if (p !== 'google') { $(p + 'Btn').disabled = !on; }
+      if (p === 'facebook') { $('fbPasteBtn').disabled = !backendUp; }
       if (backendUp === null) {
         setStatus(p, 'Checking the backend.');
       } else if (!backendUp) {
         setStatus(p, 'Backend not reachable.', true);
-      } else if (on) {
+      } else if (!on) {
+        var needs = p === 'google' ? 'GOOGLE_CLIENT_ID' : p.toUpperCase() + '_CLIENT_ID and ' + p.toUpperCase() + '_CLIENT_SECRET';
+        setStatus(p, 'Not switched on in the backend. Set ' + needs + '.', true);
+      } else if (p === 'google') {
+        setStatus(p, googleReady ? 'Ready.' : 'Loading Google sign in.');
+      } else if (p === 'facebook') {
         setStatus(p, 'Ready.');
       } else {
-        setStatus(p, 'Not switched on in the backend. Set ' + p.toUpperCase() + '_CLIENT_ID and ' + p.toUpperCase() + '_CLIENT_SECRET, and DEVELOPER_OAUTH_REDIRECT_URIS.', true);
+        setStatus(p, 'Ready. Register ' + redirectUri() + ' as the callback URL.');
       }
     });
   }
@@ -629,31 +650,34 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
   async function checkBackend() {
     setPill('', 'Checking backend');
     var r = await call('GET', API + '/providers');
-    enabled = {};
+    info = { providers: [], clientIds: {} };
     if (r.failed) {
       backendUp = false;
       setPill('bad', 'Backend not reachable at ' + cfg.backend + ' (is it running, and is CORS open for ' + location.origin + '?)');
     } else if (r.ok && r.body && r.body.data && Array.isArray(r.body.data.providers)) {
       backendUp = true;
-      r.body.data.providers.forEach(function (p) { enabled[p] = true; });
-      var list = r.body.data.providers.length ? r.body.data.providers.join(', ') : 'none';
+      info.providers = r.body.data.providers;
+      info.clientIds = r.body.data.clientIds || {};
+      var list = info.providers.length ? info.providers.join(', ') : 'none';
       setPill('ok', 'Backend reachable at ' + cfg.backend + '. Sign in is on for: ' + list);
     } else {
       backendUp = true;
       setPill('bad', 'Backend answered HTTP ' + r.status + ' for the provider list');
     }
     showProviderButtons();
+    setupGoogle();
+    setupFacebook();
   }
 
   /* Mode */
 
   function applyMode() {
-    var codeOnly = mode === 'code';
-    $('modeSignin').setAttribute('aria-pressed', String(!codeOnly));
-    $('modeCode').setAttribute('aria-pressed', String(codeOnly));
-    $('modeHint').textContent = codeOnly
-      ? 'Code only: runs the provider login and shows the code and state below. Nothing is sent to the callback endpoint, so you can use them in Postman.'
-      : 'Sign in: runs the provider login and sends the code to the callback endpoint, then shows the session it issues.';
+    var tokenOnly = mode === 'token';
+    $('modeSignin').setAttribute('aria-pressed', String(!tokenOnly));
+    $('modeToken').setAttribute('aria-pressed', String(tokenOnly));
+    $('modeHint').textContent = tokenOnly
+      ? 'Token only: runs the provider login and keeps the token below. Nothing is sent to Premisave, so you can paste it into Postman.'
+      : 'Sign in: runs the provider login and sends the token to the matching Premisave endpoint, then shows the session it issues.';
     showProviderButtons();
   }
 
@@ -663,35 +687,125 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     applyMode();
   }
 
-  /* Step 1 and 2: ask the backend where to send the person, then send them */
+  /* Loads a provider script once */
 
-  async function startLogin(provider) {
-    var label = PROVIDERS[provider].label;
-    pipeReset();
-    pipe('authorize', 'active', 'Asking the backend');
-    var path = API + '/' + provider + '/authorize?redirectUri=' + encodeURIComponent(redirectUri());
-    log(label + ': GET ' + cfg.backend + path, 'redirectUri = ' + redirectUri());
-    var r = await call('GET', path);
-    if (r.failed) {
-      pipe('authorize', 'bad', 'Backend unreachable');
-      unreachable(label, r);
-      return;
-    }
-    var data = r.body && r.body.data;
-    if (!r.ok || !data || !data.authorizationUrl || !data.state) {
-      pipe('authorize', 'bad', messageOf(r));
-      log(label + ': HTTP ' + r.status, r.body, 'bad');
-      return;
-    }
-    log(label + ': HTTP ' + r.status, r.body, 'good');
-    pipe('authorize', 'done', 'Address created');
-    pipe('approve', 'active', 'Opening ' + label);
-    // Kept so the return can be matched to this browser, this provider and this mode.
-    sessionSet(PENDING_KEY, JSON.stringify({ provider: provider, state: data.state, mode: mode, redirectUri: redirectUri() }));
-    location.href = data.authorizationUrl;
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-src="' + src + '"]');
+      if (existing) {
+        if (existing.getAttribute('data-done') === '1') { resolve(); } else { existing.addEventListener('load', resolve); existing.addEventListener('error', reject); }
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.setAttribute('data-src', src);
+      s.onload = function () { s.setAttribute('data-done', '1'); resolve(); };
+      s.onerror = function () { reject(new Error('Could not load ' + src)); };
+      document.head.appendChild(s);
+    });
   }
 
-  /* Step 3: the provider has sent the person back with a code */
+  /* A provider token or code is in hand. This is the one place both modes meet. */
+
+  function onToken(provider, token, extra) {
+    var label = PROVIDERS[provider].label;
+    pipeReset();
+    pipe('login', 'done', label + ' approved');
+    pipe('token', 'done', PROVIDERS[provider].kind + ' received');
+    if (mode === 'token') {
+      addToken(provider, token, extra);
+    } else {
+      sendToken(provider, token, extra);
+    }
+  }
+
+  /* Google: Google Identity Services hands back an ID token */
+
+  async function setupGoogle() {
+    var slot = $('googleButton');
+    if (!backendUp || !isOn('google')) { slot.textContent = ''; return; }
+    try {
+      await loadScript('https://accounts.google.com/gsi/client');
+      slot.textContent = '';
+      window.google.accounts.id.initialize({
+        client_id: info.clientIds.google,
+        callback: function (resp) {
+          if (!resp || !resp.credential) {
+            log('Google returned no credential', resp || 'empty response', 'bad');
+            return;
+          }
+          onToken('google', resp.credential);
+        }
+      });
+      window.google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', text: 'continue_with', width: Math.max(200, Math.min(320, slot.clientWidth || 260)) });
+      googleReady = true;
+      showProviderButtons();
+    } catch (e) {
+      googleReady = false;
+      setStatus('google', 'Could not load Google sign in. Check the connection and any content blocker.', true);
+    }
+  }
+
+  /* Facebook: the JS SDK hands back a user access token. A token pasted from the Graph API Explorer works the same. */
+
+  async function setupFacebook() {
+    if (!backendUp || !isOn('facebook') || facebookReady) { return; }
+    try {
+      await loadScript('https://connect.facebook.net/en_US/sdk.js');
+      window.FB.init({ appId: info.clientIds.facebook, cookie: false, xfbml: false, version: 'v21.0' });
+      facebookReady = true;
+    } catch (e) {
+      setStatus('facebook', 'Could not load the Facebook SDK. You can still paste a token below.', true);
+    }
+  }
+
+  function facebookLogin() {
+    if (!facebookReady || !window.FB) {
+      setStatus('facebook', 'The Facebook SDK is not ready. Paste a token below instead.', true);
+      return;
+    }
+    pipeReset();
+    pipe('login', 'active', 'Opening Facebook');
+    window.FB.login(function (resp) {
+      if (resp && resp.authResponse && resp.authResponse.accessToken) {
+        onToken('facebook', resp.authResponse.accessToken);
+      } else {
+        pipe('login', 'bad', 'Not approved');
+        log('Facebook login was cancelled or refused', resp || 'empty response', 'bad');
+      }
+    }, { scope: 'public_profile,email' });
+  }
+
+  function facebookPaste() {
+    var value = $('fbPaste').value.trim();
+    if (!value) { setStatus('facebook', 'Paste a token first.', true); return; }
+    $('fbPaste').value = '';
+    onToken('facebook', value);
+  }
+
+  /* GitHub: a browser cannot get an access token without the secret, so it gets a one-time code and Premisave
+     trades it. The state value guards the round trip. */
+
+  function randomState() {
+    var bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+
+  function githubLogin() {
+    var id = info.clientIds.github;
+    if (!id) { return; }
+    var state = randomState();
+    sessionSet(GITHUB_STATE_KEY, JSON.stringify({ state: state, mode: mode }));
+    pipeReset();
+    pipe('login', 'active', 'Opening GitHub');
+    var url = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(id)
+      + '&redirect_uri=' + encodeURIComponent(redirectUri())
+      + '&scope=' + encodeURIComponent('user:email')
+      + '&state=' + encodeURIComponent(state);
+    location.href = url;
+  }
 
   function handleReturn() {
     var params = new URLSearchParams(location.search);
@@ -703,49 +817,48 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     history.replaceState(null, '', location.pathname);
 
     var pending = null;
-    try { pending = JSON.parse(sessionGet(PENDING_KEY)); } catch (e) { }
-    sessionRemove(PENDING_KEY);
+    try { pending = JSON.parse(sessionGet(GITHUB_STATE_KEY)); } catch (e) { }
+    sessionRemove(GITHUB_STATE_KEY);
 
+    pipeReset();
     if (err) {
-      pipeReset();
-      pipe('authorize', 'done', 'Address created');
-      pipe('approve', 'bad', 'Provider returned an error');
-      log('The provider returned an error', { error: err, description: params.get('error_description') }, 'bad');
+      pipe('login', 'bad', 'GitHub returned an error');
+      log('GitHub returned an error', { error: err, description: params.get('error_description') }, 'bad');
       return;
     }
-    if (!pending || !PROVIDERS[pending.provider]) {
-      pipeReset();
-      pipe('approve', 'bad', 'No login was started here');
-      log('A code arrived but no login was started in this tab',
-        'Start from one of the provider buttons. The page keeps the state it was given and compares it on return.', 'bad');
+    if (!pending) {
+      pipe('login', 'bad', 'No login was started here');
+      log('A code arrived but no GitHub login was started in this tab',
+        'Start from the GitHub button. The page keeps the state it sent and compares it on return.', 'bad');
       return;
     }
     if (!state || state !== pending.state) {
-      pipeReset();
-      pipe('approve', 'bad', 'State did not match');
-      log(PROVIDERS[pending.provider].label + ': state mismatch',
-        'The state the provider returned is not the one the backend gave us. Response rejected. Start again.', 'bad');
+      pipe('login', 'bad', 'State did not match');
+      log('GitHub: state mismatch', 'The state GitHub returned is not the one this page sent. Response rejected. Start again.', 'bad');
       return;
     }
-
-    pipeReset();
-    pipe('authorize', 'done', 'Address created');
-    pipe('approve', 'done', PROVIDERS[pending.provider].label + ' approved');
-
-    if (pending.mode === 'code') {
-      addCode(pending.provider, code, state, pending.redirectUri);
-    } else {
-      postCallback(pending.provider, code, state, pending.redirectUri);
-    }
+    mode = pending.mode === 'token' ? 'token' : 'signin';
+    sessionSet(MODE_KEY, mode);
+    applyMode();
+    onToken('github', code, { redirectUri: redirectUri() });
   }
 
-  async function postCallback(provider, code, state, uri) {
+  /* Send the token to the matching Premisave endpoint */
+
+  function bodyFor(provider, token, extra) {
+    var body = { token: token };
+    if (provider === 'github' && extra && extra.redirectUri) { body.redirectUri = extra.redirectUri; }
+    return body;
+  }
+
+  async function sendToken(provider, token, extra) {
     var label = PROVIDERS[provider].label;
-    var path = API + '/' + provider + '/callback';
+    var path = API + '/' + provider;
+    var body = bodyFor(provider, token, extra);
     pipe('verify', 'active', 'Checking with ' + label);
     pipe('session', '', 'Waiting');
-    log(label + ': POST ' + cfg.backend + path, { code: code, state: state, redirectUri: uri });
-    var r = await call('POST', path, { code: code, state: state, redirectUri: uri });
+    log(label + ': POST ' + cfg.backend + path, body);
+    var r = await call('POST', path, body);
     if (r.failed) {
       pipe('verify', 'bad', 'Backend unreachable');
       unreachable(label, r);
@@ -759,25 +872,28 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       pipe('session', 'done', 'Issued');
       log(label + ': HTTP ' + r.status, r.body, 'good');
       showSession();
+    } else if (data && data.code === 'ACCOUNT_PENDING') {
+      pipe('verify', 'done', 'Account found');
+      pipe('session', 'bad', 'Waiting for email confirmation');
+      log(label + ': HTTP ' + r.status + ', confirm the email first', r.body, 'bad');
     } else {
-      var pending = r.body && r.body.data && r.body.data.code === 'ACCOUNT_PENDING';
-      pipe('verify', 'bad', pending ? 'Waiting for email confirmation' : 'Rejected, ' + messageOf(r));
+      pipe('verify', 'bad', 'Rejected, ' + messageOf(r));
       pipe('session', 'bad', 'Not issued');
       log(label + ': HTTP ' + r.status, r.body, 'bad');
     }
   }
 
-  /* Code only mode */
+  /* Token only mode */
 
-  function addCode(provider, code, state, uri) {
-    codes.unshift({ provider: provider, code: code, state: state, redirectUri: uri, at: Date.now() });
-    saveCodes();
-    renderCodes();
-    pipe('verify', '', 'Skipped in code only mode');
-    pipe('session', '', 'Skipped in code only mode');
-    log(PROVIDERS[provider].label + ': code received (not sent to the backend)',
-      'Code of ' + code.length + ' characters and a state. See Provider codes.', 'good');
-    var card = $('codesCard');
+  function addToken(provider, token, extra) {
+    tokens.unshift({ provider: provider, token: token, redirectUri: extra && extra.redirectUri ? extra.redirectUri : null, at: Date.now() });
+    saveTokens();
+    renderTokens();
+    pipe('verify', '', 'Skipped in token only mode');
+    pipe('session', '', 'Skipped in token only mode');
+    log(PROVIDERS[provider].label + ': ' + PROVIDERS[provider].kind + ' received (not sent to the backend)',
+      'Length ' + token.length + ' characters. See Provider tokens.', 'good');
+    var card = $('tokensCard');
     if (card.scrollIntoView) { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }
 
@@ -788,51 +904,50 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
     return span;
   }
 
-  function codeCard(c, index) {
-    var p = PROVIDERS[c.provider];
+  function tokenCard(t, index) {
+    var p = PROVIDERS[t.provider];
     var card = h('div', 'tcard');
 
     var head = h('div', 'thead');
     var left = h('div', 'tleft');
-    var badge = h('div', 'badge ' + c.provider);
-    badge.innerHTML = ICONS[c.provider];
+    var badge = h('div', 'badge ' + t.provider);
+    badge.innerHTML = ICONS[t.provider];
     left.appendChild(badge);
     var titles = h('div');
-    titles.appendChild(h('div', 'ttitle', p.label + ' authorization code'));
-    titles.appendChild(h('div', 'muted', 'Received at ' + new Date(c.at).toLocaleTimeString()));
+    titles.appendChild(h('div', 'ttitle', p.label + ' ' + p.kind));
+    titles.appendChild(h('div', 'muted', 'Received at ' + new Date(t.at).toLocaleTimeString()));
     left.appendChild(titles);
     head.appendChild(left);
 
     var remove = h('button', 'ghost small', 'Remove');
     remove.type = 'button';
     remove.addEventListener('click', function () {
-      codes.splice(index, 1);
-      saveCodes();
-      renderCodes();
+      tokens.splice(index, 1);
+      saveTokens();
+      renderTokens();
     });
     head.appendChild(remove);
     card.appendChild(head);
 
-    card.appendChild(h('div', 'k2', 'Code'));
-    card.appendChild(h('div', 'tokenbox', c.code));
-    card.appendChild(h('div', 'k2', 'State'));
-    card.appendChild(h('div', 'tokenbox', c.state));
+    card.appendChild(h('div', 'k2', t.provider === 'github' ? 'Code' : 'Token'));
+    card.appendChild(h('div', 'tokenbox', t.token));
+    if (t.redirectUri) {
+      card.appendChild(h('div', 'k2', 'redirectUri to send with it'));
+      card.appendChild(h('div', 'tokenbox', t.redirectUri));
+    }
 
     var meta = h('div', 'meta');
-    meta.appendChild(metaItem('Code length', c.code.length + ' characters'));
-    meta.appendChild(metaItem('Redirect URI', c.redirectUri));
+    meta.appendChild(metaItem('Length', t.token.length + ' characters'));
     card.appendChild(meta);
     card.appendChild(h('div', 'hint', p.note));
 
-    var path = API + '/' + c.provider + '/callback';
-    var url = cfg.backend + path;
+    var url = cfg.backend + API + '/' + t.provider;
     var endpoint = h('div', 'endpoint');
     endpoint.appendChild(document.createTextNode('Send to '));
     endpoint.appendChild(h('code', '', 'POST ' + url));
     card.appendChild(endpoint);
 
-    var payload = { code: c.code, state: c.state, redirectUri: c.redirectUri };
-    var body = JSON.stringify(payload, null, 2);
+    var body = JSON.stringify(bodyFor(t.provider, t.token, t), null, 2);
 
     var actions = h('div', 'actions');
     function action(cls, text, fn) {
@@ -842,24 +957,23 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       actions.appendChild(b);
     }
     action('primary small', 'Copy request body', function (b) { copyText(body, b); });
-    action('ghost small', 'Copy code', function (b) { copyText(c.code, b); });
-    action('ghost small', 'Copy state', function (b) { copyText(c.state, b); });
+    action('ghost small', t.provider === 'github' ? 'Copy code' : 'Copy token', function (b) { copyText(t.token, b); });
     action('ghost small', 'Copy URL', function (b) { copyText(url, b); });
     action('ghost small', 'Send to backend now', function () {
       pipeReset();
-      pipe('authorize', 'done', 'Address created');
-      pipe('approve', 'done', p.label + ' approved');
-      postCallback(c.provider, c.code, c.state, c.redirectUri);
+      pipe('login', 'done', p.label + ' approved');
+      pipe('token', 'done', p.kind + ' received');
+      sendToken(t.provider, t.token, t);
     });
     card.appendChild(actions);
     return card;
   }
 
-  function renderCodes() {
-    var list = $('codeList');
+  function renderTokens() {
+    var list = $('tokenList');
     list.textContent = '';
-    $('codesCard').hidden = codes.length === 0;
-    codes.forEach(function (c, i) { list.appendChild(codeCard(c, i)); });
+    $('tokensCard').hidden = tokens.length === 0;
+    tokens.forEach(function (t, i) { list.appendChild(tokenCard(t, i)); });
   }
 
   /* Session */
@@ -968,17 +1082,15 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
 
   /* Wiring */
 
-  function envLines() {
-    return 'DEVELOPER_OAUTH_REDIRECT_URIS=' + redirectUri() + '\nDEVELOPER_PORTAL_ORIGINS=' + location.origin;
-  }
+  function originLine() { return 'DEVELOPER_PORTAL_ORIGINS=' + location.origin; }
 
   $('backend').value = cfg.backend;
   $('redirectUri').value = redirectUri();
-  $('envLines').value = envLines();
+  $('originLine').value = originLine();
   $('redirectUri').addEventListener('focus', function () { this.select(); });
-  $('envLines').addEventListener('focus', function () { this.select(); });
+  $('originLine').addEventListener('focus', function () { this.select(); });
   $('copyRedirectBtn').addEventListener('click', function () { copyText(redirectUri(), this); });
-  $('copyEnvBtn').addEventListener('click', function () { copyText(envLines(), this); });
+  $('copyOriginBtn').addEventListener('click', function () { copyText(originLine(), this); });
 
   if (location.protocol !== 'http:' && location.protocol !== 'https:') {
     $('fileBanner').hidden = false;
@@ -992,32 +1104,39 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
   });
 
   $('modeSignin').addEventListener('click', function () { setMode('signin'); });
-  $('modeCode').addEventListener('click', function () { setMode('code'); });
+  $('modeToken').addEventListener('click', function () { setMode('token'); });
 
   Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (el) {
     el.innerHTML = ICONS[el.getAttribute('data-icon')];
   });
-
-  Array.prototype.forEach.call(document.querySelectorAll('[data-provider]'), function (btn) {
-    btn.addEventListener('click', function () { startLogin(btn.getAttribute('data-provider')); });
+  ['facebook', 'github'].forEach(function (p) {
+    var btn = $(p + 'Btn');
+    var span = document.createElement('span');
+    span.innerHTML = ICONS[p];
+    btn.insertBefore(span.firstChild, btn.firstChild);
   });
+
+  $('facebookBtn').addEventListener('click', facebookLogin);
+  $('fbPasteBtn').addEventListener('click', facebookPaste);
+  $('fbPaste').addEventListener('keydown', function (e) { if (e.key === 'Enter') { facebookPaste(); } });
+  $('githubBtn').addEventListener('click', githubLogin);
 
   $('copyJwtBtn').addEventListener('click', function () { if (accessToken) { copyText(accessToken, this); } });
   $('copyBearerBtn').addEventListener('click', function () { if (accessToken) { copyText('Bearer ' + accessToken, this); } });
   $('meBtn').addEventListener('click', fetchMe);
   $('logoutBtn').addEventListener('click', doLogout);
   $('clearBtn').addEventListener('click', function () { $('log').textContent = ''; });
-  $('clearCodesBtn').addEventListener('click', function () {
-    codes = [];
-    saveCodes();
-    renderCodes();
+  $('clearTokensBtn').addEventListener('click', function () {
+    tokens = [];
+    saveTokens();
+    renderTokens();
   });
   $('recheckBtn').addEventListener('click', checkBackend);
   $('themeBtn').addEventListener('click', toggleTheme);
   updateThemeButton();
 
   pipeReset();
-  renderCodes();
+  renderTokens();
   applyMode();
   handleReturn();
   checkBackend();

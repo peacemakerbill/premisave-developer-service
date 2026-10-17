@@ -19,10 +19,20 @@ import java.util.Map;
 import java.util.StringJoiner;
 
 /**
- * Talks to Google, Facebook and GitHub: builds the address people are sent to, trades the returned code for an access
- * token, and reads the profile. Written on the plain authorization code flow so it needs no provider library. The access
- * token is used once to read the profile and is not kept. Nothing the provider says is trusted except what its own
- * API returns over TLS for this token.
+ * Talks to Google, Facebook and GitHub to find out who a token belongs to. The browser gets the token itself, so this
+ * class only checks it:
+ *
+ * <ul>
+ *   <li>Google: an ID token. Google's token info endpoint checks the signature and expiry, and this class checks that
+ *       the token was issued to this service's client id by Google.</li>
+ *   <li>Facebook: a user access token. Facebook's debug endpoint is asked, with the app's own credentials, whether the
+ *       token is valid and was issued to this app, so a token from another app is refused.</li>
+ *   <li>GitHub: a one time authorization code. It is traded for an access token with the client secret, which never
+ *       leaves this service.</li>
+ * </ul>
+ *
+ * The provider access token is used once to read the profile and is not kept. Nothing is trusted except what the
+ * provider's own API returns over TLS.
  */
 public class OAuthClient {
 
@@ -44,33 +54,28 @@ public class OAuthClient {
         };
     }
 
-    /** On when the provider has credentials and at least one return address is allowed. */
+    /** Google is on with a client id. Facebook and GitHub need a client id and a secret. */
     public boolean enabled(OAuthProvider p) {
-        return settings(p).enabled() && !config.allowedRedirectUris().isEmpty();
-    }
-
-    public String authorizationUrl(OAuthProvider p, String redirectUri, String state) {
         DeveloperProperties.Provider s = settings(p);
-        Map<String, String> q = new LinkedHashMap<>();
-        q.put("client_id", s.clientId());
-        q.put("redirect_uri", redirectUri);
-        q.put("response_type", "code");
-        q.put("scope", s.scope());
-        q.put("state", state);
-        if (p == OAuthProvider.GOOGLE) q.put("prompt", "select_account");
-        if (p == OAuthProvider.GITHUB) q.put("allow_signup", "true");
-        return s.authorizeUrl() + (s.authorizeUrl().contains("?") ? "&" : "?") + encode(q);
+        return p == OAuthProvider.GOOGLE ? s.hasClientId() : s.enabled();
     }
 
-    /** Trades the code for a token and reads who the person is. */
-    public OAuthProfile fetchProfile(OAuthProvider p, String code, String redirectUri) {
+    /** The public id the browser needs to start a login, or null when the provider is off. It is not a secret. */
+    public String clientId(OAuthProvider p) {
+        return enabled(p) ? settings(p).clientId() : null;
+    }
+
+    /**
+     * Checks the token or code the browser sent and reads who the person is. redirectUri is only used for GitHub, and
+     * only when the browser started the GitHub login with one.
+     */
+    public OAuthProfile fetchProfile(OAuthProvider p, String token, String redirectUri) {
         DeveloperProperties.Provider s = settings(p);
         try {
-            String token = exchange(p, s, code, redirectUri);
             return switch (p) {
                 case GOOGLE -> google(s, token);
                 case FACEBOOK -> facebook(s, token);
-                case GITHUB -> github(s, token);
+                case GITHUB -> github(s, token, redirectUri);
             };
         } catch (IOException e) {
             log.warn("Sign in with {} failed to reach the provider: {}", p.key(), e.toString());
@@ -78,48 +83,63 @@ public class OAuthClient {
         }
     }
 
-    private String exchange(OAuthProvider p, DeveloperProperties.Provider s, String code, String redirectUri) throws IOException {
-        HttpTransport.Reply reply;
-        if (p == OAuthProvider.FACEBOOK) {
-            Map<String, String> q = new LinkedHashMap<>();
-            q.put("client_id", s.clientId());
-            q.put("client_secret", s.clientSecret());
-            q.put("redirect_uri", redirectUri);
-            q.put("code", code);
-            reply = http.get(s.tokenUrl() + (s.tokenUrl().contains("?") ? "&" : "?") + encode(q), Map.of("Accept", "application/json"));
-        } else {
-            Map<String, String> form = new LinkedHashMap<>();
-            form.put("client_id", s.clientId());
-            form.put("client_secret", s.clientSecret());
-            form.put("code", code);
-            form.put("redirect_uri", redirectUri);
-            if (p == OAuthProvider.GOOGLE) form.put("grant_type", "authorization_code");
-            reply = http.postForm(s.tokenUrl(), Map.of("Accept", "application/json"), form);
+    private OAuthProfile google(DeveloperProperties.Provider s, String idToken) throws IOException {
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("id_token", idToken);
+        Map<String, Object> u = object(OAuthProvider.GOOGLE,
+                require(OAuthProvider.GOOGLE, http.get(withQuery(s.verifyUrl(), q), Map.of("Accept", "application/json"))));
+        if (!s.clientId().equals(text(u.get("aud")))) {
+            log.info("A Google token was presented that was issued to another client");
+            throw refused(OAuthProvider.GOOGLE);
         }
-        Map<String, Object> body = object(p, reply);
-        Object token = body.get("access_token");
-        if (reply.status() / 100 != 2 || !(token instanceof String t) || t.isBlank()) {
-            log.info("{} did not accept the sign in code (status {})", label(p), reply.status());
-            throw new DeveloperException(ErrorCode.OAUTH_FAILED, label(p) + " did not accept the sign in. Start again.");
+        String issuer = text(u.get("iss"));
+        if (!"accounts.google.com".equals(issuer) && !"https://accounts.google.com".equals(issuer)) {
+            log.info("A Google token was presented with an unexpected issuer");
+            throw refused(OAuthProvider.GOOGLE);
         }
-        return t;
-    }
-
-    private OAuthProfile google(DeveloperProperties.Provider s, String token) throws IOException {
-        Map<String, Object> u = object(OAuthProvider.GOOGLE, require(OAuthProvider.GOOGLE, http.get(s.userInfoUrl(), bearer(token))));
-        String subject = text(u.get("sub"));
         boolean verified = Boolean.TRUE.equals(u.get("email_verified")) || "true".equalsIgnoreCase(text(u.get("email_verified")));
-        return new OAuthProfile(OAuthProvider.GOOGLE, subject, clean(text(u.get("email"))), verified, text(u.get("name")));
+        return new OAuthProfile(OAuthProvider.GOOGLE, text(u.get("sub")), clean(text(u.get("email"))), verified, text(u.get("name")));
     }
 
-    private OAuthProfile facebook(DeveloperProperties.Provider s, String token) throws IOException {
-        Map<String, Object> u = object(OAuthProvider.FACEBOOK, require(OAuthProvider.FACEBOOK, http.get(s.userInfoUrl(), bearer(token))));
+    private OAuthProfile facebook(DeveloperProperties.Provider s, String accessToken) throws IOException {
+        // Asks Facebook, as this app, who the token was issued to. Without it a token made for any other app would pass.
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("input_token", accessToken);
+        q.put("access_token", s.clientId() + "|" + s.clientSecret());
+        Map<String, Object> checked = object(OAuthProvider.FACEBOOK,
+                require(OAuthProvider.FACEBOOK, http.get(withQuery(s.verifyUrl(), q), Map.of("Accept", "application/json"))));
+        if (!(checked.get("data") instanceof Map<?, ?> data) || !Boolean.TRUE.equals(data.get("is_valid"))
+                || !s.clientId().equals(text(data.get("app_id")))) {
+            log.info("A Facebook token was presented that is not valid for this app");
+            throw refused(OAuthProvider.FACEBOOK);
+        }
+        Map<String, Object> u = object(OAuthProvider.FACEBOOK,
+                require(OAuthProvider.FACEBOOK, http.get(s.userInfoUrl(), bearer(accessToken))));
+        String subject = text(u.get("id"));
+        String owner = text(data.get("user_id"));
+        if (owner != null && !owner.equals(subject)) {
+            log.info("A Facebook token and its profile belong to different users");
+            throw refused(OAuthProvider.FACEBOOK);
+        }
         // Facebook does not promise that an address on a profile was ever confirmed, so it is never counted as verified.
-        return new OAuthProfile(OAuthProvider.FACEBOOK, text(u.get("id")), clean(text(u.get("email"))), false, text(u.get("name")));
+        return new OAuthProfile(OAuthProvider.FACEBOOK, subject, clean(text(u.get("email"))), false, text(u.get("name")));
     }
 
-    private OAuthProfile github(DeveloperProperties.Provider s, String token) throws IOException {
-        Map<String, String> headers = new LinkedHashMap<>(bearer(token));
+    private OAuthProfile github(DeveloperProperties.Provider s, String code, String redirectUri) throws IOException {
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("client_id", s.clientId());
+        form.put("client_secret", s.clientSecret());
+        form.put("code", code);
+        if (redirectUri != null && !redirectUri.isBlank()) form.put("redirect_uri", redirectUri.trim());
+        HttpTransport.Reply reply = http.postForm(s.tokenUrl(), Map.of("Accept", "application/json"), form);
+        Map<String, Object> body = object(OAuthProvider.GITHUB, reply);
+        Object issued = body.get("access_token");
+        if (reply.status() / 100 != 2 || !(issued instanceof String accessToken) || accessToken.isBlank()) {
+            log.info("GitHub did not accept the sign in code (status {})", reply.status());
+            throw refused(OAuthProvider.GITHUB);
+        }
+
+        Map<String, String> headers = new LinkedHashMap<>(bearer(accessToken));
         headers.put("Accept", "application/vnd.github+json");
         headers.put("User-Agent", "premisave-developer-service");
         Map<String, Object> u = object(OAuthProvider.GITHUB, require(OAuthProvider.GITHUB, http.get(s.userInfoUrl(), headers)));
@@ -158,10 +178,14 @@ public class OAuthClient {
         return h;
     }
 
+    private static DeveloperException refused(OAuthProvider p) {
+        return new DeveloperException(ErrorCode.OAUTH_FAILED, label(p) + " did not accept the sign in. Start again.");
+    }
+
     private static HttpTransport.Reply require(OAuthProvider p, HttpTransport.Reply r) {
         if (r.status() / 100 != 2) {
-            log.info("{} refused the profile request (status {})", label(p), r.status());
-            throw new DeveloperException(ErrorCode.OAUTH_FAILED, label(p) + " did not accept the sign in. Start again.");
+            log.info("{} refused the request (status {})", label(p), r.status());
+            throw refused(p);
         }
         return r;
     }
@@ -171,7 +195,7 @@ public class OAuthClient {
             return JsonReader.readObject(r.body());
         } catch (IllegalArgumentException e) {
             log.info("{} answered something that is not a JSON object (status {})", label(p), r.status());
-            throw new DeveloperException(ErrorCode.OAUTH_FAILED, label(p) + " did not accept the sign in. Start again.");
+            throw refused(p);
         }
     }
 
@@ -187,10 +211,10 @@ public class OAuthClient {
         return e.isEmpty() ? null : e;
     }
 
-    private static String encode(Map<String, String> q) {
+    private static String withQuery(String url, Map<String, String> q) {
         StringJoiner j = new StringJoiner("&");
         q.forEach((k, v) -> j.add(URLEncoder.encode(k, StandardCharsets.UTF_8) + "=" + URLEncoder.encode(v, StandardCharsets.UTF_8)));
-        return j.toString();
+        return url + (url.contains("?") ? "&" : "?") + j;
     }
 
     public static String label(OAuthProvider p) {

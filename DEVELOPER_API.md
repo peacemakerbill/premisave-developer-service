@@ -157,14 +157,22 @@ An account created through a provider can use this flow to add a password.
 
 ### 1.9 Sign up and sign in with Google, Facebook or GitHub
 
-Authorization code flow. The portal never handles a provider secret; this service holds the client secrets and talks to the providers.
+Each provider has its own endpoint. The browser (or the portal) gets the provider token and posts it as JSON. This service checks the token with the provider, then signs the developer in or creates the account. The portal never handles a provider secret, and this service stores no provider access token.
 
-1. `GET /api/v1/auth/oauth/providers` returns `{ "providers": ["google", "github"] }`, the providers that are configured. Use it to decide which buttons to show.
-2. `GET /api/v1/auth/oauth/{provider}/authorize?redirectUri=<portal callback address>` returns `{ "provider", "authorizationUrl", "state" }`. `provider` is `google`, `facebook` or `github`. The portal stores `state` (for example in session storage) and sends the browser to `authorizationUrl`.
-3. The provider sends the browser back to `redirectUri` with `code` and `state` in the query string. The portal checks that `state` equals the stored one, then:
-4. `POST /api/v1/auth/oauth/{provider}/callback` with `{ "code", "state", "redirectUri" }`. `redirectUri` must be exactly the value used in step 2. The response is the sign in session of section 1.2 plus `newAccount` (true when this call created the account) and `provider`.
+1. `GET /api/v1/auth/social/providers` returns `{ "providers": ["google", "github"], "clientIds": { "google": "...", "github": "..." } }`, the providers that are on and their public client IDs. Use it to decide which buttons to show and which ID to start each login with. No secret is returned.
+2. The portal runs the provider login in the browser and gets:
+   * Google: an ID token from Google Identity Services.
+   * Facebook: a user access token from the Facebook SDK, with the `email` permission.
+   * GitHub: a one-time code. The portal sends the browser to `https://github.com/login/oauth/authorize` with `client_id`, `redirect_uri`, `scope=user:email` and a random `state` that it stores and compares when GitHub sends the browser back. A browser cannot get a GitHub access token without the client secret, so it gets a code and this service trades it.
+3. The portal posts the token to the provider's endpoint:
 
-`redirectUri` must appear in `developer.oauth.allowed-redirect-uris` (exact match, no wildcards); otherwise `400 VALIDATION_FAILED`. The state is signed by this service, expires after 10 minutes and is bound to the provider and the redirect address, so a state from one provider or address is refused for another (`401 OAUTH_FAILED`).
+| Endpoint | Body | How the service checks it |
+|:-|:-|:-|
+| `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | Google's token info endpoint checks the signature and expiry. The token must be issued by Google to `GOOGLE_CLIENT_ID` |
+| `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | Facebook's `debug_token` endpoint must say the token is valid and was issued to this app, and the profile read with it must belong to the same user |
+| `POST /api/v1/auth/social/github` | `{ "token": "<code>", "redirectUri": "<callback URL>" }` | The code is traded for an access token with the client secret. `redirectUri` is optional and, when sent, must be the one the login started with |
+
+`token` is required (at most 4096 characters), otherwise `400 VALIDATION_FAILED`. The response is the sign in session of section 1.2 plus `newAccount` (true when this call created the account) and `provider`. A GitHub code works once and for about 10 minutes, so a retry needs a new login.
 
 How an account is chosen:
 
@@ -180,13 +188,13 @@ How an account is chosen:
 
 GitHub: only verified addresses from the account's email list are used, the primary one preferred. Facebook: the address is never treated as verified.
 
-Errors: `400 VALIDATION_FAILED` (redirect address), `401 OAUTH_FAILED` (bad or reused code, bad state, provider refused), `404 OAUTH_NOT_CONFIGURED` (unknown provider name, or a provider without client credentials), `403 ACCOUNT_PENDING`, `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
+Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expired or reused token or code, a token issued to another app, provider refused), `404 OAUTH_NOT_CONFIGURED` (the provider is not switched on in this service), `403 ACCOUNT_PENDING`, `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
 
 ### 1.10 What the portal does
 
 * Routes `/verify-email` and `/reset-password` read `token` from the query string, immediately remove it from the address bar (`history.replaceState`) so it does not stay in history or leak through a Referer header, then POST it. Serve those pages with `Referrer-Policy: no-referrer`.
-* Keeps the OAuth `state` from step 2 and compares it with the one the provider returns before calling the callback endpoint.
-* Registers each callback address with the provider (Google Cloud console, Facebook developer app, GitHub OAuth app) exactly as listed in `developer.oauth.allowed-redirect-uris`.
+* For GitHub, makes a random `state` before sending the browser away, keeps it in session storage and compares it with the one GitHub returns before posting the code.
+* Registers its origin with Google as an Authorized JavaScript origin, and its callback address with the GitHub OAuth app, exactly as it uses them. Facebook needs no redirect address for the SDK login.
 * After sign up, shows `data.message` and goes to the sign in page, because sign up issues no token. The developer can sign in at once, before confirming the email.
 * Keeps the access token in memory or in a cookie of its own choosing; this service only reads the `Authorization: Bearer` header.
 

@@ -36,7 +36,7 @@ public record DeveloperProperties(
         if (internal == null) internal = new Internal(null);
         if (cors == null) cors = new Cors(null);
         if (mail == null) mail = new Mail(null, null, null, null, null, null, null, null, null);
-        if (oauth == null) oauth = new OAuth(null, null, null, null, null);
+        if (oauth == null) oauth = new OAuth(null, null, null);
         if (cloudinary == null) cloudinary = new Cloudinary(null, null, null, null, null);
     }
 
@@ -235,51 +235,56 @@ public record DeveloperProperties(
     }
 
     /**
-     * Sign in with Google, Facebook and GitHub. A provider is on when it has a client id and secret. Sign in is off
-     * altogether until allowedRedirectUris lists the exact portal addresses the provider may send people back to.
-     * The default addresses are the providers' standard endpoints; override them to pin a Facebook API version.
+     * Sign in with Google, Facebook and GitHub. The browser gets the provider's token or code itself and posts it to this
+     * service, which checks it with the provider. Google needs only the client id (its ID token is checked against it).
+     * Facebook and GitHub also need the secret: Facebook to ask whether a token was issued to this app, GitHub to trade
+     * its one time code for an access token. The default addresses are the providers' standard endpoints; override them
+     * to pin a Facebook API version.
      */
-    public record OAuth(Provider google, Provider facebook, Provider github, List<String> allowedRedirectUris,
-                        Integer stateTtlMinutes) {
+    public record OAuth(Provider google, Provider facebook, Provider github) {
 
-        public static final Provider GOOGLE_DEFAULTS = new Provider(null, null,
-                "https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",
-                "https://openidconnect.googleapis.com/v1/userinfo", null, "openid email profile");
-        public static final Provider FACEBOOK_DEFAULTS = new Provider(null, null,
-                "https://www.facebook.com/v21.0/dialog/oauth", "https://graph.facebook.com/v21.0/oauth/access_token",
-                "https://graph.facebook.com/v21.0/me?fields=id,name,email", null, "email,public_profile");
-        public static final Provider GITHUB_DEFAULTS = new Provider(null, null,
-                "https://github.com/login/oauth/authorize", "https://github.com/login/oauth/access_token",
-                "https://api.github.com/user", "https://api.github.com/user/emails", "read:user user:email");
+        public static final Provider GOOGLE_DEFAULTS = new Provider(null, null, null,
+                "https://oauth2.googleapis.com/tokeninfo", null, null);
+        public static final Provider FACEBOOK_DEFAULTS = new Provider(null, null, null,
+                "https://graph.facebook.com/v21.0/debug_token", "https://graph.facebook.com/v21.0/me?fields=id,name,email", null);
+        public static final Provider GITHUB_DEFAULTS = new Provider(null, null, "https://github.com/login/oauth/access_token",
+                null, "https://api.github.com/user", "https://api.github.com/user/emails");
 
         public OAuth {
             google = Provider.resolve(google, GOOGLE_DEFAULTS);
             facebook = Provider.resolve(facebook, FACEBOOK_DEFAULTS);
             github = Provider.resolve(github, GITHUB_DEFAULTS);
-            allowedRedirectUris = allowedRedirectUris == null ? List.of() : allowedRedirectUris.stream()
-                    .filter(u -> u != null && !u.isBlank()).map(String::trim).distinct().toList();
-            if (stateTtlMinutes == null || stateTtlMinutes < 1) stateTtlMinutes = 10;
-        }
-
-        public boolean isAllowedRedirect(String uri) {
-            return uri != null && allowedRedirectUris.contains(uri.trim());
         }
     }
 
-    /** One sign in provider. userInfoUrl is the profile address; emailsUrl is GitHub's list of email addresses. */
-    public record Provider(String clientId, String clientSecret, String authorizeUrl, String tokenUrl,
-                           String userInfoUrl, String emailsUrl, String scope) {
+    /**
+     * One sign in provider. tokenUrl trades GitHub's code for an access token. verifyUrl is where Google's ID token
+     * and Facebook's access token are checked. userInfoUrl is the profile address; emailsUrl is GitHub's list of
+     * email addresses.
+     */
+    public record Provider(String clientId, String clientSecret, String tokenUrl, String verifyUrl,
+                           String userInfoUrl, String emailsUrl) {
 
         static Provider resolve(Provider given, Provider defaults) {
             if (given == null) return defaults;
             return new Provider(blankToNull(given.clientId), blankToNull(given.clientSecret),
-                    or(given.authorizeUrl, defaults.authorizeUrl), or(given.tokenUrl, defaults.tokenUrl),
-                    or(given.userInfoUrl, defaults.userInfoUrl), or(given.emailsUrl, defaults.emailsUrl),
-                    or(given.scope, defaults.scope));
+                    or(given.tokenUrl, defaults.tokenUrl), or(given.verifyUrl, defaults.verifyUrl),
+                    or(given.userInfoUrl, defaults.userInfoUrl), or(given.emailsUrl, defaults.emailsUrl));
         }
 
+        public boolean hasClientId() {
+            return clientId != null;
+        }
+
+        /** Both a client id and a secret. Facebook and GitHub need both; Google needs only the client id. */
         public boolean enabled() {
             return clientId != null && clientSecret != null;
+        }
+
+        /** Never prints the secret. */
+        @Override
+        public String toString() {
+            return "Provider[clientId=" + clientId + ", clientSecret=" + (clientSecret == null ? "unset" : "set") + "]";
         }
 
         private static String or(String v, String d) {

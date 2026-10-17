@@ -65,8 +65,15 @@ public class AccountEmailService {
         return mail.canSend();
     }
 
-    /** Sends the confirmation link for a new account. Never throws: sign up must not fail because email did. */
+    /**
+     * Sends the confirmation link for a new account. Returns at once: the link is created and sent on the mail threads,
+     * so sign up does not wait for it. Never throws: sign up must not fail because email did.
+     */
     public void sendVerification(Developer d) {
+        mail.later("confirmation link", () -> deliverVerification(d));
+    }
+
+    private void deliverVerification(Developer d) {
         try {
             if (d.isEmailVerified() || tokens.waitSeconds(d, EmailTokenType.VERIFY_EMAIL).isPresent()) return;
             EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.VERIFY_EMAIL);
@@ -95,7 +102,7 @@ public class AccountEmailService {
 
     /** For someone who is not signed in. The answer never says whether the address has an account. */
     public void resendVerification(String email) {
-        findActive(email).ifPresent(this::sendVerification);
+        mail.later("confirmation link", () -> findActive(email).ifPresent(this::deliverVerification));
     }
 
     /** Redeems a confirmation link. */
@@ -119,8 +126,15 @@ public class AccountEmailService {
         return m;
     }
 
-    /** Sends a password reset link when the address belongs to an active account. Says nothing either way. */
+    /**
+     * Sends a password reset link when the address belongs to an active account. Says nothing either way. The lookup and
+     * the link are done on the mail threads, so the request takes the same time for every address.
+     */
     public void forgotPassword(String email) {
+        mail.later("password reset link", () -> deliverReset(email));
+    }
+
+    private void deliverReset(String email) {
         try {
             Optional<Developer> found = findActive(email);
             if (found.isEmpty()) return;
@@ -162,6 +176,10 @@ public class AccountEmailService {
 
     /** Tells the owner that the password changed. Never throws. */
     public void sendPasswordChanged(Developer d) {
+        mail.later("password change notice", () -> deliverPasswordChanged(d));
+    }
+
+    private void deliverPasswordChanged(Developer d) {
         try {
             EmailTemplates.Message m = EmailTemplates.passwordChanged(greeting(d), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
@@ -172,6 +190,10 @@ public class AccountEmailService {
 
     /** Sent once the address is confirmed: what to do next. Never throws. */
     public void sendWelcome(Developer d) {
+        mail.later("welcome email", () -> deliverWelcome(d));
+    }
+
+    private void deliverWelcome(Developer d) {
         try {
             EmailTemplates.Message m = EmailTemplates.welcome(greeting(d), config.portalBaseUrl());
             mail.send(d.getEmail(), m.subject(), m.html(), null);
@@ -186,6 +208,10 @@ public class AccountEmailService {
      */
     public void sendSignInAlert(Developer d, ClientInfo client, String method, Instant at) {
         if (!config.notifySignIn()) return;
+        mail.later("sign in notice", () -> deliverSignInAlert(d, client, method, at));
+    }
+
+    private void deliverSignInAlert(Developer d, ClientInfo client, String method, Instant at) {
         try {
             ClientInfo c = client == null ? ClientInfo.UNKNOWN : client;
             EmailTemplates.Message m = EmailTemplates.signIn(greeting(d), method, c.device(), c.ipText(), at,
