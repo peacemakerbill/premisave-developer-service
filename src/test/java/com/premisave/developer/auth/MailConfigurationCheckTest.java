@@ -31,9 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @EnabledIfSystemProperty(named = "mail.check", matches = "true")
 class MailConfigurationCheckTest {
 
-    private static final String NOT_CONFIGURED = "Mail is OFF: Spring has no spring.mail.host. Put "
-            + "spring.mail.host=smtp.gmail.com in the .env file in the project folder (no # in front, no quotes), "
-            + "then run again. Real environment variables must use SPRING_MAIL_HOST instead.";
+    private static final String NOT_CONFIGURED = "Mail is OFF: no mail username is set. Put MAIL_USERNAME=you@gmail.com "
+            + "and MAIL_PASSWORD=your App Password (and MAIL_HOST if it is not Gmail) in the .env file in the project "
+            + "folder, with no # in front, then run again.";
 
     @Autowired(required = false)
     private JavaMailSender sender;
@@ -46,14 +46,10 @@ class MailConfigurationCheckTest {
 
     @Test
     void mailIsConfiguredAndActive() {
-        assertNotNull(sender, NOT_CONFIGURED);
-        assertTrue(mailService.canSend(), "A mail sender exists but the mail service did not pick it up");
-
-        JavaMailSenderImpl mail = impl();
-        assertTrue(notBlank(mail.getHost()), "spring.mail.host is empty");
-        assertTrue(mail.getPort() > 0, "spring.mail.port is not set (Gmail uses 587)");
-        assertTrue(notBlank(mail.getUsername()), "spring.mail.username is empty. Use the full Gmail address");
-        assertTrue(notBlank(mail.getPassword()), "spring.mail.password is empty. Use the 16 character Google App Password");
+        JavaMailSenderImpl mail = withHost();
+        assertTrue(mailService.canSend(), "A mail host is set but the mail service did not pick it up");
+        assertTrue(mail.getPort() > 0, "The mail port is not set (Gmail uses 587)");
+                assertTrue(notBlank(mail.getPassword()), "The mail password is empty. Use the 16 character Google App Password in MAIL_PASSWORD");
 
         String from = props.mail().from();
         System.out.println("Mail is ACTIVE");
@@ -70,8 +66,7 @@ class MailConfigurationCheckTest {
     /** Opens a connection and logs in, without sending anything. A wrong App Password fails here. */
     @Test
     void theMailServerAcceptsTheLogin() throws Exception {
-        assertNotNull(sender, NOT_CONFIGURED);
-        impl().testConnection();
+        withHost().testConnection();
         System.out.println("The mail server accepted the login");
     }
 
@@ -79,8 +74,7 @@ class MailConfigurationCheckTest {
     @Test
     @EnabledIfSystemProperty(named = "mail.check.send-to", matches = ".+@.+")
     void sendsATestEmail() {
-        assertNotNull(sender, NOT_CONFIGURED);
-        JavaMailSenderImpl mail = impl();
+        JavaMailSenderImpl mail = withHost();
         String to = System.getProperty("mail.check.send-to").trim();
         String from = props.mail().from() == null ? mail.getUsername() : props.mail().from();
 
@@ -93,9 +87,13 @@ class MailConfigurationCheckTest {
         System.out.println("Test email sent to " + to + ". Check the inbox and the spam folder.");
     }
 
-    private JavaMailSenderImpl impl() {
+    /** The standard mail sender, after checking that it has a host and a username. Spring builds one even when they are empty. */
+    private JavaMailSenderImpl withHost() {
+        assertNotNull(sender, NOT_CONFIGURED);
         assertTrue(sender instanceof JavaMailSenderImpl, "The mail sender is not the standard Spring one");
-        return (JavaMailSenderImpl) sender;
+        JavaMailSenderImpl mail = (JavaMailSenderImpl) sender;
+        assertTrue(notBlank(mail.getHost()) && notBlank(mail.getUsername()), NOT_CONFIGURED);
+        return mail;
     }
 
     private static boolean notBlank(String s) {

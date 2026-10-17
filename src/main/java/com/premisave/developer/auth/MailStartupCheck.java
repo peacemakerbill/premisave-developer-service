@@ -12,6 +12,11 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -39,7 +44,7 @@ public class MailStartupCheck {
 
     public MailStartupCheck(Optional<JavaMailSender> sender, DeveloperProperties props,
                             @Value("${developer.mail.startup-check.send-test-to:}") String sendTestTo) {
-        this.sender = sender.orElse(null);
+        this.sender = sender.filter(MailConfig::isConfigured).orElse(null);
         this.props = props;
         this.sendTestTo = sendTestTo == null ? "" : sendTestTo.trim();
     }
@@ -60,8 +65,9 @@ public class MailStartupCheck {
     /** Runs the check, logs what it finds and returns it. */
     public Result run() {
         if (sender == null) {
-            return report(Outcome.OFF, "Mail check: mail is OFF. Spring has no spring.mail.host, so no email will be sent. "
-                    + "Put spring.mail.host=smtp.gmail.com in the .env file (or SPRING_MAIL_HOST in the environment) and restart.");
+            return report(Outcome.OFF, "Mail check: mail is OFF. No mail username (or host) is set, so no email will be sent. "
+                    + "Put MAIL_USERNAME, MAIL_PASSWORD and, if not Gmail, MAIL_HOST in the .env file and restart. "
+                    + diagnose(Path.of(".env")));
         }
         String username = null;
         if (sender instanceof JavaMailSenderImpl mail) {
@@ -102,11 +108,61 @@ public class MailStartupCheck {
         }
     }
 
+    /** The spellings of the mail username setting that the service reads, lower case. */
+    private static final List<String> USER_KEYS = List.of("mail_username", "spring.mail.username");
+
+    /**
+     * Says what is wrong with the .env file when mail is off: no such file in the folder the service started from, no
+     * mail username line (MAIL_USERNAME or spring.mail.username), a line commented out with #, an empty value, or the old
+     * SPRING_MAIL_USERNAME name, which is no longer read.
+     * Only key names are looked at, no value is ever reported.
+     */
+    static String diagnose(Path file) {
+        Path shown = file.toAbsolutePath();
+        if (!Files.isRegularFile(file)) {
+            return "No .env file was found at " + shown + ". Start the service from the folder that holds .env.";
+        }
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(file);
+        } catch (IOException | RuntimeException e) {
+            return "The .env file at " + shown + " could not be read: " + e.getClass().getSimpleName();
+        }
+        String commented = null;
+        String emptyValue = null;
+        boolean good = false;
+        boolean oldName = false;
+        for (String raw : lines) {
+            String line = raw.trim();
+            boolean hash = line.startsWith("#");
+            String body = hash ? line.substring(1).trim() : line;
+            int eq = body.indexOf('=');
+            if (eq < 0) continue;
+            String key = body.substring(0, eq).trim();
+            String value = body.substring(eq + 1).trim();
+            if (!hash && key.equalsIgnoreCase("SPRING_MAIL_USERNAME")) oldName = true;
+            if (!USER_KEYS.contains(key.toLowerCase(Locale.ROOT))) continue;
+            if (hash) commented = "the " + key + " line in .env starts with #, remove the #";
+            else if (value.isEmpty() || value.equals("''") || value.equals("\"\"")) emptyValue = key + " in .env has no value";
+            else good = true;
+        }
+        if (good) {
+            return "The .env file at " + shown + " has a mail username line with a value, so check the key name for a typo "
+                    + "or a stray character, and that this is the .env of the folder the service started from.";
+        }
+        if (oldName) {
+            return "In " + shown + ": SPRING_MAIL_USERNAME is not read. Rename it to MAIL_USERNAME, and SPRING_MAIL_PASSWORD, "
+                    + "SPRING_MAIL_HOST and SPRING_MAIL_PORT to MAIL_PASSWORD, MAIL_HOST and MAIL_PORT.";
+        }
+        String why = emptyValue != null ? emptyValue : commented != null ? commented : "the .env file has no MAIL_USERNAME line";
+        return "In " + shown + ": " + why + ".";
+    }
+
     private static String hint(Exception e) {
         String text = String.valueOf(e);
         if (text.contains("535") || text.contains("Username and Password not accepted") || text.contains("AuthenticationFailed")) {
-            return ". For Gmail use the full address as spring.mail.username and a 16 character App Password "
-                    + "(2 step verification must be on) as spring.mail.password, not the account password";
+            return ". For Gmail use the full address as the mail username and a 16 character App Password "
+                    + "(2 step verification must be on) as the mail password, not the account password";
         }
         return "";
     }

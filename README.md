@@ -544,8 +544,8 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `DEVELOPER_PORTAL_ORIGINS` | Browser origins allowed to call `/api/v1`, comma separated. `/v1` is never opened to browsers |
 | `DEVELOPER_PORTAL_URL` | Where the portal runs. Links in emails point here |
 | `DEVELOPER_MAIL_FROM` | Sender address on every email |
-| `spring.mail.host`, `.port`, `.username`, `.password` | The SMTP server. See [Email Setup](#email-setup) |
-| `spring.mail.properties.mail.smtp.auth`, `...starttls.enable` | Set both to `true` for Gmail and most providers |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | The SMTP server. Host defaults to `smtp.gmail.com` and port to `587`. An empty `MAIL_USERNAME` means no email is sent. See [Email Setup](#email-setup) |
+| `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS_ENABLE` | Both default to `true`, which is right for Gmail and most providers |
 | `DEVELOPER_MAIL_NOTIFY_SIGN_IN` | Email the owner on every sign in, default `true` |
 | `DEVELOPER_MAIL_LOG_LINKS` | Development only: write confirmation and reset links to the log when no mail server is set |
 | `DEVELOPER_MAIL_STARTUP_CHECK` | Check the mail settings at every start and log the result, default `false`. See [Email Setup](#email-setup) |
@@ -561,7 +561,7 @@ Further tuning is in `application.yml` under `developer.*`: token lifetime (`dev
 
 ## Email Setup
 
-Email is optional and off until a mail server is configured. With no host, no email is sent, a warning is logged, and every endpoint still answers normally.
+Email is optional and off until a mail username is set. With no `MAIL_USERNAME`, no email is sent, a warning is logged, and every endpoint still answers normally.
 
 **Gmail**
 
@@ -570,21 +570,22 @@ Email is optional and off until a mail server is configured. With no host, no em
 3. Put these in `.env`:
    ```properties
    DEVELOPER_MAIL_FROM=you@gmail.com
-   spring.mail.host=smtp.gmail.com
-   spring.mail.port=587
-   spring.mail.username=you@gmail.com
-   spring.mail.password=your16characterapppassword
-   spring.mail.properties.mail.smtp.auth=true
-   spring.mail.properties.mail.smtp.starttls.enable=true
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USERNAME=you@gmail.com
+   MAIL_PASSWORD=your16characterapppassword
+   MAIL_SMTP_AUTH=true
+   MAIL_SMTP_STARTTLS_ENABLE=true
+   MAIL_SMTP_STARTTLS_REQUIRED=true
    ```
 4. Restart the service and sign up. The confirmation email should arrive within seconds.
 
 Things to know:
 
-- `spring.mail.host` is the server name, never an email address.
+- `MAIL_HOST` is the server name, never an email address. It defaults to `smtp.gmail.com`, so for Gmail you can leave it out.
 - A password pasted as `' yyyy nnnn bbbb kkkk'` still works: the service removes one pair of matching quotes and the spaces of a Google App Password before it logs in (and says so in the log, without showing the password). Any other password is used exactly as written. Plain `yyyynnnnbbbbkkkk` is still the clean form.
-- Inside `.env` the mail settings use the dotted names above, because a file, unlike the environment, does not map `SPRING_MAIL_HOST`. If you set real environment variables instead, use `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH` and `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE`.
-- Do not put `spring.mail.host` in `application.yml` with an empty value. Any value, even an empty one, switches mail on.
+- The capital-letter `MAIL_*` names are the same style as the wallet service, and they work in `.env` and as real environment variables. The old `SPRING_MAIL_*` names are not read: if `.env` still has them, the startup check tells you to rename them.
+- With no `MAIL_USERNAME`, mail is off. Spring itself switches mail on for any host value, and the Gmail default always gives it one, so the service decides: mail is on only when both a host and a username are set.
 - Gmail sends as the signed-in account whatever `From` says, so keep `DEVELOPER_MAIL_FROM` equal to the username.
 - A personal Gmail account allows about 500 messages a day. That is enough for development but not for a launch. Use a transactional email service (any SMTP provider) in production.
 - For local work without a mail server, `DEVELOPER_MAIL_LOG_LINKS=true` writes the confirmation and reset links to the log. Links are credentials, so never use it in production.
@@ -595,7 +596,7 @@ Set `DEVELOPER_MAIL_STARTUP_CHECK=true` in `.env` and the service checks its mai
 
 | Log line | Meaning |
 |---|---|
-| `mail is OFF. Spring has no spring.mail.host` | Mail is not configured. Add `spring.mail.host=smtp.gmail.com` to `.env` and restart |
+| `mail is OFF. No mail username (or host) is set` | Mail is not configured. The same line then says why: no `.env` file in the folder the service started from (with the full path it looked in), no `MAIL_USERNAME` line, a line starting with `#`, or an empty value. Fix `.env` and restart |
 | `mail is ON. Server smtp.gmail.com:587, user ..., password 16 characters` | Mail is configured. The password is never printed, only its length |
 | `the mail server accepted the login` | The username and App Password are right |
 | `the mail server did not accept the login` | Wrong username or password. For Gmail use the 16 character App Password |
@@ -653,7 +654,7 @@ mvn clean test
 
 The tests use fakes for the repositories and a local HTTP server standing in for the wallet, so they need no database and no network. This code base was compiled and its tests run only with `javac` against stubs, never with Maven or a real MongoDB, SMTP server, wallet or provider. Run this first on your machine.
 
-To check that email is really switched on in your setup, run the mail check. It starts the application, reads your `.env`, and reports whether `spring.mail.host` was picked up and whether the mail server accepts the login. It sends nothing unless you add an address, and it is skipped in a normal build:
+To check that email is really switched on in your setup, run the mail check. It starts the application, reads your `.env`, and reports whether the mail host was picked up and whether the mail server accepts the login. It sends nothing unless you add an address, and it is skipped in a normal build:
 
 ```bash
 mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true

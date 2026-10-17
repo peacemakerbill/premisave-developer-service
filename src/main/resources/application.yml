@@ -11,12 +11,21 @@ spring:
     mongodb:
       auto-index-creation: true
   mail:
-    # Timeouts for the mail server, so a server that does not answer cannot hold a thread forever. These do not
-    # switch mail on: only spring.mail.host does that, and it is set in .env or the environment.
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
-      mail.smtp.connectiontimeout: 10000
-      mail.smtp.timeout: 10000
-      mail.smtp.writetimeout: 10000
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:true}
+          # So a server that does not answer cannot hold a thread forever.
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developer}
 
@@ -94,8 +103,3 @@ developer:
     github:
       client-id: ${GITHUB_CLIENT_ID:}
       client-secret: ${GITHUB_CLIENT_SECRET:}
-
-# The mail server is not configured here on purpose: any spring.mail.host value, even an empty one, switches
-# mail sending on. Set SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME and SPRING_MAIL_PASSWORD (and
-# SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true, SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true as needed)
-# in the environment. Without a host, no email is sent and the account endpoints still answer normally.

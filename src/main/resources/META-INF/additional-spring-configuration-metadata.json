@@ -19,9 +19,27 @@
       "defaultValue": ""
     },
     {
+      "name": "spring.mail.properties.mail.smtp.auth",
+      "type": "java.lang.Boolean",
+      "description": "Log in to the mail server with the username and password. Gmail needs this on.",
+      "defaultValue": true
+    },
+    {
       "name": "spring.mail.properties.mail.smtp.connectiontimeout",
       "type": "java.lang.Integer",
       "description": "Milliseconds to wait when connecting to the mail server before giving up. Jakarta Mail waits forever when this is not set."
+    },
+    {
+      "name": "spring.mail.properties.mail.smtp.starttls.enable",
+      "type": "java.lang.Boolean",
+      "description": "Upgrade the connection to TLS with STARTTLS before logging in. Gmail on port 587 needs this on.",
+      "defaultValue": true
+    },
+    {
+      "name": "spring.mail.properties.mail.smtp.starttls.required",
+      "type": "java.lang.Boolean",
+      "description": "Refuse to send when the mail server does not offer STARTTLS, so the login is never sent in clear text.",
+      "defaultValue": true
     },
     {
       "name": "spring.mail.properties.mail.smtp.timeout",

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,7 +52,27 @@ class MailStartupCheckTest {
     void withNoMailServerItSaysMailIsOffAndSendsNothing() {
         MailStartupCheck.Result r = check(null, "me@gmail.com").run();
         assertEquals(MailStartupCheck.Outcome.OFF, r.outcome());
-        assertTrue(r.message().contains("spring.mail.host"));
+        assertTrue(r.message().contains("MAIL_USERNAME"));
+    }
+
+    @Test
+    void aMailSenderWithNoUsernameCountsAsNoMailServer() {
+        FakeSender noUser = new FakeSender();
+        noUser.setUsername("");
+        MailStartupCheck.Result r = check(noUser, "me@gmail.com").run();
+        assertEquals(MailStartupCheck.Outcome.OFF, r.outcome());
+        assertTrue(noUser.sent.isEmpty());
+        assertEquals(0, noUser.logins);
+    }
+
+    @Test
+    void aMailSenderWithABlankHostCountsAsNoMailServer() {
+        FakeSender blank = new FakeSender();
+        blank.setHost("  ");
+        MailStartupCheck.Result r = check(blank, "me@gmail.com").run();
+        assertEquals(MailStartupCheck.Outcome.OFF, r.outcome());
+        assertTrue(blank.sent.isEmpty());
+        assertEquals(0, blank.logins);
     }
 
     @Test
@@ -130,5 +152,65 @@ class MailStartupCheckTest {
                 mail, base.oauth());
         new MailStartupCheck(Optional.of(sender), props, "me@gmail.com").run();
         assertEquals("noreply@premisave.com", sender.sent.get(0).getFrom());
+    }
+
+    // ---- what is wrong with .env when mail is off
+
+    private static String diagnoseFile(String content) throws Exception {
+        Path file = Files.createTempFile("env-check", ".env");
+        try {
+            Files.writeString(file, content);
+            return MailStartupCheck.diagnose(file);
+        } finally {
+            Files.deleteIfExists(file);
+        }
+    }
+
+    @Test
+    void aMissingEnvFileIsNamedWithItsFullPath() {
+        Path missing = Path.of("definitely-not-here", ".env");
+        String d = MailStartupCheck.diagnose(missing);
+        assertTrue(d.contains("No .env file was found"));
+        assertTrue(d.contains(missing.toAbsolutePath().toString()));
+    }
+
+    @Test
+    void anEnvFileWithoutAHostLineSaysSo() throws Exception {
+        assertTrue(diagnoseFile("SERVER_PORT=8091\nMAIL_HOST=smtp.gmail.com\n").contains("has no MAIL_USERNAME line"));
+    }
+
+    @Test
+    void aCommentedHostLineIsFound() throws Exception {
+        assertTrue(diagnoseFile("# MAIL_USERNAME=me@gmail.com\n").contains("MAIL_USERNAME line in .env starts with #"));
+        assertTrue(diagnoseFile("#spring.mail.username=me@gmail.com\n").contains("starts with #"));
+    }
+
+    @Test
+    void everySpellingOfTheUsernameCountsAsAUsernameLine() throws Exception {
+        for (String line : new String[] {"MAIL_USERNAME=me@gmail.com", "spring.mail.username=me@gmail.com"}) {
+            assertTrue(diagnoseFile(line + "\n").contains("has a mail username line with a value"), line);
+        }
+    }
+
+    @Test
+    void theOldSpringNameIsToldToRename() throws Exception {
+        String d = diagnoseFile("SPRING_MAIL_HOST=smtp.gmail.com\nSPRING_MAIL_USERNAME=me@gmail.com\n");
+        assertTrue(d.contains("SPRING_MAIL_USERNAME is not read. Rename it to MAIL_USERNAME"));
+        assertTrue(!d.contains("me@gmail.com"));
+    }
+
+    @Test
+    void anEmptyHostValueIsFound() throws Exception {
+        assertTrue(diagnoseFile("MAIL_USERNAME=\n").contains("MAIL_USERNAME in .env has no value"));
+        assertTrue(diagnoseFile("MAIL_USERNAME=''\n").contains("has no value"));
+        assertTrue(diagnoseFile("spring.mail.username=\n").contains("has no value"));
+    }
+
+    @Test
+    void aGoodHostLineIsNotBlamedAndNoValueIsReported() throws Exception {
+        String d = diagnoseFile("MAIL_USERNAME=secret.user@example.com\nMAIL_PASSWORD=topsecret\n");
+        assertTrue(d.contains("has a mail username line with a value"));
+        assertTrue(!d.contains("secret.user@example.com"));
+        assertTrue(!d.contains("topsecret"));
     }
 }
