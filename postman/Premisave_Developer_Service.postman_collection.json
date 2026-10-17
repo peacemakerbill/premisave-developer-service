@@ -44,7 +44,7 @@
                 }
               }
             },
-            "description": "Required: email, firstName, lastName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: middleName, phoneNumber (7 to 15 digits), companyName, marketingOptIn. A username is generated for you. 409 EMAIL_TAKEN if the email is used. The account is created PENDING and the answer carries only message, next (SIGN_IN), status (PENDING) and confirmationEmailSent: no token and no account data. A confirmation email is sent when a mail server is set, and confirming it makes the account ACTIVE. Show data.message and send the developer to the sign in page, then run Sign in. Sign in works before the email is confirmed."
+            "description": "Required: email, firstName, lastName, password (at least 10 characters), country (2 letters) and acceptTerms (must be true). Optional: middleName, phoneNumber (7 to 15 digits), companyName, marketingOptIn. A username is generated for you. 409 EMAIL_TAKEN if the email is used. The account is created PENDING and the answer carries only message, next (CONFIRM_EMAIL), status (PENDING) and confirmationEmailSent: no token and no account data. A confirmation email is sent when a mail server is set, and confirming it makes the account ACTIVE. Show data.message and tell the developer to open the confirmation link. Sign in answers 403 ACCOUNT_PENDING until the email is confirmed, so open the link from the email (or the log when log-links is on) first, then run Sign in."
           },
           "response": []
         },
@@ -83,7 +83,7 @@
                 }
               }
             },
-            "description": "5 failed attempts lock the account for 15 minutes (423 ACCOUNT_LOCKED)."
+            "description": "5 failed attempts lock the account for 15 minutes (423 ACCOUNT_LOCKED). 403 ACCOUNT_PENDING when the password is right but the email is not confirmed yet (data.next is CONFIRM_EMAIL)."
           },
           "response": [],
           "event": [

@@ -760,7 +760,8 @@ details.cfg textarea { background: rgba(255, 255, 255, 0.05); border-color: var(
       log(label + ': HTTP ' + r.status, r.body, 'good');
       showSession();
     } else {
-      pipe('verify', 'bad', 'Rejected, ' + messageOf(r));
+      var pending = r.body && r.body.data && r.body.data.code === 'ACCOUNT_PENDING';
+      pipe('verify', 'bad', pending ? 'Waiting for email confirmation' : 'Rejected, ' + messageOf(r));
       pipe('session', 'bad', 'Not issued');
       log(label + ': HTTP ' + r.status, r.body, 'bad');
     }

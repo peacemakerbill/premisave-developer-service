@@ -51,18 +51,18 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 
 Names may contain letters from any alphabet, spaces, hyphens, apostrophes and full stops (Anne-Marie, O'Brien, van der Merwe). Digits, symbols and markup are refused. There is no username field: one is generated (section 1.3) and the developer changes it on the profile.
 
-Returns `201` with no token and no account data. Sign up only creates the account, and the account is `PENDING` until the email address is confirmed (section 1.7), which makes it `ACTIVE`. The developer signs in on the next screen (section 1.2), and sign in does not wait for the confirmation. The portal shows `data.message` and sends the developer to the sign in page.
+Returns `201` with no token and no account data. Sign up only creates the account, and the account is `PENDING` until the email address is confirmed (section 1.7), which makes it `ACTIVE`. The developer cannot sign in until then (section 1.2), by password or through a provider. The portal shows `data.message` and tells the developer to open the confirmation link. A new link can be requested with `POST /api/v1/auth/resend-verification` (section 1.7).
 
 ```json
-{ "success": true, "message": "Your account has been created and is pending until you confirm your email address. We sent a confirmation link to dev@example.com. Sign in to continue.",
-  "data": { "message": "Your account has been created and is pending until you confirm your email address. We sent a confirmation link to dev@example.com. Sign in to continue.",
-            "next": "SIGN_IN", "status": "PENDING", "confirmationEmailSent": true },
+{ "success": true, "message": "Your account has been created and is pending. We sent a confirmation link to dev@example.com. Confirm your email address, then sign in.",
+  "data": { "message": "Your account has been created and is pending. We sent a confirmation link to dev@example.com. Confirm your email address, then sign in.",
+            "next": "CONFIRM_EMAIL", "status": "PENDING", "confirmationEmailSent": true },
   "timestamp": "..." }
 ```
 
-`next` is always `SIGN_IN`. `status` is always `PENDING`. `confirmationEmailSent` is true when the service has a mail server and handed the confirmation email to it, and false when no mail server is configured (the message then does not mention an email address). It is not a delivery guarantee: sending happens in the background and a failure never fails sign up. The account itself (`developerId`, `username`, `emailVerified` and the rest) is returned by sign in (section 1.2) and `GET /api/v1/me`, not by sign up.
+`next` is always `CONFIRM_EMAIL`. `status` is always `PENDING`. `confirmationEmailSent` is true when the service has a mail server and handed the confirmation email to it, and false when no mail server is configured (the message then does not mention an email address). It is not a delivery guarantee: sending happens in the background and a failure never fails sign up. The account itself (`developerId`, `username`, `emailVerified` and the rest) is returned by sign in (section 1.2) and `GET /api/v1/me`, not by sign up.
 
-Account `status` values: `PENDING` (email not confirmed yet), `ACTIVE`, and `DISABLED` (set by staff, blocks every sign in). A pending account becomes `ACTIVE` when the confirmation link is used, when a password is set from a reset link, or when a Google, Facebook or GitHub sign in vouches for the same address. `hasPassword` is false for an account created through a provider that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
+Account `status` values: `PENDING` (email not confirmed yet, cannot sign in), `ACTIVE`, and `DISABLED` (set by staff, blocks every sign in). A pending account becomes `ACTIVE` when the confirmation link is used, when a password is set from a reset link, or when a Google, Facebook or GitHub sign in vouches for the same address. `hasPassword` is false for an account created through a provider that has not set a password. `providers` lists the sign in providers linked to the account, for example `["google"]`.
 
 `profileComplete` is false until the account has a first name, a last name and a country, which an account created through Google, Facebook or GitHub may lack; complete it with `PUT /api/v1/me` (section 1.3).
 
@@ -87,7 +87,7 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
 
 The developer object is the same in `GET /api/v1/me`. `status` is `PENDING` until the email is confirmed, then `ACTIVE`. `profilePictureUrl` is null until a picture is uploaded (section 1.3).
 
-Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong password and an account that has no password because it was created through a provider), `403 ACCOUNT_DISABLED`, `423 ACCOUNT_LOCKED` after 5 failed attempts, for 15 minutes. An unconfirmed email does not stop sign in; it stops creating a business (section 1.4).
+Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong password and an account that has no password because it was created through a provider), `403 ACCOUNT_DISABLED`, `403 ACCOUNT_PENDING` (the email address is not confirmed yet; only said when the password was right, and `data.next` is `CONFIRM_EMAIL`), `423 ACCOUNT_LOCKED` after 5 failed attempts, for 15 minutes. A pending account has no usable token, so every other portal call from it answers `403 ACCOUNT_PENDING` too.
 
 ### 1.3 Me
 
@@ -176,10 +176,11 @@ How an account is chosen:
 | An account with that email exists and the provider does not vouch for the address (Facebook) | `409 ACCOUNT_EXISTS`. Nothing is linked. The developer signs in with the existing method |
 | The provider gives no usable email address | `422 OAUTH_EMAIL_REQUIRED` |
 | The account is disabled | `403 ACCOUNT_DISABLED` |
+| The account is new or still pending and the provider does not vouch for the address (Facebook) | `403 ACCOUNT_PENDING`, `data.next` is `CONFIRM_EMAIL`. On a first sign in the account is created and a confirmation link is sent; no session is issued. After the link is used, signing in with the provider again works |
 
 GitHub: only verified addresses from the account's email list are used, the primary one preferred. Facebook: the address is never treated as verified.
 
-Errors: `400 VALIDATION_FAILED` (redirect address), `401 OAUTH_FAILED` (bad or reused code, bad state, provider refused), `404 OAUTH_NOT_CONFIGURED` (unknown provider name, or a provider without client credentials), `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
+Errors: `400 VALIDATION_FAILED` (redirect address), `401 OAUTH_FAILED` (bad or reused code, bad state, provider refused), `404 OAUTH_NOT_CONFIGURED` (unknown provider name, or a provider without client credentials), `403 ACCOUNT_PENDING`, `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
 
 ### 1.10 What the portal does
 
@@ -289,6 +290,7 @@ Errors from this layer:
 | 401 | `INVALID_API_KEY` | Missing credentials, unknown key, wrong secret, revoked or expired key |
 | 403 | `ENVIRONMENT_MISMATCH` | Key environment differs from the path |
 | 403 | `ACCOUNT_DISABLED` | The developer account was disabled by staff |
+| 403 | `ACCOUNT_PENDING` | The email address has not been confirmed yet. Open the confirmation link, or ask for a new one |
 | 404 | `NOT_FOUND` | Nothing after the environment |
 | 413 | `PAYLOAD_TOO_LARGE` | Body above 1 MB |
 | 429 | `RATE_LIMITED` | Over the per key limit. `Retry-After` header |
@@ -309,4 +311,4 @@ Header `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>`. With no key configured every c
 
 ## 6. Error codes
 
-`VALIDATION_FAILED` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `MERCHANT_EXISTS` 409, `MERCHANT_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.
+`VALIDATION_FAILED` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `ACCOUNT_PENDING` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `MERCHANT_EXISTS` 409, `MERCHANT_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.

@@ -124,18 +124,19 @@ public class DeveloperService {
 
     /**
      * What sign up answers: a message the portal can show, the next step and the account status. No token is issued and
-     * no account data is returned. The account is PENDING until the email address is confirmed. The developer signs in
-     * on the next screen, and sign in does not wait for the confirmation.
+     * no account data is returned. The account is PENDING until the email address is confirmed, and it cannot sign in
+     * before that. The portal tells the developer to open the confirmation link.
      */
     private Map<String, Object> signupResult(Developer d) {
         boolean emailed = accountEmail.canSendEmail();
         String message = emailed
-                ? "Your account has been created and is pending until you confirm your email address. We sent a "
-                  + "confirmation link to " + d.getEmail() + ". Sign in to continue."
-                : "Your account has been created and is pending until your email address is confirmed. Sign in to continue.";
+                ? "Your account has been created and is pending. We sent a confirmation link to " + d.getEmail()
+                  + ". Confirm your email address, then sign in."
+                : "Your account has been created and is pending. Your email address must be confirmed before you can sign in. "
+                  + "Ask for a new confirmation link.";
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("message", message);
-        m.put("next", "SIGN_IN");
+        m.put("next", "CONFIRM_EMAIL");
         m.put("status", d.getStatus().name());
         m.put("confirmationEmailSent", emailed);
         return m;
@@ -179,6 +180,8 @@ public class DeveloperService {
         if (d.getStatus() == DeveloperStatus.DISABLED) {
             throw new DeveloperException(ErrorCode.ACCOUNT_DISABLED, "This account has been disabled");
         }
+        // Only said after the password was right, so it tells nothing to someone who does not know it.
+        if (d.getStatus() == DeveloperStatus.PENDING) throw pending(d);
         d.setFailedLogins(0);
         d.setLockedUntil(null);
         d.setLastLoginAt(now);
@@ -357,6 +360,7 @@ public class DeveloperService {
         if (d.getStatus() == DeveloperStatus.DISABLED) {
             throw new DeveloperException(ErrorCode.ACCOUNT_DISABLED, "This account has been disabled");
         }
+        if (d.getStatus() == DeveloperStatus.PENDING) throw pending(d);
         return new Authenticated(d, claims);
     }
 
@@ -390,6 +394,14 @@ public class DeveloperService {
 
     private void checkPassword(String password, String email) {
         PasswordPolicy.check(security.passwordMinLength(), password, email);
+    }
+
+    /** What a pending account is told when it tries to sign in, or to use a token it was given before. */
+    public static DeveloperException pending(Developer d) {
+        return new DeveloperException(ErrorCode.ACCOUNT_PENDING,
+                "Your account is pending. Confirm your email address with the link we sent to " + d.getEmail()
+                        + ", then sign in. You can ask for a new link.")
+                .with("next", "CONFIRM_EMAIL");
     }
 
     private static DeveloperException invalid() {

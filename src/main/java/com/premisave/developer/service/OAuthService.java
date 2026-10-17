@@ -175,7 +175,8 @@ public class OAuthService {
         d.setLastName(names.last());
         d.setUsername(accounts.generateUsername(names.first(), names.last(), email));
         d.setPasswordHash(null);
-        // A provider that vouches for the address activates the account at once. Otherwise it waits for the email link.
+        // A provider that vouches for the address activates the account at once. Otherwise it waits for the email link,
+        // and cannot sign in until then.
         d.setStatus(DeveloperStatus.PENDING);
         if (profile.emailVerified()) d.confirmEmail(now);
         d.setCreatedAt(now);
@@ -207,6 +208,15 @@ public class OAuthService {
     private Map<String, Object> finish(Developer d, boolean created, OAuthProfile profile, Instant now, ClientInfo caller) {
         if (d.getStatus() == DeveloperStatus.DISABLED) {
             throw new DeveloperException(ErrorCode.ACCOUNT_DISABLED, "This account has been disabled");
+        }
+        if (d.getStatus() == DeveloperStatus.PENDING) {
+            // A provider that does not vouch for the address (Facebook) leaves the account waiting for the email link.
+            if (created) {
+                throw new DeveloperException(ErrorCode.ACCOUNT_PENDING, "Your account has been created and is pending. "
+                        + "We sent a confirmation link to " + d.getEmail() + ". Confirm your email address, then sign in with "
+                        + OAuthClient.label(profile.provider()) + " again.").with("next", "CONFIRM_EMAIL");
+            }
+            throw DeveloperService.pending(d);
         }
         d.setLastLoginAt(now);
         accounts.fillMissingProfile(d);

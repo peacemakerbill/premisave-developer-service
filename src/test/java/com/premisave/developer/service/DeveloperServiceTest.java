@@ -63,9 +63,15 @@ class DeveloperServiceTest {
         return service.signup(signup("Jane@Example.com ", "a long password 1"));
     }
 
-    /** Signs up and then signs in, because sign up itself issues no token. */
-    private String signedInToken() {
+    /** Signs up and confirms the email address, because a pending account cannot sign in. */
+    private void signedUpAndConfirmed() {
         signedUp();
+        only().confirmEmail(now);
+    }
+
+    /** Signs up, confirms the email address and then signs in, because sign up itself issues no token. */
+    private String signedInToken() {
+        signedUpAndConfirmed();
         return (String) service.login(new LoginRequest("jane@example.com", "a long password 1")).get("accessToken");
     }
 
@@ -398,7 +404,7 @@ class DeveloperServiceTest {
 
     @Test
     void loginWithTheRightPasswordWorksAndRecordsTheTime() {
-        signedUp();
+        signedUpAndConfirmed();
         now = T0.plusSeconds(60);
         Map<String, Object> s = service.login(new LoginRequest(" JANE@example.com", "a long password 1"));
         assertNotNull(s.get("accessToken"));
@@ -417,7 +423,7 @@ class DeveloperServiceTest {
 
     @Test
     void repeatedFailuresLockTheAccountEvenAgainstTheRightPassword() {
-        signedUp();
+        signedUpAndConfirmed();
         LoginRequest bad = new LoginRequest("jane@example.com", "wrong wrong wrong");
         for (int i = 0; i < 3; i++) assertThrows(DeveloperException.class, () -> service.login(bad));
         DeveloperException locked = assertThrows(DeveloperException.class,
@@ -431,7 +437,7 @@ class DeveloperServiceTest {
 
     @Test
     void aSuccessfulLoginClearsEarlierFailures() {
-        signedUp();
+        signedUpAndConfirmed();
         LoginRequest bad = new LoginRequest("jane@example.com", "wrong wrong wrong");
         assertThrows(DeveloperException.class, () -> service.login(bad));
         assertThrows(DeveloperException.class, () -> service.login(bad));
@@ -489,7 +495,7 @@ class DeveloperServiceTest {
 
     @Test
     void anOlderHashIsUpgradedOnLogin() {
-        signedUp();
+        signedUpAndConfirmed();
         Developer d = repo.store.values().iterator().next();
         d.setPasswordHash(new PasswordHasher(1_000).hash("a long password 1"));
         service.login(new LoginRequest("jane@example.com", "a long password 1"));
@@ -514,7 +520,7 @@ class DeveloperServiceTest {
 
     @Test
     void signingInSendsANoticeWithTheDeviceAndAddress() {
-        signedUp();
+        signedUpAndConfirmed();
         mailer.sent.clear();
         now = T0.plusSeconds(300);
         service.login(new LoginRequest("jane@example.com", "a long password 1"),
@@ -543,6 +549,7 @@ class DeveloperServiceTest {
         AccountEmailService quietEmail = new AccountEmailService(repo.repo, tokens, mail, hasher, quiet, 10, clock);
         DeveloperService quietService = new DeveloperService(repo.repo, hasher, jwt, TestProps.fastSecurity(), revoked.repo, quietEmail, clock);
         quietService.signup(signup("jane@example.com", "a long password 1"));
+        only().confirmEmail(now);
         mailer.sent.clear();
         quietService.login(new LoginRequest("jane@example.com", "a long password 1"));
         assertTrue(mailer.sent.isEmpty());
@@ -668,7 +675,7 @@ class DeveloperServiceTest {
 
     @Test
     void everyTokenCarriesItsOwnId() {
-        signedUp();
+        signedUpAndConfirmed();
         Map<String, Object> a = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> b = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         JwtService.Claims ca = jwt.verify(tokenOf(a)).orElseThrow();
@@ -679,7 +686,7 @@ class DeveloperServiceTest {
 
     @Test
     void logoutEndsOnlyTheTokenUsed() {
-        signedUp();
+        signedUpAndConfirmed();
         Map<String, Object> first = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> second = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         DeveloperService.Authenticated who = service.authenticateToken(tokenOf(first));
@@ -693,7 +700,7 @@ class DeveloperServiceTest {
 
     @Test
     void logoutEverywhereEndsEveryToken() {
-        signedUp();
+        signedUpAndConfirmed();
         Map<String, Object> first = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         Map<String, Object> second = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         service.logoutEverywhere(service.authenticate(tokenOf(first)));
@@ -705,7 +712,7 @@ class DeveloperServiceTest {
 
     @Test
     void anAccountWithoutAPasswordCannotSignInWithOneAndCanSetOne() {
-        signedUp();
+        signedUpAndConfirmed();
         Developer d = repo.store.values().iterator().next();
         d.setPasswordHash(null);
         DeveloperException e = assertThrows(DeveloperException.class,
@@ -743,11 +750,11 @@ class DeveloperServiceTest {
     @Test
     void signupAnswersWithAMessageAndTheNextStep() {
         Map<String, Object> s = signedUp();
-        assertEquals("SIGN_IN", s.get("next"));
+        assertEquals("CONFIRM_EMAIL", s.get("next"));
         assertEquals(true, s.get("confirmationEmailSent"));
         String message = (String) s.get("message");
-        assertTrue(message.startsWith("Your account has been created and is pending until you confirm your email address."));
-        assertTrue(message.endsWith("Sign in to continue."));
+        assertTrue(message.startsWith("Your account has been created and is pending."));
+        assertTrue(message.endsWith("Confirm your email address, then sign in."));
         assertTrue(message.contains("jane@example.com"));
         assertEquals("PENDING", s.get("status"));
     }
@@ -762,12 +769,31 @@ class DeveloperServiceTest {
     }
 
     @Test
-    void aPendingAccountCanStillSignInButStaysPendingUntilTheEmailIsConfirmed() {
+    void aPendingAccountCannotSignInEvenWithTheRightPassword() {
         signedUp();
-        Map<String, Object> in = service.login(new LoginRequest("jane@example.com", "a long password 1"));
-        assertNotNull(in.get("accessToken"));
-        assertEquals("PENDING", developerOf(in).get("status"));
+        DeveloperException e = assertThrows(DeveloperException.class,
+                () -> service.login(new LoginRequest("jane@example.com", "a long password 1")));
+        assertEquals(ErrorCode.ACCOUNT_PENDING, e.code());
+        assertEquals("CONFIRM_EMAIL", e.extra().get("next"));
+        assertTrue(e.getMessage().contains("jane@example.com"));
         assertEquals(DeveloperStatus.PENDING, only().getStatus());
+        assertNull(only().getLastLoginAt());
+        assertTrue(mailer.sent.stream().noneMatch(m -> m.subject().contains("New sign in")));
+    }
+
+    @Test
+    void aWrongPasswordOnAPendingAccountLooksLikeAnyOtherWrongPassword() {
+        signedUp();
+        DeveloperException e = assertThrows(DeveloperException.class,
+                () -> service.login(new LoginRequest("jane@example.com", "wrong wrong wrong")));
+        assertEquals(ErrorCode.INVALID_CREDENTIALS, e.code());
+    }
+
+    @Test
+    void aTokenThatBelongsToAPendingAccountIsRefused() {
+        signedUp();
+        String token = jwt.issue(only().getDeveloperId(), only().getTokenVersion());
+        assertEquals(ErrorCode.ACCOUNT_PENDING, assertThrows(DeveloperException.class, () -> service.authenticate(token)).code());
     }
 
     @Test
@@ -786,18 +812,33 @@ class DeveloperServiceTest {
         AccountEmailService quietEmail = new AccountEmailService(repo.repo, tokens, noMail, hasher, TestProps.mail(), 10, clock);
         DeveloperService quietService = new DeveloperService(repo.repo, hasher, jwt, TestProps.fastSecurity(), revoked.repo, quietEmail, clock);
         Map<String, Object> s = quietService.signup(signup("jane@example.com", "a long password 1"));
-        assertEquals("Your account has been created and is pending until your email address is confirmed. Sign in to continue.", s.get("message"));
+        assertEquals("Your account has been created and is pending. Your email address must be confirmed before you can sign in. Ask for a new confirmation link.", s.get("message"));
         assertEquals(false, s.get("confirmationEmailSent"));
-        assertEquals("SIGN_IN", s.get("next"));
+        assertEquals("CONFIRM_EMAIL", s.get("next"));
         assertTrue(mailer.sent.isEmpty());
     }
 
     @Test
-    void signingInWorksStraightAfterSignupBeforeTheEmailIsConfirmed() {
+    void afterConfirmingTheEmailTheDeveloperCanSignIn() {
         signedUp();
+        String link = mailer.lastLink("https://portal.example.com/verify-email?token=");
+        accountEmail.verifyEmail(link.substring("https://portal.example.com/verify-email?token=".length()));
+        now = T0.plusSeconds(60);
         Map<String, Object> in = service.login(new LoginRequest("jane@example.com", "a long password 1"));
         assertNotNull(in.get("accessToken"));
-        assertEquals(false, developerOf(in).get("emailVerified"));
-        assertEquals(now, repo.store.values().iterator().next().getLastLoginAt());
+        assertEquals("ACTIVE", developerOf(in).get("status"));
+        assertEquals(true, developerOf(in).get("emailVerified"));
+        assertEquals(now, only().getLastLoginAt());
+    }
+
+    @Test
+    void aPasswordResetFromAnEmailLinkActivatesAPendingAccountSoItCanSignIn() {
+        signedUp();
+        mailer.sent.clear();
+        accountEmail.forgotPassword("jane@example.com");
+        String link = mailer.lastLink("https://portal.example.com/reset-password?token=");
+        accountEmail.resetPassword(link.substring("https://portal.example.com/reset-password?token=".length()), "a brand new password 5");
+        assertEquals(DeveloperStatus.ACTIVE, only().getStatus());
+        assertNotNull(service.login(new LoginRequest("jane@example.com", "a brand new password 5")).get("accessToken"));
     }
 }

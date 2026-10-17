@@ -218,14 +218,35 @@ class OAuthServiceTest {
     }
 
     @Test
-    void facebookCreatesAnUnconfirmedAccountAndSendsAConfirmationLink() {
+    void facebookCreatesAnUnconfirmedAccountAndSendsAConfirmationLinkButDoesNotSignIn() {
         facebook("f-1", "fb.user@example.com");
-        Map<String, Object> s = signIn("facebook");
-        assertEquals(true, s.get("newAccount"));
-        assertEquals(false, developerOf(s).get("emailVerified"));
-        assertEquals("PENDING", developerOf(s).get("status"));
+        DeveloperException e = assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        assertEquals(ErrorCode.ACCOUNT_PENDING, e.code());
+        assertEquals("CONFIRM_EMAIL", e.extra().get("next"));
+        assertTrue(e.getMessage().contains("fb.user@example.com"));
+        assertTrue(e.getMessage().endsWith("sign in with Facebook again."));
+        Developer d = devs.store.values().iterator().next();
+        assertEquals(DeveloperStatus.PENDING, d.getStatus());
+        assertFalse(d.isEmailVerified());
+        assertNull(d.getLastLoginAt());
         assertEquals(1, mailer.sent.size());
         assertEquals("fb.user@example.com", mailer.sent.get(0).to());
+    }
+
+    @Test
+    void aPendingFacebookAccountStaysRefusedUntilTheEmailIsConfirmedAndThenSignsIn() {
+        facebook("f-1", "fb.user@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        DeveloperException again = assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        assertEquals(ErrorCode.ACCOUNT_PENDING, again.code());
+        assertTrue(again.getMessage().startsWith("Your account is pending."));
+        assertEquals(1, devs.store.size());
+
+        devs.store.values().iterator().next().confirmEmail(now);
+        Map<String, Object> s = signIn("facebook");
+        assertEquals(false, s.get("newAccount"));
+        assertEquals("ACTIVE", developerOf(s).get("status"));
+        assertNotNull(s.get("accessToken"));
     }
 
     @Test

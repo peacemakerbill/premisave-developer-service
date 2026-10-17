@@ -87,7 +87,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 ## Features
 
 **Accounts and Authentication**
-- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record. Sign up leaves the account `PENDING` until the email is confirmed, then it becomes `ACTIVE`. It returns only a message, the next step (`SIGN_IN`) and the status: no token and no account data, so the portal sends the developer to the sign in page. Sign in does not wait for the email to be confirmed
+- Email and password sign up with first, optional middle and last name, country, optional phone and company, and an accepted-terms record. Sign up leaves the account `PENDING` until the email is confirmed, then it becomes `ACTIVE`. It returns only a message, the next step (`CONFIRM_EMAIL`) and the status: no token and no account data, so the portal tells the developer to open the confirmation link. A `PENDING` account cannot sign in, with a password or through Google, Facebook or GitHub, and no token works for it: the answer is `403 ACCOUNT_PENDING` until the email is confirmed.
 - Sign in with Google, Facebook or GitHub through the authorization code flow, so the portal never handles a provider secret
 - Stateless HS256 JWT access tokens (`jti`, token version) with real revocation: sign out one device, or sign out everywhere
 - Email confirmation and forgot password, using single-use links that are stored only as keyed hashes
@@ -196,7 +196,7 @@ sequenceDiagram
         S->>M: Save developer (status = PENDING, emailVerified = false)
         S->>M: Save confirmation token (hash only, 24 hours)
         S-->>E: Send confirmation email (background)
-        S-->>P: 201 message, next = SIGN_IN and status = PENDING (no token, no account data)
+        S-->>P: 201 message, next = CONFIRM_EMAIL and status = PENDING (no token, no account data)
     end
     E-->>D: Confirmation email delivered
     D->>P: Open the link in the email
@@ -211,7 +211,7 @@ sequenceDiagram
     end
 ```
 
-Sign up issues no token and returns no account data. The account is `PENDING` until the email link is used, which makes it `ACTIVE` (so does a password reset from an email link, or joining through a provider that vouches for the address). The portal shows `data.message` and sends the developer to the sign in page, where sign in works while the account is pending. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
+Sign up issues no token and returns no account data. The account is `PENDING` until the email link is used, which makes it `ACTIVE` (so does a password reset from an email link, or joining through a provider that vouches for the address). The portal shows `data.message` and tells the developer to open the confirmation link. Until then sign in answers `403 ACCOUNT_PENDING`, and a new link can be requested from the sign in page with `POST /api/v1/auth/resend-verification`. Sign up never fails because the email could not be sent. A confirmed email is required before the developer can create a business.
 
 ### Sign In
 
@@ -229,11 +229,13 @@ sequenceDiagram
     S->>M: Load developer by email
     alt Account locked
         S-->>P: 423 ACCOUNT_LOCKED
-    else Account disabled
-        S-->>P: 403 ACCOUNT_DISABLED
     else Unknown email or wrong password
         S->>M: Count the failed attempt
         S-->>P: 401 INVALID_CREDENTIALS
+    else Account disabled
+        S-->>P: 403 ACCOUNT_DISABLED
+    else Account pending (password was right)
+        S-->>P: 403 ACCOUNT_PENDING, next = CONFIRM_EMAIL
     else Success
         S->>S: Issue JWT with jti and token version
         S-->>E: Send new sign in notice (background)
@@ -671,7 +673,7 @@ Register the same addresses with each provider. There are no wildcards, and the 
 Notes per provider:
 
 - **Google.** Add each callback address under **Authorized redirect URIs**. While the consent screen is in Testing, add the accounts you sign in with under Test users.
-- **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.authorize-url`, `token-url` and `user-info-url` if needed.
+- **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. A first Facebook sign in creates the account as `PENDING`, sends the confirmation link and answers `403 ACCOUNT_PENDING` with no session; the developer signs in with Facebook again after opening the link. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.authorize-url`, `token-url` and `user-info-url` if needed.
 - **GitHub.** Set the Authorization callback URL to the portal address. Only verified addresses from the account's email list are used, with the primary one preferred.
 
 The check for a working setup is `GET /api/v1/auth/oauth/providers`, which lists the providers that are on. The full flow, matching rules and error codes are in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.9.
