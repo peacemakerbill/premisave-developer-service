@@ -105,6 +105,17 @@ public final class EmailTemplates {
         return new Message(subject, page("app-handed-over", v, subject, "The app now belongs to another developer account."));
     }
 
+    /** The test message the mail check sends at startup, so a person sees what the service's emails look like. */
+    public static Message mailCheck(String sentTo, String sentFrom, String server, Instant at, String portalUrl) {
+        Map<String, String> v = base(null, portalUrl);
+        v.put("sentTo", sentTo);
+        v.put("sentFrom", sentFrom == null || sentFrom.isBlank() ? "the mail server's login user" : sentFrom);
+        v.put("server", server);
+        v.put("time", at == null ? "" : WHEN.format(at.atOffset(ZoneOffset.UTC)));
+        String subject = "Premisave developer service: mail check";
+        return new Message(subject, page("mail-check", v, subject, "If you can read this, email is working."));
+    }
+
     private static Map<String, String> base(String name, String portalUrl) {
         Map<String, String> v = new HashMap<>();
         v.put("name", name == null || name.isBlank() ? "there" : name.trim());

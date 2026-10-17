@@ -30,6 +30,29 @@ class EmailTemplatesTest {
     }
 
     @Test
+    void theMailCheckEmailShowsWhereItWentAndWhatToDoToStopIt() {
+        EmailTemplates.Message m = EmailTemplates.mailCheck("jane@example.com", "noreply@premisave.com", "smtp.gmail.com:587",
+                Instant.parse("2026-10-18T08:05:00Z"), PORTAL);
+        assertEquals("Premisave developer service: mail check", m.subject());
+        assertTrue(m.html().startsWith("<!DOCTYPE html>"));
+        assertTrue(m.html().contains("<title>" + m.subject() + "</title>"));
+        assertFalse(m.html().contains("{{"));
+        assertTrue(m.html().contains("Email is working"));
+        assertTrue(m.html().contains("jane@example.com"));
+        assertTrue(m.html().contains("noreply@premisave.com"));
+        assertTrue(m.html().contains("smtp.gmail.com:587"));
+        assertTrue(m.html().contains("18 Oct 2026, 08:05 UTC"));
+        assertTrue(m.html().contains("send-test-to"));
+        assertTrue(m.html().contains("href=\"" + PORTAL + "\""));
+    }
+
+    @Test
+    void theMailCheckEmailNamesTheLoginUserWhenNoSenderIsGiven() {
+        String html = EmailTemplates.mailCheck("jane@example.com", null, "smtp.gmail.com:587", null, PORTAL).html();
+        assertTrue(html.contains("the mail server&#39;s login user") || html.contains("the mail server's login user"));
+    }
+
+    @Test
     void theTransferCodeEmailShowsTheCodeWhatItIsForAndHowLongItLasts() {
         String html = all().get(5).html();
         assertTrue(html.contains(">123456<"));

@@ -1,15 +1,18 @@
 package com.premisave.developer.service;
 
+import com.premisave.developer.client.Mailer;
+import com.premisave.developer.client.SmtpMailer;
 import com.premisave.developer.config.DeveloperProperties;
 import com.premisave.developer.config.MailConfig;
+import com.premisave.developer.util.EmailTemplates;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
@@ -17,9 +20,11 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Checks the mail settings once the service has started and writes the result to the log, so a wrong setting shows
@@ -44,11 +49,21 @@ public class MailStartupCheck {
     private final DeveloperProperties props;
     private final String sendTestTo;
 
+    private final Function<String, Mailer> mailers;
+
+    @Autowired
     public MailStartupCheck(Optional<JavaMailSender> sender, DeveloperProperties props,
                             @Value("${developer.mail.startup-check.send-test-to:}") String sendTestTo) {
+        this(sender, props, sendTestTo, null);
+    }
+
+    /** mailers makes the Mailer for a given sender address; null means the real mail server. Tests pass their own. */
+    MailStartupCheck(Optional<JavaMailSender> sender, DeveloperProperties props, String sendTestTo,
+                     Function<String, Mailer> mailers) {
         this.sender = sender.filter(MailConfig::isConfigured).orElse(null);
         this.props = props;
         this.sendTestTo = sendTestTo == null ? "" : sendTestTo.trim();
+        this.mailers = mailers != null ? mailers : from -> new SmtpMailer(this.sender, from);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -95,17 +110,12 @@ public class MailStartupCheck {
                     + "' is not an email address, so no test email was sent");
         }
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            String from = props.mail().from() == null ? username : props.mail().from();
-            if (from != null) message.setFrom(from);
-            message.setTo(sendTestTo);
-            message.setSubject("Premisave developer service: mail check");
-            message.setText("If you can read this, email is working in the Premisave developer service.\n\n"
-                    + "This message is sent each time the service starts while developer.mail.startup-check.send-test-to is set. "
-                    + "Clear that setting to stop it.");
-            sender.send(message);
+            String from = props.mail().from() == null || props.mail().from().isBlank() ? username : props.mail().from();
+            String server = sender instanceof JavaMailSenderImpl mail ? mail.getHost() + ":" + mail.getPort() : "a custom mail sender";
+            EmailTemplates.Message message = EmailTemplates.mailCheck(sendTestTo, from, server, Instant.now(), props.mail().portalBaseUrl());
+            mailers.apply(from).send(sendTestTo, message.subject(), message.html());
             return report(Outcome.TEST_SENT, "Mail check: test email sent to " + sendTestTo + ". Check the inbox and the spam folder");
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             return report(Outcome.TEST_FAILED, "Mail check: the test email to " + sendTestTo + " could not be sent: " + e);
         }
     }

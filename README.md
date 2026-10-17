@@ -104,7 +104,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - A profile picture (JPEG, PNG or WebP, up to 5 MB) stored in Cloudinary, replaced by uploading a new one and removed on request
 
 **Account Emails**
-- Eight HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, password changed, the code that confirms a transfer, and a notice to each account when a production app changes hands
+- Nine HTML emails: confirm your account, welcome, new sign in notice (time, method, device, network address), reset your password, password changed, the code that confirms a transfer, a notice to each account when a production app changes hands, and the mail check test message
 - Sent in the background, so a slow mail server never slows an endpoint, and a mail failure never fails a request
 - Gmail works out of the box with an App Password; with no mail server configured the service sends nothing and still answers normally
 
@@ -249,7 +249,7 @@ sequenceDiagram
     else Success
         S->>S: Issue JWT with jti and token version
         S-->>E: Send new sign in notice (background)
-        S-->>P: 200 accessToken and developer
+        S-->>P: 200 accessToken
     end
 ```
 
@@ -773,7 +773,7 @@ Set `DEVELOPER_MAIL_STARTUP_CHECK=true` in `.env` and the service checks its mai
 | `mail is ON. Server smtp.gmail.com:587, user ..., password 16 characters` | Mail is configured. The password is never printed, only its length |
 | `the mail server accepted the login` | The username and App Password are right |
 | `the mail server did not accept the login` | Wrong username or password. For Gmail use the 16 character App Password |
-| `test email sent to ...` | A test email was sent. Check the inbox and the spam folder |
+| `test email sent to ...` | A test email was sent, designed like the other emails. Check the inbox and the spam folder |
 
 To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_TO=you@example.com`. Clear it, or set the check to `false`, once mail works, or every start sends a message. The check runs in the background, so a slow mail server never delays startup, and nothing it finds stops the service from starting. Mail server connections also time out after 10 seconds. To run the same check as a test instead, see [Testing](#testing).
 
@@ -787,7 +787,7 @@ To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_
 | Reset your password | A forgot-password request for an active account |
 | Your password was changed | After a password change or reset |
 
-The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all eight are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
+The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all nine are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
 
 <br/>
 
@@ -889,11 +889,11 @@ src/main/java/com/premisave/developer
 
 src/main/resources
 ├── application.yml
-└── email         # layout.html and the eight email bodies
+└── email         # layout.html and the nine email bodies
 
 postman           # Collection (101 requests) and local environment
 oauth-test        # A browser page for trying Google, Facebook and GitHub sign in (see Social Sign In Setup)
-email-previews    # The eight emails rendered, open in a browser
+email-previews    # The nine emails rendered, open in a browser
 ```
 
 <br/>

@@ -1,10 +1,10 @@
 package com.premisave.developer.service;
 
 import com.premisave.developer.TestProps;
+import com.premisave.developer.client.Mailer;
 
 import jakarta.mail.MessagingException;
 import org.junit.jupiter.api.Test;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 import java.nio.file.Files;
@@ -23,7 +23,10 @@ class MailStartupCheckTest {
         boolean refuseLogin;
         RuntimeException sendFailure;
         int logins;
-        final List<SimpleMailMessage> sent = new ArrayList<>();
+        /** One email handed to the mail server. */
+        record Sent(String from, String to, String subject, String html) {}
+
+        final List<Sent> sent = new ArrayList<>();
 
         FakeSender() {
             setHost("smtp.gmail.com");
@@ -38,15 +41,18 @@ class MailStartupCheckTest {
             if (refuseLogin) throw new MessagingException("535-5.7.8 Username and Password not accepted");
         }
 
-        @Override
-        public void send(SimpleMailMessage message) {
-            if (sendFailure != null) throw sendFailure;
-            sent.add(message);
+        /** The Mailer the check uses, recording instead of sending. */
+        Mailer mailerFor(String from) {
+            return (to, subject, html) -> {
+                if (sendFailure != null) throw sendFailure;
+                sent.add(new Sent(from, to, subject, html));
+            };
         }
     }
 
     private static MailStartupCheck check(FakeSender sender, String sendTo) {
-        return new MailStartupCheck(Optional.ofNullable(sender), TestProps.with("http://localhost:8084", null), sendTo);
+        return new MailStartupCheck(Optional.ofNullable(sender), TestProps.with("http://localhost:8084", null), sendTo,
+                sender == null ? null : sender::mailerFor);
     }
 
     @Test
@@ -99,11 +105,25 @@ class MailStartupCheckTest {
         MailStartupCheck.Result r = check(sender, " tester@example.com ").run();
         assertEquals(MailStartupCheck.Outcome.TEST_SENT, r.outcome());
         assertEquals(1, sender.sent.size());
-        SimpleMailMessage m = sender.sent.get(0);
-        assertEquals("tester@example.com", m.getTo()[0]);
-        assertEquals("me@gmail.com", m.getFrom());
-        assertEquals("Premisave developer service: mail check", m.getSubject());
+        FakeSender.Sent m = sender.sent.get(0);
+        assertEquals("tester@example.com", m.to());
+        assertEquals("me@gmail.com", m.from());
+        assertEquals("Premisave developer service: mail check", m.subject());
         assertTrue(r.message().contains("tester@example.com"));
+    }
+
+    @Test
+    void theTestEmailIsADesignedHtmlPageThatShowsWhereItWentAndNeverThePassword() {
+        FakeSender sender = new FakeSender();
+        check(sender, "tester@example.com").run();
+        String html = sender.sent.get(0).html();
+        assertTrue(html.startsWith("<!DOCTYPE html") || html.startsWith("<!doctype html") || html.contains("<html"));
+        assertTrue(html.contains("Email is working"));
+        assertTrue(html.contains("tester@example.com"));
+        assertTrue(html.contains("me@gmail.com"));
+        assertTrue(html.contains("smtp.gmail.com:587"));
+        assertTrue(!html.contains("yyyynnnnbbbbkkkk"));
+        assertTrue(!html.contains("{{"));
     }
 
     @Test
@@ -151,8 +171,8 @@ class MailStartupCheckTest {
         com.premisave.developer.config.DeveloperProperties props = new com.premisave.developer.config.DeveloperProperties(
                 base.jwt(), base.keys(), base.wallet(), base.proxy(), base.apps(), base.businesses(), base.security(), base.internal(), base.cors(),
                 mail, base.oauth(), base.cloudinary());
-        new MailStartupCheck(Optional.of(sender), props, "me@gmail.com").run();
-        assertEquals("noreply@premisave.com", sender.sent.get(0).getFrom());
+        new MailStartupCheck(Optional.of(sender), props, "me@gmail.com", sender::mailerFor).run();
+        assertEquals("noreply@premisave.com", sender.sent.get(0).from());
     }
 
     // ---- what is wrong with .env when mail is off
