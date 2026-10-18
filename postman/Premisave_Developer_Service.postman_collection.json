@@ -83,7 +83,7 @@
                 }
               }
             },
-            "description": "5 failed attempts lock the account for 15 minutes (423 ACCOUNT_LOCKED). 403 ACCOUNT_PENDING when the password is right but the email is not confirmed yet (data.next is CONFIRM_EMAIL)."
+            "description": "Returns the token only (accessToken, tokenType, expiresIn). Call Me next to read the account; it also saves developer_id."
           },
           "response": [],
           "event": [
@@ -98,10 +98,6 @@
                   "{",
                   "  const v = (function () { return d.accessToken; })();",
                   "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
                   "}"
                 ]
               }
@@ -400,10 +396,6 @@
                   "{",
                   "  const v = (function () { return d.accessToken; })();",
                   "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
                   "}"
                 ]
               }
@@ -792,10 +784,6 @@
                   "{",
                   "  const v = (function () { return d.accessToken; })();",
                   "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
                   "}"
                 ]
               }
@@ -853,10 +841,6 @@
                   "{",
                   "  const v = (function () { return d.accessToken; })();",
                   "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
                   "}"
                 ]
               }
@@ -914,10 +898,6 @@
                   "{",
                   "  const v = (function () { return d.accessToken; })();",
                   "  if (v) { pm.collectionVariables.set('access_token', String(v)); console.log('access_token = ' + v); }",
-                  "}",
-                  "{",
-                  "  const v = (function () { return d.developer && d.developer.developerId; })();",
-                  "  if (v) { pm.collectionVariables.set('developer_id', String(v)); console.log('developer_id = ' + v); }",
                   "}"
                 ]
               }

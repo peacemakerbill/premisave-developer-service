@@ -400,14 +400,13 @@ public class DeveloperService {
         return developers.save(d);
     }
 
-    /** A new sign in for the developer: the token and the account. */
+    /** A new sign in for the developer: the token only. The account is read with GET /api/v1/me. */
     public Map<String, Object> session(Developer d) {
         promoteIfListed(d);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("accessToken", jwt.issue(d.getDeveloperId(), d.getTokenVersion()));
         m.put("tokenType", "Bearer");
         m.put("expiresIn", jwt.ttlSeconds());
-        m.put("developer", DeveloperViews.developer(d));
         return m;
     }
 
