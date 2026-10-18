@@ -156,7 +156,7 @@ One account can apply for many businesses. Each is a merchant in the wallet serv
 The business object:
 
 ```json
-{ "businessId": "mer_...", "merchantNumber": "PRM-0000000001", "name": "Acme Limited", "tradingName": "Acme",
+{ "businessId": "mer_...", "merchantNumber": null, "name": "Acme Limited", "tradingName": "Acme",
   "country": "KE", "currency": "KES", "paymentMethods": ["CARD", "MOBILE_MONEY"],
   "status": { "sandbox": "ACTIVE", "production": "NOT_ENABLED" },
   "limits": { "sandbox": { }, "production": { } },
@@ -327,7 +327,7 @@ Method names are `MOBILE_MONEY`, `CARD`, `BANK_TRANSFER`, `PAYPAL`, `CRYPTO` and
 
 The response is the app object plus `apiKey`, the first key with its `secret`, shown once.
 
-Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED`, `404 BUSINESS_NOT_FOUND`, `404 WALLET_NOT_FOUND`, `409 BUSINESS_REQUIRED`, `409 INVALID_STATE` (the business has no merchant number yet), `409 WALLET_ALREADY_LINKED`, `422 WALLET_NOT_USABLE`, `422 LIMIT_REACHED` (10 apps per environment for each business).
+Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED`, `404 BUSINESS_NOT_FOUND`, `404 WALLET_NOT_FOUND`, `409 BUSINESS_REQUIRED`, `409 INVALID_STATE` (the business has no merchant number yet, which is issued when its onboarding application is approved), `409 WALLET_ALREADY_LINKED`, `422 WALLET_NOT_USABLE`, `422 LIMIT_REACHED` (10 apps per environment for each business).
 
 ### 2.3 Other app calls
 

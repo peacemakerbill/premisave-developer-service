@@ -122,7 +122,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - The wallet's errors are translated into this service's error codes, and an unreachable or slow wallet becomes `503` or `504`
 
 **Business and Onboarding**
-- One account can apply for many businesses (10 by default). Each is a merchant in the wallet service with its own merchant number and its own onboarding application, and applying needs a confirmed email
+- One account can apply for many businesses (10 by default). Each is a merchant in the wallet service with its own onboarding application and, once approved, its own merchant number, and applying needs a confirmed email
 - Plain payloads: a business needs only a `name` and a `country`. Every business comes back with a `nextStep` that says what to do next, such as `COMPLETE_APPLICATION` or `CREATE_APP`
 - `/api/v1/businesses/{businessId}/application/**` passes the application through to the wallet after checking the business is the caller's own. A document is sent as an ordinary file upload (form data, up to 5 MB)
 - An app says which business it belongs to with `businessId`; it can be left out while the account has just one

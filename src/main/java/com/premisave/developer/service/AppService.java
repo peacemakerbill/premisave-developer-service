@@ -101,7 +101,7 @@ public class AppService {
         String number = normaliseNumber(req.merchantNumber());
         if (env == Environment.LIVE) {
             if (merchant.merchantNumber() == null) {
-                throw new DeveloperException(ErrorCode.INVALID_STATE, "This business has no merchant number yet. Try again shortly");
+                throw new DeveloperException(ErrorCode.INVALID_STATE, "This business has no merchant number yet. It is issued when the onboarding application is approved");
             }
             if (number != null && !number.equals(merchant.merchantNumber())) {
                 throw DeveloperException.validation("merchantNumber", "does not match this business. Leave it out to use "

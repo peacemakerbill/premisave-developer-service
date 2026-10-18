@@ -76,7 +76,7 @@ public final class EmailTemplates {
         v.put("code", code);
         v.put("action", action);
         v.put("business", business);
-        v.put("merchantNumber", merchantNumber);
+        v.put("merchantNumber", numberText(merchantNumber));
         v.put("requestedBy", requestedBy);
         v.put("validFor", validMinutes == 1 ? "1 minute" : validMinutes + " minutes");
         String subject = "Your Premisave confirmation code is " + code;
@@ -89,7 +89,7 @@ public final class EmailTemplates {
         v.put("fromName", fromName);
         v.put("appName", appName);
         v.put("business", business);
-        v.put("merchantNumber", merchantNumber);
+        v.put("merchantNumber", numberText(merchantNumber));
         String subject = "A production app was transferred to your Premisave account";
         return new Message(subject, page("app-received", v, subject, "Create a new API key before you use the app."));
     }
@@ -99,7 +99,7 @@ public final class EmailTemplates {
         Map<String, String> v = base(name, portalUrl);
         v.put("appName", appName);
         v.put("business", business);
-        v.put("merchantNumber", merchantNumber);
+        v.put("merchantNumber", numberText(merchantNumber));
         v.put("toEmail", toEmail);
         String subject = "Your Premisave production app was transferred";
         return new Message(subject, page("app-handed-over", v, subject, "The app now belongs to another developer account."));
@@ -123,6 +123,11 @@ public final class EmailTemplates {
         v.put("time", at == null ? "" : WHEN.format(at.atOffset(ZoneOffset.UTC)));
         String subject = "Premisave developer service: mail check";
         return new Message(subject, page("mail-check", v, subject, "If you can read this, email is working."));
+    }
+
+    /** A business gets its merchant number when its application is approved, so an email about an earlier stage has none. */
+    private static String numberText(String merchantNumber) {
+        return merchantNumber == null || merchantNumber.isBlank() ? "Issued when the application is approved" : merchantNumber;
     }
 
     private static Map<String, String> base(String name, String portalUrl) {
