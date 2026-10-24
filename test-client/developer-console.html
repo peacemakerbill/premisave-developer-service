@@ -389,6 +389,52 @@ details.plain summary { cursor: pointer; font-weight: 600; }
 input[type=file].inp { padding: 5px 8px; height: auto; }
 .stack > *, .page > * { min-width: 0; }
 
+/* ---- social sign in ---- */
+.modal.wide { width: min(980px, 100%); }
+.seg { display: inline-flex; border: 1px solid var(--line-2); max-width: 100%; }
+.seg button { border: 0; border-left: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2); padding: 9px 16px; text-align: left; font-weight: 600; min-width: 0; }
+.seg button:first-child { border-left: 0; }
+.seg button span { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-3); }
+.seg button:hover { background: var(--panel-2); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button[aria-pressed="true"] span { color: var(--accent-ink); opacity: .85; }
+.pipe { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pipe li { position: relative; padding: 0 10px 0 0; }
+.pipe li::before { content: ""; position: absolute; left: 34px; right: 4px; top: 15px; height: 2px; background: var(--line-2); }
+.pipe li:last-child::before { display: none; }
+.pipe .node { width: 30px; height: 30px; border: 2px solid var(--line-2); background: var(--panel); display: grid; place-items: center; font-family: var(--mono); font-size: 12px; color: var(--ink-3); position: relative; z-index: 1; }
+.pipe .node .ico svg { width: 14px; height: 14px; stroke-width: 2.4; }
+.pipe .t { font-weight: 600; font-size: 13px; margin-top: 8px; }
+.pipe .s { font-size: 12px; color: var(--ink-3); }
+.pipe li.active .node { border-color: var(--accent); color: var(--accent); }
+.pipe li.done .node { background: var(--good); border-color: var(--good); color: var(--panel); }
+.pipe li.done::before { background: var(--good); }
+.pipe li.bad .node { background: var(--bad); border-color: var(--bad); color: var(--panel); }
+.pipe li.bad .s { color: var(--bad); }
+.pcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; align-items: start; }
+.pcard { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--line-2); }
+.pcard.google { border-top-color: #4285f4; }
+.pcard.facebook { border-top-color: #1877f2; }
+.pcard.github { border-top-color: #6e7781; }
+.pbody { padding: 16px; display: grid; gap: 12px; }
+.phead { display: flex; align-items: center; gap: 12px; }
+.pname { font-family: var(--display); font-size: 22px; font-weight: 600; line-height: 1.1; }
+.badge { width: 38px; height: 38px; display: grid; place-items: center; color: #fff; flex: none; border: 1px solid transparent; }
+.badge svg { width: 20px; height: 20px; fill: currentColor; }
+.badge.google { background: #4285f4; }
+.badge.facebook { background: #1877f2; }
+.badge.github { background: #2b3138; border-color: var(--line-2); }
+.slot { min-height: 44px; display: flex; align-items: center; }
+.pfoot { border-top: 1px dashed var(--line-2); padding-top: 12px; }
+.tcard { border: 1px solid var(--line); background: var(--panel-2); padding: 14px; display: grid; gap: 10px; }
+.tokenbox { padding: 11px 13px; border: 1px solid var(--line); background: var(--field); font: 12.5px/1.55 var(--mono); word-break: break-all; white-space: pre-wrap; user-select: all; max-height: 160px; overflow: auto; }
+.sches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sch { display: inline-flex; gap: 6px; align-items: baseline; border: 1px solid var(--line-2); padding: 3px 10px; font-size: 12px; color: var(--ink-2); }
+.sch b { color: var(--ink); font-weight: 600; }
+@media (max-width: 640px) { .pipe { grid-template-columns: 1fr 1fr; row-gap: 14px; } .pipe li:nth-child(2)::before { display: none; } .seg { flex-direction: column; } .seg button { border-left: 0; border-top: 1px solid var(--line-2); } .seg button:first-child { border-top: 0; } }
+.bico { display: inline-flex; width: 16px; height: 16px; flex: none; }
+.bico svg { width: 100%; height: 100%; fill: currentColor; }
+
 </style>
 </head>
 <body>
@@ -528,7 +574,7 @@ function fallbackCopy(text, done) {
 function modal(title, body, opts) {
   const bg = h('div', { class: 'modal-bg', onmousedown: e => { if (e.target === bg) close(); } });
   const close = () => bg.remove();
-  const box = h('div', { class: 'modal', role: 'dialog', 'aria-label': title },
+  const box = h('div', { class: 'modal' + (opts && opts.wide ? ' wide' : ''), role: 'dialog', 'aria-label': title },
     h('div', { class: 'mh' }, h('h2', null, title), h('span', { class: 'spacer' }), h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, ico('x'))),
     h('div', { class: 'mb' }, body));
   bg.append(box); document.body.append(bg);
@@ -1119,7 +1165,7 @@ const ACCESS = {
   ],
   'Social sign in': [
     { id: 'soc-list', t: 'List providers', m: 'GET', p: '/api/v1/auth/social/providers', a: N, note: 'Providers that are switched on, with their public client ids.' },
-    { id: 'soc-google', t: 'Google (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/google', a: N, note: 'Paste a Google ID token. The easiest way to get one is the social-login-test.html page of the service repo, which also shows the request body to paste here.', f: [{ k: 'token', l: 'Google ID token', t: 'textarea', r: 1, rows: 3 }], onOk: adoptSession },
+    { id: 'soc-google', t: 'Google (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/google', a: N, note: 'Paste a Google ID token. The Social sign in page gets one for you and can show the request body to paste here.', f: [{ k: 'token', l: 'Google ID token', t: 'textarea', r: 1, rows: 3 }], onOk: adoptSession },
     { id: 'soc-fb', t: 'Facebook (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/facebook', a: N, note: 'Paste a Facebook user access token that includes the email permission.', f: [{ k: 'token', l: 'Facebook access token', t: 'textarea', r: 1, rows: 3 }], onOk: adoptSession },
     { id: 'soc-gh', t: 'GitHub (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/github', a: N, note: 'Paste the one time code GitHub redirects back with. A code works once.', f: [{ k: 'token', l: 'GitHub code', r: 1 }], onOk: adoptSession }
   ]
@@ -1405,6 +1451,7 @@ function loginForm(onDone) {
     h('div', { class: 'field' }, h('label', { class: 'fl' }, 'Email'), email, S.recent.length ? recent : null, dl),
     h('div', { class: 'field' }, h('label', { class: 'fl' }, 'Password'), h('div', { class: 'pwbox' }, pass, eye)),
     err, submit,
+    h('button', { class: 'btn', type: 'button', style: { width: '100%', marginTop: '8px' }, onclick: () => openSocialModal(onDone) }, ico('globe'), 'Continue with Google, Facebook or GitHub'),
     h('div', { class: 'row', style: { marginTop: '10px', justifyContent: 'space-between' } },
       side('Create an account', ACCESS['Sign up']),
       side('Forgot password', [ACCESS['Reset password'][0]])),
@@ -1453,7 +1500,7 @@ function renderLogin() {
 
 // ---------- shell ----------
 const NAV = [
-  ['Account', 'overview', 'Overview', 'home'], ['Account', 'profile', 'Profile', 'users'], ['Account', 'access', 'Sign up and recovery', 'plus'],
+  ['Account', 'overview', 'Overview', 'home'], ['Account', 'profile', 'Profile', 'users'], ['Account', 'access', 'Sign up and recovery', 'plus'], ['Account', 'social', 'Social sign in', 'globe'],
   ['Build', 'businesses', 'Businesses', 'building'], ['Build', 'apps', 'Apps', 'box'], ['Build', 'keys', 'API keys', 'key'],
   ['Build', 'transfers', 'Transfers', 'send'], ['Build', 'publicapi', 'Public API', 'globe'],
   ['Staff', 'admin', 'Administration', 'shield'],
@@ -1580,6 +1627,323 @@ function renderLog() {
     return wrap;
   }));
 }
+
+// ---------- social sign in: Google, Facebook and GitHub ----------
+// Runs the provider login in this page, then either sends the provider token to the developer service
+// (and adds the session it issues as an account) or just keeps the token so it can be pasted into Postman.
+const SOC_PROVIDERS = {
+  google: { label: 'Google', kind: 'ID token', desc: 'ID token, checked by Premisave', note: 'Short lived. A Google ID token is good for about an hour.' },
+  facebook: { label: 'Facebook', kind: 'access token', desc: 'Access token, checked by Premisave', note: 'Short lived. Tokens from the login popup last for hours, tokens from the Graph API Explorer for about an hour.' },
+  github: { label: 'GitHub', kind: 'one-time code', desc: 'One-time code, exchanged by Premisave', note: 'Single use and valid for about 10 minutes. GitHub does not give a browser an access token, so Premisave trades this code for one.' }
+};
+const SOC_ICONS = {
+  google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+  github: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>'
+};
+const SOC_STEPS = [['login', 'Approve', 'Pick a provider'], ['token', 'Provider token', 'Waiting'], ['verify', 'Premisave checks it', 'Waiting'], ['session', 'Session token', 'Waiting']];
+const SOC = {
+  mode: SS.get('dc-soc-mode') === 'token' ? 'token' : 'signin',
+  tokens: jget(SS, 'dc-soc-tokens', []),
+  info: { providers: [], clientIds: {} }, backendUp: null, googleReady: false, googleInit: false, facebookReady: false,
+  pipe: {}, session: null, alert: '', arrival: null, onSession: null, ui: null
+};
+function socRedirectUri() { return location.origin + location.pathname; }
+function socOn(p) { return SOC.info.providers.indexOf(p) !== -1 && !!SOC.info.clientIds[p]; }
+function socSaveTokens() { SS.set('dc-soc-tokens', JSON.stringify(SOC.tokens)); }
+function socLoadScript(src) {
+  return new Promise((resolve, reject) => {
+    const ex = document.querySelector('script[data-src="' + src + '"]');
+    if (ex) { if (ex.getAttribute('data-done') === '1') resolve(); else { ex.addEventListener('load', resolve); ex.addEventListener('error', reject); } return; }
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.setAttribute('data-src', src);
+    s.onload = () => { s.setAttribute('data-done', '1'); resolve(); };
+    s.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// ----- progress -----
+function socPipeReset() { SOC.pipe = {}; SOC.alert = ''; SOC_STEPS.forEach(s => { SOC.pipe[s[0]] = ['', s[2]]; }); socPaint(); }
+function socPipe(step, state, text) { SOC.pipe[step] = [state, text || SOC.pipe[step][1]]; socPaint(); }
+function socPaint() {
+  const u = SOC.ui; if (!u) return;
+  SOC_STEPS.forEach((s, i) => {
+    const [state, text] = SOC.pipe[s[0]] || ['', s[2]];
+    const li = u.pipe[i]; li.className = state;
+    li.querySelector('.node').replaceChildren(state === 'done' ? ico('check') : document.createTextNode(String(i + 1)));
+    li.querySelector('.s').textContent = text;
+  });
+  u.alert.classList.toggle('hide', !SOC.alert);
+  u.alert.textContent = SOC.alert;
+}
+function socStatus(p, text, bad) { const u = SOC.ui; if (!u) return; u.status[p].textContent = text; u.status[p].style.color = bad ? 'var(--bad)' : ''; }
+function socRefresh() {
+  const u = SOC.ui; if (!u) return;
+  const token = SOC.mode === 'token';
+  u.modeBtns.signin.setAttribute('aria-pressed', String(!token));
+  u.modeBtns.token.setAttribute('aria-pressed', String(token));
+  u.modeHint.textContent = token
+    ? 'Token only: runs the provider login and keeps the token below. Nothing is sent to Premisave, so you can paste it into Postman.'
+    : 'Sign in: runs the provider login, sends the token to the matching Premisave endpoint, and adds the session it issues as an account on this page.';
+  u.btnLabel.facebook.textContent = token ? 'Get Facebook token' : 'Continue with Facebook';
+  u.btnLabel.github.textContent = token ? 'Get GitHub code' : 'Continue with GitHub';
+  ['google', 'facebook', 'github'].forEach(p => {
+    const on = SOC.backendUp && socOn(p);
+    if (p !== 'google') u.btn[p].disabled = !on;
+    if (p === 'facebook') u.fbPasteBtn.disabled = !SOC.backendUp;
+    if (SOC.backendUp === null) socStatus(p, 'Checking the developer service.');
+    else if (!SOC.backendUp) socStatus(p, 'Developer service not reachable.', true);
+    else if (!on) socStatus(p, 'Not switched on in the service. Set ' + (p === 'google' ? 'GOOGLE_CLIENT_ID' : p.toUpperCase() + '_CLIENT_ID and ' + p.toUpperCase() + '_CLIENT_SECRET') + '.', true);
+    else if (p === 'google') socStatus(p, SOC.googleReady ? 'Ready.' : 'Loading Google sign in.');
+    else if (p === 'facebook') socStatus(p, 'Ready.');
+    else socStatus(p, 'Ready. Register ' + socRedirectUri() + ' as the callback URL.');
+  });
+  u.pill.className = 'pill ' + (SOC.backendUp === null ? '' : SOC.backendUp ? 'good' : 'bad');
+  u.pill.textContent = SOC.backendUp === null ? 'Checking' : SOC.backendUp ? 'On: ' + (SOC.info.providers.join(', ') || 'none') : 'Not reachable';
+  socPaint(); socTokens(); socSessionCard();
+}
+
+// ----- backend and provider SDKs -----
+async function socCheck() {
+  const r = await call({ method: 'GET', path: '/api/v1/auth/social/providers', auth: 'none' });
+  const info = { providers: [], clientIds: {} };
+  if (r.net) SOC.backendUp = false;
+  else {
+    SOC.backendUp = true;
+    const p = r.payload;
+    const list = p && Array.isArray(p.providers) ? p.providers : Array.isArray(p) ? p : [];
+    list.forEach(x => {
+      if (typeof x === 'string') info.providers.push(x);
+      else if (x && x.id) { info.providers.push(x.id); if (x.clientId) info.clientIds[x.id] = x.clientId; }
+    });
+    if (p && p.clientIds && typeof p.clientIds === 'object') Object.assign(info.clientIds, p.clientIds);
+  }
+  SOC.info = info; socRefresh(); socSetupGoogle(); socSetupFacebook();
+}
+async function socSetupGoogle() {
+  const u = SOC.ui; if (!u) return;
+  const slot = u.googleSlot;
+  if (!SOC.backendUp || !socOn('google')) { slot.replaceChildren(); return; }
+  try {
+    await socLoadScript('https://accounts.google.com/gsi/client');
+    if (!SOC.ui || SOC.ui.googleSlot !== slot) return;
+    slot.replaceChildren();
+    if (!SOC.googleInit) {
+      window.google.accounts.id.initialize({ client_id: SOC.info.clientIds.google, callback: resp => {
+        if (!resp || !resp.credential) { SOC.alert = 'Google returned no credential.'; socPaint(); return; }
+        socOnToken('google', resp.credential);
+      } });
+      SOC.googleInit = true;
+    }
+    window.google.accounts.id.renderButton(slot, { theme: 'outline', size: 'large', text: 'continue_with', width: Math.max(200, Math.min(320, slot.clientWidth || 260)) });
+    SOC.googleReady = true; socRefresh();
+  } catch (e) {
+    SOC.googleReady = false;
+    socStatus('google', 'Could not load Google sign in. Check the connection and any content blocker.', true);
+  }
+}
+async function socSetupFacebook() {
+  if (!SOC.backendUp || !socOn('facebook') || SOC.facebookReady) return;
+  try {
+    await socLoadScript('https://connect.facebook.net/en_US/sdk.js');
+    window.FB.init({ appId: SOC.info.clientIds.facebook, cookie: false, xfbml: false, version: 'v21.0' });
+    SOC.facebookReady = true;
+  } catch (e) { socStatus('facebook', 'Could not load the Facebook SDK. You can still paste a token below.', true); }
+}
+function socFacebookLogin() {
+  if (!SOC.facebookReady || !window.FB) { socStatus('facebook', 'The Facebook SDK is not ready. Paste a token below instead.', true); return; }
+  socPipeReset(); socPipe('login', 'active', 'Opening Facebook');
+  window.FB.login(resp => {
+    if (resp && resp.authResponse && resp.authResponse.accessToken) socOnToken('facebook', resp.authResponse.accessToken);
+    else { socPipe('login', 'bad', 'Not approved'); SOC.alert = 'Facebook login was cancelled or refused.'; socPaint(); }
+  }, { scope: 'public_profile,email' });
+}
+function socGithubLogin() {
+  const id = SOC.info.clientIds.github; if (!id) return;
+  const bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
+  const state = Array.prototype.map.call(bytes, b => ('0' + b.toString(16)).slice(-2)).join('');
+  SS.set('dc-soc-gh', JSON.stringify({ state, mode: SOC.mode }));
+  socPipeReset(); socPipe('login', 'active', 'Opening GitHub');
+  location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(id) + '&redirect_uri=' + encodeURIComponent(socRedirectUri()) + '&scope=' + encodeURIComponent('user:email') + '&state=' + encodeURIComponent(state);
+}
+
+// ----- a provider token or code is in hand: both modes meet here -----
+function socOnToken(provider, token) {
+  const P = SOC_PROVIDERS[provider];
+  socPipeReset();
+  socPipe('login', 'done', P.label + ' approved'); socPipe('token', 'done', P.kind + ' received');
+  if (SOC.mode === 'token') socAddToken(provider, token); else socSend(provider, token);
+}
+async function socSend(provider, token) {
+  socPipe('verify', 'active', 'Checking with Premisave'); socPipe('session', '', 'Waiting');
+  const r = await call({ method: 'POST', path: '/api/v1/auth/social/' + provider, auth: 'none', body: { token } });
+  if (r.net) { socPipe('verify', 'bad', 'Service unreachable'); SOC.alert = explainFail(r); socPaint(); return; }
+  const d = r.payload;
+  if (r.ok && d && d.accessToken) {
+    SOC.session = d;
+    await addSession('', d.accessToken);
+    socPipe('verify', 'done', d.newAccount ? 'New account created' : 'Existing account'); socPipe('session', 'done', 'Issued');
+    toast('Signed in as ' + S.active);
+    if (typeof SOC.onSession === 'function') { SOC.onSession(d); return; }
+    buildWho(); updateChip(); socRefresh();
+  } else if (r.code === 'ACCOUNT_PENDING') {
+    socPipe('verify', 'done', 'Account found'); socPipe('session', 'bad', 'Waiting for email confirmation');
+    SOC.alert = 'The account is waiting for email confirmation. ' + (ERR_HINT.ACCOUNT_PENDING || '');
+    socPaint();
+  } else {
+    socPipe('verify', 'bad', 'Rejected'); socPipe('session', 'bad', 'Not issued');
+    SOC.alert = explainFail(r) + (r.code && ERR_HINT[r.code] ? '\n' + ERR_HINT[r.code] : ''); socPaint();
+  }
+}
+function socAddToken(provider, token) {
+  SOC.tokens.unshift({ provider, token, at: Date.now() });
+  socSaveTokens(); socRefresh();
+  socPipe('verify', '', 'Skipped in token only mode'); socPipe('session', '', 'Skipped in token only mode');
+  if (SOC.ui && SOC.ui.tokensCard.scrollIntoView) SOC.ui.tokensCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ----- returning from GitHub -----
+function socHandleReturn() {
+  const q = new URLSearchParams(location.search);
+  const code = q.get('code'), state = q.get('state'), err = q.get('error');
+  if (!code && !err) return;
+  history.replaceState(null, '', location.pathname);
+  let pending = null; try { pending = JSON.parse(SS.get('dc-soc-gh')); } catch (e) { /* ignore */ }
+  SS.del('dc-soc-gh');
+  SOC.arrival = { code, state, err, desc: q.get('error_description') || '', pending };
+}
+function socResume() {
+  const a = SOC.arrival; if (!a) return;
+  SOC.arrival = null;
+  if (session()) go('social'); else openSocialModal(() => renderApp());
+  let why = '', step = 'login';
+  if (a.err) why = 'GitHub returned an error: ' + a.err + (a.desc ? ' (' + a.desc + ')' : '');
+  else if (!a.pending) why = 'A code arrived but no GitHub login was started in this tab. Start from the GitHub button: the page keeps the state it sent and compares it on return.';
+  else if (!a.state || a.state !== a.pending.state) why = 'GitHub: state mismatch. The state GitHub returned is not the one this page sent, so the response was rejected. Start again.';
+  if (why) { socPipeReset(); socPipe('login', 'bad', 'GitHub login failed'); SOC.alert = why; socPaint(); return; }
+  SOC.mode = a.pending.mode === 'token' ? 'token' : 'signin'; SS.set('dc-soc-mode', SOC.mode); socRefresh();
+  socOnToken('github', a.code);
+}
+
+// ----- view -----
+function socBadge(p) { return h('div', { class: 'badge ' + p, html: SOC_ICONS[p] }); }
+function socTokens() {
+  const u = SOC.ui; if (!u) return;
+  u.tokensCard.classList.toggle('hide', !SOC.tokens.length);
+  u.tokenList.replaceChildren(...SOC.tokens.map((t, i) => {
+    const P = SOC_PROVIDERS[t.provider];
+    const url = (S.cfg.dev || '').replace(/\/+$/, '') + '/api/v1/auth/social/' + t.provider;
+    const body = JSON.stringify({ token: t.token }, null, 2);
+    return h('div', { class: 'tcard' },
+      h('div', { class: 'row' }, socBadge(t.provider), h('div', null, h('b', null, P.label + ' ' + P.kind), h('div', { class: 'muted small' }, 'Received at ' + new Date(t.at).toLocaleTimeString())), h('span', { class: 'spacer' }),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => { SOC.tokens.splice(i, 1); socSaveTokens(); socTokens(); } }, 'Remove')),
+      h('div', { class: 'tokenbox' }, t.token),
+      h('div', { class: 'muted small' }, t.token.length + ' characters. ' + P.note),
+      h('div', { class: 'small' }, 'Send to ', h('code', { class: 'mono' }, 'POST ' + url)),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn sm primary', type: 'button', onclick: () => copyText(body, 'request body') }, 'Copy request body'),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(t.token, t.provider === 'github' ? 'code' : 'token') }, t.provider === 'github' ? 'Copy code' : 'Copy token'),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(url, 'URL') }, 'Copy URL'),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => { socPipeReset(); socPipe('login', 'done', P.label + ' approved'); socPipe('token', 'done', P.kind + ' received'); socSend(t.provider, t.token); } }, 'Send to the service now')));
+  }));
+}
+function socSessionCard() {
+  const u = SOC.ui; if (!u) return;
+  const d = SOC.session, s = d && S.sessions[S.active];
+  u.sessionCard.classList.toggle('hide', !d);
+  if (!d) return;
+  const claims = decodeJwt(d.accessToken);
+  const shown = Object.keys(claims).length ? Object.assign({}, claims) : { note: 'Could not decode the token' };
+  if (claims.exp) shown.expiresAt = new Date(claims.exp * 1000).toString();
+  const chip = (l, v) => h('span', { class: 'sch' }, l, h('b', null, v));
+  u.sessionBody.replaceChildren(
+    h('div', { class: 'sches' }, chip('Account', d.newAccount ? 'New, just created' : 'Existing'), d.provider ? chip('Provider', d.provider) : null, d.expiresIn ? chip('Lasts', Math.round(d.expiresIn / 60) + ' min') : null,
+      d.developer && d.developer.status ? chip('Status', d.developer.status) : null, s ? chip('Active account', s.email) : null),
+    h('div', { class: 'tokenbox' }, d.accessToken),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(d.accessToken, 'access token') }, 'Copy access token'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => copyText('Bearer ' + d.accessToken, 'Authorization header') }, 'Copy Authorization header'),
+      h('button', { class: 'btn sm primary', type: 'button', onclick: () => go('profile') }, 'Open profile')),
+    h('pre', { class: 'json' }, JSON.stringify(shown, null, 2)),
+    d.developer ? kvView(d.developer) : null);
+}
+function socialView(opts) {
+  opts = opts || {};
+  SOC.onSession = opts.onSession || null;
+  const ui = { pipe: [], status: {}, btn: {}, btnLabel: {}, modeBtns: {} };
+  const mode = m => { SOC.mode = m; SS.set('dc-soc-mode', m); socRefresh(); };
+  ui.modeBtns.signin = h('button', { type: 'button', 'aria-pressed': 'true', onclick: () => mode('signin') }, 'Sign in to Premisave', h('span', null, 'Send the provider token to the service and get a session'));
+  ui.modeBtns.token = h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => mode('token') }, 'Get the token only', h('span', null, 'Keep it here so you can send it from Postman'));
+  ui.modeHint = h('div', { class: 'hint' });
+  ui.pill = h('span', { class: 'pill' }, 'Checking');
+  ui.alert = h('div', { class: 'notice bad hide', style: { whiteSpace: 'pre-wrap', margin: 0 }, role: 'alert' });
+  const pipe = h('ol', { class: 'pipe' }, SOC_STEPS.map((s, i) => { const li = h('li', null, h('div', { class: 'node' }), h('div', { class: 't' }, s[1]), h('div', { class: 's' })); ui.pipe[i] = li; return li; }));
+
+  ui.googleSlot = h('div', { class: 'slot' });
+  const card = (p, body) => {
+    ui.status[p] = h('div', { class: 'hint', style: { margin: 0 } });
+    return h('div', { class: 'pcard ' + p }, h('div', { class: 'pbody' },
+      h('div', { class: 'phead' }, socBadge(p), h('div', null, h('div', { class: 'pname' }, SOC_PROVIDERS[p].label), h('div', { class: 'muted small' }, SOC_PROVIDERS[p].desc))),
+      body, ui.status[p]));
+  };
+  const provBtn = (p, fn) => {
+    ui.btnLabel[p] = h('span', null, '');
+    ui.btn[p] = h('button', { class: 'btn primary', type: 'button', style: { width: '100%' }, onclick: fn }, h('span', { class: 'bico', html: SOC_ICONS[p] }), ui.btnLabel[p]);
+    return ui.btn[p];
+  };
+  const fbPaste = h('input', { class: 'inp mono', placeholder: 'EAAB...', spellcheck: 'false' });
+  const usePaste = () => { const v = fbPaste.value.trim(); if (!v) { socStatus('facebook', 'Paste a token first.', true); return; } fbPaste.value = ''; socOnToken('facebook', v); };
+  fbPaste.addEventListener('keydown', e => { if (e.key === 'Enter') usePaste(); });
+  ui.fbPasteBtn = h('button', { class: 'btn', type: 'button', onclick: usePaste }, 'Use');
+
+  ui.tokenList = h('div', { class: 'stack' });
+  ui.tokensCard = h('div', { class: 'card pad stack hide' },
+    h('div', { class: 'row' }, h('h3', null, 'Provider tokens'), h('span', { class: 'spacer' }), h('button', { class: 'btn sm', type: 'button', onclick: () => { SOC.tokens = []; socSaveTokens(); socTokens(); } }, 'Clear all')),
+    h('div', { class: 'hint', style: { margin: 0 } }, 'Shown in full. Copy the request body into Postman and send it to the matching endpoint. Provider tokens expire quickly and a GitHub code works only once, so using it here or in Postman consumes it.'),
+    ui.tokenList);
+  ui.sessionBody = h('div', { class: 'stack' });
+  ui.sessionCard = h('div', { class: 'card pad stack hide' }, h('h3', null, 'Signed in to Premisave'), h('div', { class: 'hint', style: { margin: 0 } }, 'This is the session the developer service issued. It is now one of the accounts in the top bar.'), ui.sessionBody);
+
+  const originLine = 'DEVELOPER_PORTAL_ORIGINS=' + location.origin;
+  const readonlyRow = (label, value, what) => h('div', null, h('label', { class: 'fl' }, label),
+    h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, h('input', { class: 'inp mono', readonly: true, value, onfocus: e => e.target.select() }), h('button', { class: 'btn', type: 'button', onclick: () => copyText(value, what) }, 'Copy')));
+  const setup = h('details', { class: 'plain', style: { margin: 0 } }, h('summary', null, 'Setup values for the provider consoles'),
+    h('div', { class: 'stack', style: { marginTop: '12px' } },
+      readonlyRow('Add this origin to the service environment', originLine, 'origin line'),
+      readonlyRow('GitHub callback URL to register on your OAuth App', socRedirectUri(), 'callback URL'),
+      h('div', { class: 'hint', style: { margin: 0 } }, 'Google: add the origin under Authorized JavaScript origins. Facebook: add it under the app\'s allowed domains if asked. The client ids come from the service, so nothing is pasted here and secrets never reach this page.')));
+
+  const fileNote = (location.protocol !== 'http:' && location.protocol !== 'https:')
+    ? h('div', { class: 'notice warn' }, 'This page was opened from a file. Google, Facebook and GitHub all need a real origin, so serve the folder with ', h('code', { class: 'mono' }, 'python3 -m http.server 3000'), ' and open http://localhost:3000/developer-console.html.') : null;
+
+  const root = h('div', { class: 'stack' },
+    fileNote,
+    h('div', { class: 'card pad stack' },
+      h('div', { class: 'row' }, h('h3', null, 'What should a login do'), h('span', { class: 'spacer' }), h('span', { class: 'muted small' }, 'Social sign in on the service'), ui.pill,
+        h('button', { class: 'btn sm', type: 'button', onclick: socCheck }, 'Recheck')),
+      h('div', { class: 'seg', role: 'group', 'aria-label': 'Mode' }, ui.modeBtns.signin, ui.modeBtns.token), ui.modeHint),
+    h('div', { class: 'card pad stack' }, h('h3', null, 'Where this login is'), pipe, ui.alert),
+    h('div', { class: 'pcards' },
+      card('google', ui.googleSlot),
+      card('facebook', h('div', { class: 'stack', style: { gap: '10px' } }, provBtn('facebook', socFacebookLogin),
+        h('div', { class: 'pfoot' }, h('label', { class: 'fl' }, 'Or paste a token from the Graph API Explorer'), h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, fbPaste, ui.fbPasteBtn),
+          h('div', { class: 'hint' }, 'Facebook may refuse its login popup on an http page. If so, create a user token in the Graph API Explorer with the email permission and paste it here.')))),
+      card('github', provBtn('github', socGithubLogin))),
+    ui.tokensCard, ui.sessionCard, setup);
+  SOC.ui = Object.assign(ui, { googleSlot: ui.googleSlot });
+  socPipeReset(); socRefresh();
+  socCheck();
+  return root;
+}
+function openSocialModal(onDone) {
+  let m = null;
+  m = modal('Social sign in', socialView({ onSession: () => { m.close(); SOC.ui = null; onDone(); } }), { wide: true });
+  return m;
+}
+PAGES.social = () => h('div', null,
+  lead('Sign up or sign in with Google, Facebook or GitHub, and watch the provider token travel to the developer service. The first login with a new email creates the account, and the same login again signs in to it. The session is added to this page\'s accounts, so you can switch to it from the top bar.'),
+  socialView());
 
 // ---------- small page helpers ----------
 function lead(text) { return h('p', { class: 'lead' }, text); }
@@ -1841,7 +2205,9 @@ window.addEventListener('error', e => { try { toast('Script error: ' + e.message
 window.addEventListener('unhandledrejection', e => { try { toast('Unexpected error: ' + (e.reason && e.reason.message || e.reason), true); } catch (x) { /* ignore */ } });
 if (!THEMES.some(t => t.id === currentTheme())) document.documentElement.setAttribute('data-theme', 'daylight');
 S.theme = currentTheme();
+socHandleReturn();
 renderApp();
+socResume();
 
 </script>
 </body>
