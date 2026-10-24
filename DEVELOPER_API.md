@@ -1,12 +1,66 @@
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=240&section=header&text=Premisave%20Developer%20API&fontSize=48&fontColor=ffffff&fontAlign=50&fontAlignY=36&animation=fadeIn&stroke=000000&strokeWidth=1&desc=Bill%20Graham%20Peacemaker%20%7C%20Enterprise%20systems%20and%20API%20integration&descSize=18&descAlign=50&descAlignY=58" alt="Premisave Developer Service API" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/peacemakerbill"><img src="https://readme-typing-svg.demolab.com?font=IBM+Plex+Sans&weight=600&size=22&duration=3200&pause=900&color=0B7A43&center=true&vCenter=true&width=760&height=40&lines=Built+by+Bill+Graham+Peacemaker;Java+and+Spring+Boot+microservices;Portal+API+%7C+Public+API+%7C+Admin+API;One+envelope+for+every+response" alt="One service, three surfaces"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/service-developer%20service-6DB33F?style=flat&logo=springboot&logoColor=white" alt="developer service">
+  <img src="https://img.shields.io/badge/default%20port-8091-1f6feb?style=flat" alt="port 8091">
+  <img src="https://img.shields.io/badge/surfaces-3-0b7a43?style=flat" alt="3 surfaces">
+  <img src="https://img.shields.io/badge/auth-Bearer%20%7C%20API%20key%20%7C%20X--API--Key-8250df?style=flat" alt="auth">
+  <img src="https://img.shields.io/badge/format-JSON%20envelope-d29922?style=flat" alt="JSON envelope">
+</p>
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+![Portal API][s-portal]
+
+**`/api/v1/**`**
+
+The developer portal, a browser app
+
+<sub>Authorization: Bearer accessToken, except /api/v1/auth/**</sub>
+
+</td>
+<td width="33%" valign="top">
+
+![Public API][s-public]
+
+**`/v1/{live&#124;sandbox}/**`**
+
+Merchants' servers
+
+<sub>API key and secret</sub>
+
+</td>
+<td width="33%" valign="top">
+
+![Admin API][s-admin]
+
+**`/api/v1/admin/** and /internal/admin/**`**
+
+Premisave staff
+
+<sub>An administrator's bearer token, or X-API-Key</sub>
+
+</td>
+</tr>
+</table>
+
 # Premisave Developer Service API
 
 Three surfaces on one service (default port 8091):
 
 | Surface | Path | Who calls it | Authentication |
 |:-|:-|:-|:-|
-| Portal API | `/api/v1/**` | The developer portal (a browser app) | `Authorization: Bearer <accessToken>`, except `/api/v1/auth/**` |
-| Public API | `/v1/{live\|sandbox}/**` | Merchants' servers | API key and secret |
-| Admin API | `/api/v1/admin/**` and `/internal/admin/**` | Premisave staff | An administrator's `Authorization: Bearer <accessToken>`, or `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
+| ![Portal API][s-portal] | `/api/v1/**` | The developer portal (a browser app) | `Authorization: Bearer <accessToken>`, except `/api/v1/auth/**` |
+| ![Public API][s-public] | `/v1/{live\|sandbox}/**` | Merchants' servers | API key and secret |
+| ![Admin API][s-admin] | `/api/v1/admin/**` and `/internal/admin/**` | Premisave staff | An administrator's `Authorization: Bearer <accessToken>`, or `X-API-Key: <DEVELOPER_INTERNAL_API_KEY>` |
 
 Every response uses the same envelope:
 
@@ -20,15 +74,28 @@ Errors have `success: false` and `data` carries `code`, `requestId` and optional
 { "success": false, "message": "Invalid API key or secret", "data": { "code": "INVALID_API_KEY", "requestId": "req_..." }, "timestamp": "..." }
 ```
 
-Every response carries an `X-Request-Id` header. Quote it when asking for help. List endpoints return `data.content` and `data.page` with `size`, `number`, `totalElements` and `totalPages`, and accept `page` (from 0) and `size`.
+> [!TIP]
+> Every response carries an `X-Request-Id` header. Quote it when asking for help. List endpoints return `data.content` and `data.page` with `size`, `number`, `totalElements` and `totalPages`, and accept `page` (from 0) and `size`.
 
-The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_ENDPOINTS.md`. In that document, a path such as `POST /payments` under the live base is `POST https://<developer-service>/v1/live/payments` here.
+> [!NOTE]
+> The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_ENDPOINTS.md`. In that document, a path such as `POST /payments` under the live base is `POST https://<developer-service>/v1/live/payments` here.
 
-## 1. Account (portal API)
+## Contents
 
-### 1.1 Sign up
+| Section | Covers |
+|:-|:-|
+| ![][i-users-0b7a43] [1. Account (portal API)](#1-account-portal-api) | Sign up and sign in, profile, businesses, onboarding, sign out, email confirmation, password reset, social sign in, the emails the service sends |
+| ![][i-box-0b7a43] [2. Apps (portal API)](#2-apps-portal-api) | App object, creating apps, moving a production app, taking up a business by its merchant number |
+| ![][i-key-0b7a43] [3. API keys (portal API)](#3-api-keys-portal-api) | Listing, issuing, rotating and revoking keys |
+| ![][i-globe-1f6feb] [4. Public API](#4-public-api) | The merchant facing wallet API on `/v1`, authentication, headers and errors |
+| ![][i-shield-8250df] [5. Admin API](#5-admin-api) | Roles, overview and audit, developers, apps and keys, transfers |
+| ![][i-alert-b3261e] [6. Error codes](#6-error-codes) | Every error code, grouped by HTTP status |
 
-`POST /api/v1/auth/signup`
+## ![][i-users-0b7a43] 1. Account (portal API)
+
+### ![][i-user-plus-0b7a43] 1.1 Sign up
+
+![POST][m-post] `/api/v1/auth/signup`
 
 ```json
 { "email": "dev@example.com", "firstName": "Wanjiku", "middleName": "Grace", "lastName": "Kamau",
@@ -51,7 +118,8 @@ The wallet's payment operations behind `/v1` are documented in `COMMERCIAL_API_E
 
 Names may contain letters from any alphabet, spaces, hyphens, apostrophes and full stops (Anne-Marie, O'Brien, van der Merwe). Digits, symbols and markup are refused. There is no username field: one is generated (section 1.3) and the developer changes it on the profile.
 
-Returns `201` with no token and no account data. Sign up only creates the account, and the account is `PENDING` until the email address is confirmed (section 1.7), which makes it `ACTIVE`. The developer cannot sign in until then (section 1.2), by password or through a provider. The portal shows `data.message` and tells the developer to open the confirmation link. A new link can be requested with `POST /api/v1/auth/resend-verification` (section 1.7).
+> [!IMPORTANT]
+> Returns `201` with no token and no account data. Sign up only creates the account, and the account is `PENDING` until the email address is confirmed (section 1.7), which makes it `ACTIVE`. The developer cannot sign in until then (section 1.2), by password or through a provider. The portal shows `data.message` and tells the developer to open the confirmation link. A new link can be requested with `POST /api/v1/auth/resend-verification` (section 1.7).
 
 ```json
 { "success": true, "message": "Your account has been created and is pending. We sent a confirmation link to dev@example.com. Confirm your email address, then sign in.",
@@ -68,9 +136,9 @@ Account `status` values: `PENDING` (email not confirmed yet, cannot sign in), `A
 
 Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `acceptTerms` or `country`), `409 EMAIL_TAKEN`. Sign up never fails because the confirmation email could not be sent.
 
-### 1.2 Sign in
+### ![][i-log-in-0b7a43] 1.2 Sign in
 
-`POST /api/v1/auth/login` with `{ "email", "password" }`. Returns `200` with the session: `accessToken`, `tokenType` and `expiresIn`. The session holds no account data; the portal reads the account with `GET /api/v1/me` (the `developer` object below, including `role`). Sign up issues no token, so this is where the portal gets the first one after sign up.
+![POST][m-post] `/api/v1/auth/login` with `{ "email", "password" }`. Returns `200` with the session: `accessToken`, `tokenType` and `expiresIn`. The session holds no account data; the portal reads the account with `GET /api/v1/me` (the `developer` object below, including `role`). Sign up issues no token, so this is where the portal gets the first one after sign up.
 
 ```json
 { "success": true, "message": "Signed in",
@@ -78,7 +146,7 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
   "timestamp": "..." }
 ```
 
-`GET /api/v1/me` returns the account:
+![GET][m-get] `/api/v1/me` returns the account:
 
 ```json
 { "success": true, "message": "Account retrieved",
@@ -96,10 +164,10 @@ Errors: `400 VALIDATION_FAILED` (the `field` names the input, for example `accep
 
 Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong password and an account that has no password because it was created through a provider), `403 ACCOUNT_DISABLED`, `403 ACCOUNT_PENDING` (the email address is not confirmed yet; only said when the password was right, and `data.next` is `CONFIRM_EMAIL`), `423 ACCOUNT_LOCKED` after 5 failed attempts, for 15 minutes. A pending account has no usable token, so every other portal call from it answers `403 ACCOUNT_PENDING` too.
 
-### 1.3 Me
+### ![][i-user-0b7a43] 1.3 Me
 
-* `GET /api/v1/me` returns the developer object (section 1.2).
-* `PUT /api/v1/me` updates the profile. Every field is optional and only the ones sent change; nothing changes unless every field sent is valid. Returns the developer object.
+* ![GET][m-get] `/api/v1/me` returns the developer object (section 1.2).
+* ![PUT][m-put] `/api/v1/me` updates the profile. Every field is optional and only the ones sent change; nothing changes unless every field sent is valid. Returns the developer object.
 
   | Field | Rules |
   |---|---|
@@ -121,16 +189,16 @@ Errors: `401 INVALID_CREDENTIALS` (the same for an unknown email, a wrong passwo
   * Reserved words are refused (admin, root, support, api, dev and similar), and so is any name that contains `premisave`, `safaricom` or `mpesa`. Separators do not hide them: `ad.min` and `pre-misave` are refused too. A generated username never is or contains a reserved word.
   * Unique, whatever the case. A name that is taken is `409 USERNAME_TAKEN`. The check and the save are separate steps, so the unique database index settles two people choosing the same name at the same moment, and the loser also gets `USERNAME_TAKEN`.
   * Changeable once every 7 days; the first change after sign up is free. Too soon is `429 RATE_LIMITED` with `retryAfterSeconds`. Sending the current username again changes nothing.
-* `GET /api/v1/me/username-available?username=...` (signed in) returns `{ "username", "available", "reason" }`, with `reason` one of `OK`, `CURRENT`, `TAKEN`, `RESERVED` or `INVALID` and a `message` for the last two. It needs a bearer token so that usernames cannot be listed anonymously; there is no per account rate limit on it, so put one at the gateway.
+* ![GET][m-get] `/api/v1/me/username-available?username=...` (signed in) returns `{ "username", "available", "reason" }`, with `reason` one of `OK`, `CURRENT`, `TAKEN`, `RESERVED` or `INVALID` and a `message` for the last two. It needs a bearer token so that usernames cannot be listed anonymously; there is no per account rate limit on it, so put one at the gateway.
 * **Profile picture.** `PUT /api/v1/me/profile-picture` (signed in) with the image file itself as the request body, not form data, and a `Content-Type` of `image/jpeg`, `image/png` or `image/webp`. The picture is stored in Cloudinary under `<folder>/<developerId>` and replaces any earlier one. Returns `{ "profilePictureUrl", "updatedAt" }`; the same address is `profilePictureUrl` on the account from `GET /api/v1/me` (null when there is none). The file is judged by its first bytes, whatever its name or `Content-Type` claims, and may be at most 5 MB (`CLOUDINARY_MAX_BYTES`, never more than 10 MB); Cloudinary keeps it within 1024 by 1024 pixels. Errors: `400 VALIDATION_FAILED` (`field: picture`) for an empty body or a file that is not a JPEG, PNG or WebP (form data included), `413 PAYLOAD_TOO_LARGE`, and `503 UPSTREAM_UNAVAILABLE` when Cloudinary is not set up (cloud name, key or secret empty) or cannot be reached. In a browser: `fetch(url, { method: 'PUT', headers: { Authorization: 'Bearer ...', 'Content-Type': file.type }, body: file })`.
-* `DELETE /api/v1/me/profile-picture` (signed in) removes the picture from Cloudinary and the account, and returns `{ "profilePictureUrl": null, "updatedAt" }`. Repeating it is not an error. If Cloudinary cannot be reached, the picture is still cleared from the account.
-* `PUT /api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
+* ![DELETE][m-delete] `/api/v1/me/profile-picture` (signed in) removes the picture from Cloudinary and the account, and returns `{ "profilePictureUrl": null, "updatedAt" }`. Repeating it is not an error. If Cloudinary cannot be reached, the picture is still cleared from the account.
+* ![PUT][m-put] `/api/v1/me/password` with `{ "currentPassword", "newPassword" }` changes the password, raises the token version (all earlier tokens stop working), sends a "your password was changed" notice to the account's address and returns a fresh session in the same shape as sign in. Error `401 INVALID_CREDENTIALS` if the current password is wrong. An account that has no password yet (created through a provider) leaves `currentPassword` out and sets its first password this way.
 
-### 1.4 Businesses
+### ![][i-building-0b7a43] 1.4 Businesses
 
 One account can apply for many businesses. Each is a merchant in the wallet service with its own merchant number, its own onboarding application and its own apps. Applying needs a confirmed email address (switch off with `developer.mail.require-verified-for-business=false`). One account may have up to `DEVELOPER_MAX_BUSINESSES` businesses, 10 by default.
 
-* `POST /api/v1/businesses` applies for a business and opens its application as a draft. Returns `201` with the business object below.
+* ![POST][m-post] `/api/v1/businesses` applies for a business and opens its application as a draft. Returns `201` with the business object below.
 
   | Field | Rules |
   |---|---|
@@ -149,9 +217,9 @@ One account can apply for many businesses. Each is a merchant in the wallet serv
 
   Applying for a second business is the same call with another name. The same name in the same country is the same business whatever the case, spaces or punctuation: it is `409 BUSINESS_EXISTS` with `data.businessId` of the one already there. Errors: `400 VALIDATION_FAILED`, `403 EMAIL_NOT_VERIFIED`, `409 BUSINESS_EXISTS`, `422 LIMIT_REACHED`.
 
-* `GET /api/v1/businesses` lists every business of the account: `{ "businesses": [...], "count": 2, "limit": 10 }`.
-* `GET /api/v1/businesses/{businessId}` returns one. A business that is not on the account is `404 BUSINESS_NOT_FOUND`, the same as one that does not exist.
-* `GET /api/v1/meta/test-merchant-numbers` returns `{ "testMerchantNumbers": [...], "default": "PRM-TEST-0001" }` for sandbox apps.
+* ![GET][m-get] `/api/v1/businesses` lists every business of the account: `{ "businesses": [...], "count": 2, "limit": 10 }`.
+* ![GET][m-get] `/api/v1/businesses/{businessId}` returns one. A business that is not on the account is `404 BUSINESS_NOT_FOUND`, the same as one that does not exist.
+* ![GET][m-get] `/api/v1/meta/test-merchant-numbers` returns `{ "testMerchantNumbers": [...], "default": "PRM-TEST-0001" }` for sandbox apps.
 
 The business object:
 
@@ -170,19 +238,19 @@ The business object:
 
 `access` is `OWNER` for a business the account applied for, and `SHARED` for one it was given use of through an app transfer or a claim by merchant number (sections 2.4 and 2.5). A shared business has `application: null`, because the application belongs to the account that applied, and `nextStep.code` is `CREATE_APP` while production is on. It counts towards the account's business limit, can be named as `businessId` when creating a production app, and its merchant number is the same one the other accounts use.
 
-### 1.5 Onboarding application
+### ![][i-file-0b7a43] 1.5 Onboarding application
 
 Each business has its own application under `/api/v1/businesses/{businessId}/application`. The business must be one the caller applied for (`404 BUSINESS_NOT_FOUND` if it is not on the account, `403 FORBIDDEN` if it was only shared with the account: the application stays with the account that applied). The calls go to the wallet's onboarding application endpoints for that business (`COMMERCIAL_STAGE7_ONBOARDING.md`, section "Merchant side"), with the same bodies and answers. Staff review is not reachable here.
 
 | Call | Notes |
 |:-|:-|
-| `GET /application` | Status, form, documents, `returnItems`, `missing` and `readyToSubmit` |
-| `PUT /application` | Save the form. Send what you have; it can be saved again until it is submitted |
-| `POST /application/documents` | Upload a document, see below |
-| `GET /application/documents/{documentId}/content` | Download a document |
-| `DELETE /application/documents/{documentId}` | Remove a document |
-| `POST /application/submit` | Send for review once nothing is missing |
-| `GET /application/timeline` | What has happened to the application |
+| ![GET][m-get] `/application` | Status, form, documents, `returnItems`, `missing` and `readyToSubmit` |
+| ![PUT][m-put] `/application` | Save the form. Send what you have; it can be saved again until it is submitted |
+| ![POST][m-post] `/application/documents` | Upload a document, see below |
+| ![GET][m-get] `/application/documents/{documentId}/content` | Download a document |
+| ![DELETE][m-delete] `/application/documents/{documentId}` | Remove a document |
+| ![POST][m-post] `/application/submit` | Send for review once nothing is missing |
+| ![GET][m-get] `/application/timeline` | What has happened to the application |
 
 **Linking the application to a wallet, and applying for someone else's business.** Three fields on the form say whose wallet this business belongs to and who is applying. The owner of the wallet can then follow the whole application from the wallet (progress, details, decision and, once it is approved, the merchant number), so the developer does not have to report back.
 
@@ -203,31 +271,31 @@ With `onBehalf: true` an `authorisation letter` document is also required before
 
 In a browser: `const f = new FormData(); f.append('type', 'tax compliance'); f.append('file', input.files[0]); fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ...' }, body: f })`, and leave `Content-Type` for the browser to set. Errors: `400 VALIDATION_FAILED` with the `field` named (`file` or `type`), `413 PAYLOAD_TOO_LARGE`, `503` when the wallet has no document storage set up. The wallet's own JSON upload, with the file as base64, is not exposed here.
 
-### 1.6 Sign out
+### ![][i-log-out-0b7a43] 1.6 Sign out
 
-* `POST /api/v1/me/logout` ends the token that made the call. The token carries a unique id (`jti`); the id is stored until the token would have expired anyway, and from then on the token is refused with `401 UNAUTHENTICATED`. Other devices stay signed in. Returns `200` with an empty `data`.
-* `POST /api/v1/me/logout-all` raises the account's token version, which ends every token issued so far on every device, including the caller's. Returns `200` with an empty `data`.
+* ![POST][m-post] `/api/v1/me/logout` ends the token that made the call. The token carries a unique id (`jti`); the id is stored until the token would have expired anyway, and from then on the token is refused with `401 UNAUTHENTICATED`. Other devices stay signed in. Returns `200` with an empty `data`.
+* ![POST][m-post] `/api/v1/me/logout-all` raises the account's token version, which ends every token issued so far on every device, including the caller's. Returns `200` with an empty `data`.
 
 Both need a valid bearer token. Signing out twice with the same token is `401` the second time.
 
-### 1.7 Email confirmation
+### ![][i-mail-0b7a43] 1.7 Email confirmation
 
 Sign up sends a link to `{developer.mail.portal-base-url}/verify-email?token=...`. The link is good for 24 hours (`developer.mail.verification-ttl-hours`) and works once.
 
-* `POST /api/v1/auth/verify-email` with `{ "token" }` (no sign in needed). Returns `{ "emailVerified": true, "email": "..." }`. Error `400 INVALID_TOKEN` for a token that is unknown, expired, already used or belongs to an address the account no longer has. Using a link for an already confirmed account succeeds the first time and is `INVALID_TOKEN` after that, because the link is spent.
-* `POST /api/v1/auth/resend-verification` with `{ "email" }` (no sign in needed). Always answers `200` with the same message whether or not the address has an account, whether or not it is already confirmed, and whether or not a link was actually sent, so it cannot be used to find out who has an account.
-* `POST /api/v1/me/resend-verification` (signed in). Returns `{ "sent": true, "email": "..." }`. Errors: `409 INVALID_STATE` when the address is already confirmed, `429 RATE_LIMITED` with `retryAfterSeconds` in `data` (and a `Retry-After` header) when asked too soon.
+* ![POST][m-post] `/api/v1/auth/verify-email` with `{ "token" }` (no sign in needed). Returns `{ "emailVerified": true, "email": "..." }`. Error `400 INVALID_TOKEN` for a token that is unknown, expired, already used or belongs to an address the account no longer has. Using a link for an already confirmed account succeeds the first time and is `INVALID_TOKEN` after that, because the link is spent.
+* ![POST][m-post] `/api/v1/auth/resend-verification` with `{ "email" }` (no sign in needed). Always answers `200` with the same message whether or not the address has an account, whether or not it is already confirmed, and whether or not a link was actually sent, so it cannot be used to find out who has an account.
+* ![POST][m-post] `/api/v1/me/resend-verification` (signed in). Returns `{ "sent": true, "email": "..." }`. Errors: `409 INVALID_STATE` when the address is already confirmed, `429 RATE_LIMITED` with `retryAfterSeconds` in `data` (and a `Retry-After` header) when asked too soon.
 
 Limits per account: one link per 60 seconds (`resend-cooldown-seconds`) and 5 per hour (`max-per-hour`). Older links stay valid until they expire or are used; each is single use.
 
-### 1.8 Forgot and reset password
+### ![][i-key-0b7a43] 1.8 Forgot and reset password
 
-* `POST /api/v1/auth/forgot-password` with `{ "email" }`. Always answers `200` with the same message. If the address belongs to an active account, a link to `{portal-base-url}/reset-password?token=...` is sent. It is good for 60 minutes (`reset-ttl-minutes`), works once, and the same limits as above apply per account.
-* `POST /api/v1/auth/reset-password` with `{ "token", "newPassword" }`. The password rules of sign up apply and are checked before the link is spent, so a weak password can be corrected and the same link tried again. On success the new password is set, every existing session ends, a lockout is cleared, the email address counts as confirmed (the link proves the mailbox), all other reset links stop working, and a "your password was changed" notice is sent. The response does not sign the developer in; the portal sends them to the sign in page. Errors: `400 INVALID_TOKEN`, `400 VALIDATION_FAILED`, `403 ACCOUNT_DISABLED`.
+* ![POST][m-post] `/api/v1/auth/forgot-password` with `{ "email" }`. Always answers `200` with the same message. If the address belongs to an active account, a link to `{portal-base-url}/reset-password?token=...` is sent. It is good for 60 minutes (`reset-ttl-minutes`), works once, and the same limits as above apply per account.
+* ![POST][m-post] `/api/v1/auth/reset-password` with `{ "token", "newPassword" }`. The password rules of sign up apply and are checked before the link is spent, so a weak password can be corrected and the same link tried again. On success the new password is set, every existing session ends, a lockout is cleared, the email address counts as confirmed (the link proves the mailbox), all other reset links stop working, and a "your password was changed" notice is sent. The response does not sign the developer in; the portal sends them to the sign in page. Errors: `400 INVALID_TOKEN`, `400 VALIDATION_FAILED`, `403 ACCOUNT_DISABLED`.
 
 An account created through a provider can use this flow to add a password.
 
-### 1.9 Sign up and sign in with Google, Facebook or GitHub
+### ![][i-share-0b7a43] 1.9 Sign up and sign in with Google, Facebook or GitHub
 
 Each provider has its own endpoint. The browser (or the portal) gets the provider token and posts it as JSON. This service checks the token with the provider, then signs the developer in or creates the account. The portal never handles a provider secret, and this service stores no provider access token.
 
@@ -240,9 +308,9 @@ Each provider has its own endpoint. The browser (or the portal) gets the provide
 
 | Endpoint | Body | How the service checks it |
 |:-|:-|:-|
-| `POST /api/v1/auth/social/google` | `{ "token": "<ID token>" }` | Google's token info endpoint checks the signature and expiry. The token must be issued by Google to `GOOGLE_CLIENT_ID` |
-| `POST /api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | Facebook's `debug_token` endpoint must say the token is valid and was issued to this app, and the profile read with it must belong to the same user |
-| `POST /api/v1/auth/social/github` | `{ "token": "<code>" }` | The code is traded for an access token with the client secret |
+| ![POST][m-post] `/api/v1/auth/social/google` | `{ "token": "<ID token>" }` | Google's token info endpoint checks the signature and expiry. The token must be issued by Google to `GOOGLE_CLIENT_ID` |
+| ![POST][m-post] `/api/v1/auth/social/facebook` | `{ "token": "<access token>" }` | Facebook's `debug_token` endpoint must say the token is valid and was issued to this app, and the profile read with it must belong to the same user |
+| ![POST][m-post] `/api/v1/auth/social/github` | `{ "token": "<code>" }` | The code is traded for an access token with the client secret |
 
 `token` is required (at most 4096 characters), otherwise `400 VALIDATION_FAILED`. The response is the sign in session of section 1.2 plus `newAccount` (true when this call created the account) and `provider`. A GitHub code works once and for about 10 minutes, so a retry needs a new login.
 
@@ -262,7 +330,7 @@ GitHub: only verified addresses from the account's email list are used, the prim
 
 Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expired or reused token or code, a token issued to another app, provider refused), `404 OAUTH_NOT_CONFIGURED` (the provider is not switched on in this service), `403 ACCOUNT_PENDING`, `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
 
-### 1.10 What the portal does
+### ![][i-layout-0b7a43] 1.10 What the portal does
 
 * Routes `/verify-email` and `/reset-password` read `token` from the query string, immediately remove it from the address bar (`history.replaceState`) so it does not stay in history or leak through a Referer header, then POST it. Serve those pages with `Referrer-Policy: no-referrer`.
 * For GitHub, makes a random `state` before sending the browser away, keeps it in session storage and compares it with the one GitHub returns before posting the code.
@@ -270,7 +338,7 @@ Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expire
 * After sign up, shows `data.message` and goes to the sign in page, because sign up issues no token. The developer can sign in at once, before confirming the email.
 * Keeps the access token in memory or in a cookie of its own choosing; this service only reads the `Authorization: Bearer` header.
 
-### 1.11 The emails the service sends
+### ![][i-mail-0b7a43] 1.11 The emails the service sends
 
 Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all ten are in `email-previews/`; open them in a browser.
 
@@ -289,11 +357,11 @@ The device is read from the `User-Agent` header and the address from the connect
 
 Values put into a page are HTML escaped, so a name such as `<script>` cannot inject markup. To change the wording or the look, edit the files; placeholders are written `{{name}}`. The pages use tables and inline styles because mail programs ignore most other CSS, and load no images or scripts. They carry no plain text part, and the brand is text only: add a logo by putting an `<img>` with an absolute `https` address in `layout.html`.
 
-## 2. Apps (portal API)
+## ![][i-box-0b7a43] 2. Apps (portal API)
 
 An app belongs to one business and one environment, `sandbox` or `production`, and has its own keys. `merchantId` in the app object is the same value as `businessId`.
 
-### 2.1 App object
+### ![][i-code-0b7a43] 2.1 App object
 
 ```json
 { "appId": "app_...", "businessId": "mer_...", "merchantId": "mer_...", "environment": "sandbox", "name": "Checkout",
@@ -307,9 +375,9 @@ An app belongs to one business and one environment, `sandbox` or `production`, a
 
 `premisaveWallet` appears on production apps only. `suspendedBy` and `suspensionReason` appear only while suspended. `enabledMethods` and `limits` are `null` when the app does not narrow the merchant.
 
-### 2.2 Create
+### ![][i-box-0b7a43] 2.2 Create
 
-`POST /api/v1/apps`, `201`.
+![POST][m-post] `/api/v1/apps`, `201`.
 
 | Field | Rule |
 |:-|:-|
@@ -325,35 +393,36 @@ An app belongs to one business and one environment, `sandbox` or `production`, a
 
 Method names are `MOBILE_MONEY`, `CARD`, `BANK_TRANSFER`, `PAYPAL`, `CRYPTO` and `PREMISAVE_WALLET`.
 
-The response is the app object plus `apiKey`, the first key with its `secret`, shown once.
+> [!WARNING]
+> The response is the app object plus `apiKey`, the first key with its `secret`, shown once.
 
 Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED`, `404 BUSINESS_NOT_FOUND`, `404 WALLET_NOT_FOUND`, `409 BUSINESS_REQUIRED`, `409 INVALID_STATE` (the business has no merchant number yet, which is issued when its onboarding application is approved), `409 WALLET_ALREADY_LINKED`, `422 WALLET_NOT_USABLE`, `422 LIMIT_REACHED` (10 apps per environment for each business).
 
-### 2.3 Other app calls
+### ![][i-sliders-0b7a43] 2.3 Other app calls
 
 | Call | Notes |
 |:-|:-|
-| `GET /api/v1/apps` | Filters `businessId`, `environment`, `status` (`ACTIVE` or `SUSPENDED`), `page`, `size` |
-| `GET /api/v1/apps/{appId}` | `404 APP_NOT_FOUND` for an unknown app or another developer's app |
-| `PUT /api/v1/apps/{appId}` | Change `name`, `description`, `enabledMethods`, `limits`, `callbackUrl`. Omitted fields are unchanged. Environment, merchant number and wallet cannot change |
-| `POST /api/v1/apps/{appId}/suspend` | Optional body `{ "reason" }`. While suspended the app can read but not create or change anything |
-| `POST /api/v1/apps/{appId}/reactivate` | `403 FORBIDDEN` if staff suspended it |
+| ![GET][m-get] `/api/v1/apps` | Filters `businessId`, `environment`, `status` (`ACTIVE` or `SUSPENDED`), `page`, `size` |
+| ![GET][m-get] `/api/v1/apps/{appId}` | `404 APP_NOT_FOUND` for an unknown app or another developer's app |
+| ![PUT][m-put] `/api/v1/apps/{appId}` | Change `name`, `description`, `enabledMethods`, `limits`, `callbackUrl`. Omitted fields are unchanged. Environment, merchant number and wallet cannot change |
+| ![POST][m-post] `/api/v1/apps/{appId}/suspend` | Optional body `{ "reason" }`. While suspended the app can read but not create or change anything |
+| ![POST][m-post] `/api/v1/apps/{appId}/reactivate` | `403 FORBIDDEN` if staff suspended it |
 
 Each change reaches the wallet within the 30 second sync interval at the latest, and immediately on the next request that app makes.
 
-### 2.4 Moving a production app to another developer account
+### ![][i-swap-0b7a43] 2.4 Moving a production app to another developer account
 
 A business is applied for once, but the same merchant number can be used to go live from another developer account when the business owner agrees. The owner agrees by sharing a six digit code, which is emailed to the address linked to the business: the wallet account named on the application, or the business contact email when no wallet is linked. The developer asking never sees the code, so the owner has to give it to them.
 
-* `POST /api/v1/apps/{appId}/transfer` with `{ "toEmail": "colleague@example.com" }`, `201`. Starts the move and emails the code. Only a production app that belongs to the caller can move, and `toEmail` must be another active developer account that has room for one more business (`422 LIMIT_REACHED`) and is not the caller (`400 VALIDATION_FAILED`, field `toEmail`).
-* `POST /api/v1/transfers/{transferId}/confirm` with `{ "otp": "123456" }`. The caller sends the code the owner shared. On success:
+* ![POST][m-post] `/api/v1/apps/{appId}/transfer` with `{ "toEmail": "colleague@example.com" }`, `201`. Starts the move and emails the code. Only a production app that belongs to the caller can move, and `toEmail` must be another active developer account that has room for one more business (`422 LIMIT_REACHED`) and is not the caller (`400 VALIDATION_FAILED`, field `toEmail`).
+* ![POST][m-post] `/api/v1/transfers/{transferId}/confirm` with `{ "otp": "123456" }`. The caller sends the code the owner shared. On success:
   * the app belongs to the other account, with the same merchant number and wallet link, and every API key it had is revoked, so the new owner makes their own and the old owner can no longer call the API with it;
   * the other account is given use of the business (`access: SHARED`), so it can create more production apps with the same merchant number;
   * the business stays on the sending account with its other apps;
   * both accounts get an email.
-* `POST /api/v1/transfers/{transferId}/resend` emails a fresh code for a request still open. The old code stops working and the tries start again.
-* `DELETE /api/v1/transfers/{transferId}` cancels a request that has not been confirmed. Nothing moves.
-* `GET /api/v1/transfers` lists the caller's latest requests (`direction: OUTGOING`) and the apps on their way to the caller (`direction: INCOMING`). `GET /api/v1/transfers/{transferId}` returns one.
+* ![POST][m-post] `/api/v1/transfers/{transferId}/resend` emails a fresh code for a request still open. The old code stops working and the tries start again.
+* ![DELETE][m-delete] `/api/v1/transfers/{transferId}` cancels a request that has not been confirmed. Nothing moves.
+* ![GET][m-get] `/api/v1/transfers` lists the caller's latest requests (`direction: OUTGOING`) and the apps on their way to the caller (`direction: INCOMING`). `GET /api/v1/transfers/{transferId}` returns one.
 
 The transfer object:
 
@@ -371,26 +440,27 @@ Rules for the code: it lasts 15 minutes, works once, and five wrong tries close 
 
 Errors: `400 VALIDATION_FAILED`, `400 OTP_INVALID` (`data.attemptsLeft`), `410 OTP_EXPIRED`, `404 APP_NOT_FOUND`, `404 TRANSFER_NOT_FOUND`, `409 INVALID_STATE` (not a production app, no address linked to the business, or the request is already done or closed), `422 LIMIT_REACHED`, `429 RATE_LIMITED` (`data.retryAfterSeconds`).
 
-### 2.5 Taking up a business by its merchant number
+### ![][i-building-0b7a43] 2.5 Taking up a business by its merchant number
 
 A developer account can go live with an approved business that another account applied for, without any app moving. The business owner shares the same kind of code.
 
-* `POST /api/v1/transfers/claim` with `{ "merchantNumber": "PRM-0000000001" }`, `201`. The business must be approved with production switched on. The code is emailed to the address linked to the business.
+* ![POST][m-post] `/api/v1/transfers/claim` with `{ "merchantNumber": "PRM-0000000001" }`, `201`. The business must be approved with production switched on. The code is emailed to the address linked to the business.
 * Confirm, resend, cancel and list work as in 2.4 (`type` is `BUSINESS_CLAIM`).
 * On confirming, the account is given use of the business (`access: SHARED`) and creates a production app for it with `businessId`, using the business's own merchant number and its own wallet account (`premisaveWalletAccount`).
 
-A number that does not exist and a business that is not live get the same answer, `404 BUSINESS_NOT_FOUND`, so the call cannot be used to find out which numbers exist. Each wrong number counts towards the limit of ten requests an hour. `409 BUSINESS_EXISTS` when the business is already on the account, `422 LIMIT_REACHED` when the account has no room for another.
+> [!NOTE]
+> A number that does not exist and a business that is not live get the same answer, `404 BUSINESS_NOT_FOUND`, so the call cannot be used to find out which numbers exist. Each wrong number counts towards the limit of ten requests an hour. `409 BUSINESS_EXISTS` when the business is already on the account, `422 LIMIT_REACHED` when the account has no room for another.
 
-## 3. API keys (portal API)
+## ![][i-key-0b7a43] 3. API keys (portal API)
 
 | Call | Notes |
 |:-|:-|
-| `GET /api/v1/apps/{appId}/keys` | `data.keys`, without secrets. Each key shows `status` (`ACTIVE`, `ROTATING`, `REVOKED`), `secretEndsWith`, `expiresAt`, `lastUsedAt` |
-| `POST /api/v1/apps/{appId}/keys` | Optional `{ "label" }` (up to 60). `201`. The response carries `key` (`pk_live_...` or `pk_sandbox_...`) and `secret` (`sk_...`), shown once. `422 LIMIT_REACHED` beyond 5 active keys |
-| `POST /api/v1/apps/{appId}/keys/{key}/rotate` | Issues a new key and secret. The old key becomes `ROTATING` and stops working at `expiresAt` (24 hours by default). `404 KEY_NOT_FOUND`, `409 INVALID_STATE` unless the key is `ACTIVE`. With `developer.keys.rotation-grace-hours=0` the old key is revoked at once |
-| `DELETE /api/v1/apps/{appId}/keys/{key}` | Revokes at once |
+| ![GET][m-get] `/api/v1/apps/{appId}/keys` | `data.keys`, without secrets. Each key shows `status` (`ACTIVE`, `ROTATING`, `REVOKED`), `secretEndsWith`, `expiresAt`, `lastUsedAt` |
+| ![POST][m-post] `/api/v1/apps/{appId}/keys` | Optional `{ "label" }` (up to 60). `201`. The response carries `key` (`pk_live_...` or `pk_sandbox_...`) and `secret` (`sk_...`), shown once. `422 LIMIT_REACHED` beyond 5 active keys |
+| ![POST][m-post] `/api/v1/apps/{appId}/keys/{key}/rotate` | Issues a new key and secret. The old key becomes `ROTATING` and stops working at `expiresAt` (24 hours by default). `404 KEY_NOT_FOUND`, `409 INVALID_STATE` unless the key is `ACTIVE`. With `developer.keys.rotation-grace-hours=0` the old key is revoked at once |
+| ![DELETE][m-delete] `/api/v1/apps/{appId}/keys/{key}` | Revokes at once |
 
-## 4. Public API
+## ![][i-globe-1f6feb] 4. Public API
 
 `/v1/live/**` and `/v1/sandbox/**`. Everything after the environment is the wallet's commercial API.
 
@@ -423,7 +493,7 @@ Errors from this layer:
 
 An app that staff or the developer suspended gets `403 APP_SUSPENDED` from the wallet on anything except reads.
 
-## 5. Admin API
+## ![][i-shield-8250df] 5. Admin API
 
 Premisave staff control everything on the developer service from here: accounts, apps, API keys, business sharing and app transfers. Every call behaves the same on both entrances.
 
@@ -434,11 +504,12 @@ Premisave staff control everything on the developer service from here: accounts,
 
 In the tables below `/admin` stands for either prefix.
 
-### 5.1 Roles
+### ![][i-users-8250df] 5.1 Roles
 
 Every account has a `role`, shown in every account response: `DEVELOPER` (the default, also for accounts created before roles existed) or `ADMIN`. The role is read from the database on every request, so a demotion takes effect at once and no token has to expire first.
 
-**The first administrator.** Set `DEVELOPER_ADMIN_EMAILS` to a comma separated list of addresses, for example `DEVELOPER_ADMIN_EMAILS=boss@premisave.com`. When an account with a listed address that has been confirmed signs in (password or social sign in), it becomes an `ADMIN`. The confirmation is what stops someone else from claiming a listed address by signing up with it. After that, administrators manage roles through `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in if the role was taken away, so remove the address from the list when you demote that person.
+> [!IMPORTANT]
+> **The first administrator.** Set `DEVELOPER_ADMIN_EMAILS` to a comma separated list of addresses, for example `DEVELOPER_ADMIN_EMAILS=boss@premisave.com`. When an account with a listed address that has been confirmed signs in (password or social sign in), it becomes an `ADMIN`. The confirmation is what stops someone else from claiming a listed address by signing up with it. After that, administrators manage roles through `PUT /admin/developers/{developerId}/role`. An address that stays on the list is promoted again at its next sign in if the role was taken away, so remove the address from the list when you demote that person.
 
 **Safeguards.**
 
@@ -454,12 +525,12 @@ The self checks need to know who is calling, so they apply on the staff portal e
 
 Lists are paged with `page` (from 0) and `size` (default 20, at most 100), newest first. Filters that take an id match the whole id; `q` and `name` match anywhere in the text, ignoring case, and are never read as patterns.
 
-### 5.2 Overview and audit
+### ![][i-chart-8250df] 5.2 Overview and audit
 
 | Call | Body | Notes |
 |:-|:-|:-|
-| `GET /admin/stats` | none | Counts. `developers`: `total`, `pending`, `active`, `disabled`, `administrators`. `apps`: `total`, `sandbox`, `production`, `active`, `suspended`. `transfers`: `pending`, `completed`. And `generatedAt` |
-| `GET /admin/audit` | query: `actorId`, `targetId`, `action`, `page`, `size` | The trail of every admin change, newest first. `actorId` and `targetId` match exactly. `action` matches anywhere in the name, so `APP_` finds every app change and `_DELETED` every delete. Each row has `id`, `actorId`, `actorEmail`, `action`, `targetType`, `targetId`, `detail` and `createdAt` |
+| ![GET][m-get] `/admin/stats` | none | Counts. `developers`: `total`, `pending`, `active`, `disabled`, `administrators`. `apps`: `total`, `sandbox`, `production`, `active`, `suspended`. `transfers`: `pending`, `completed`. And `generatedAt` |
+| ![GET][m-get] `/admin/audit` | query: `actorId`, `targetId`, `action`, `page`, `size` | The trail of every admin change, newest first. `actorId` and `targetId` match exactly. `action` matches anywhere in the name, so `APP_` finds every app change and `_DELETED` every delete. Each row has `id`, `actorId`, `actorEmail`, `action`, `targetType`, `targetId`, `detail` and `createdAt` |
 
 Actions recorded: `DEVELOPER_CREATED`, `DEVELOPER_UPDATED`, `DEVELOPER_EMAIL_CHANGED`, `DEVELOPER_EMAIL_CONFIRMED`, `DEVELOPER_ROLE_CHANGED`, `DEVELOPER_ENABLED`, `DEVELOPER_DISABLED`, `DEVELOPER_UNLOCKED`, `DEVELOPER_SIGNED_OUT`, `DEVELOPER_PASSWORD_RESET_SENT`, `DEVELOPER_DELETED`, `BUSINESS_SHARED`, `BUSINESS_UNSHARED`, `APP_UPDATED`, `APP_SUSPENDED`, `APP_REACTIVATED`, `APP_OWNER_CHANGED`, `APP_DELETED`, `KEY_ISSUED`, `KEY_ROTATED`, `KEY_REVOKED`, `KEYS_REVOKED` and `TRANSFER_CANCELLED`. Entries are kept in the `admin_actions` collection and hold no secret. A failure to write an entry is logged and never undoes the change.
 
@@ -472,52 +543,116 @@ GET /api/v1/admin/stats
     "generatedAt": "2026-10-18T08:00:00Z" } }
 ```
 
-### 5.3 Developers
+### ![][i-user-8250df] 5.3 Developers
 
 | Call | Body | Notes |
 |:-|:-|:-|
-| `GET /admin/developers` | query: `q`, `status`, `page`, `size` | Searches accounts, newest first. `q` is matched anywhere in the email, username, full name or company name, or against the developer id exactly (at most 100 characters). `status` is `PENDING`, `ACTIVE` or `DISABLED`. Each row has `developerId`, `email`, `username`, `fullName`, `companyName`, `country`, `role`, `status`, `emailVerified`, `businessIds`, `createdAt` and `lastLoginAt`. Use it to find the `developerId` to put on a new merchant |
-| `GET /admin/administrators` | query: `page`, `size` | The accounts whose role is `ADMIN`, same rows as above |
-| `POST /admin/developers` | `{ "email", "firstName", "middleName"?, "lastName", "country"?, "phoneNumber"?, "companyName"?, "role"?, "sendInvite"? }` | Creates an `ACTIVE` account with a confirmed address and no password. `role` is `DEVELOPER` (default) or `ADMIN`. Unless `sendInvite` is `false`, the person is emailed a link to choose a password; the answer says whether that email could be sent (`inviteSent`). `409 EMAIL_TAKEN` when the address is used |
-| `GET /admin/developers/{developerId}` | none | The full account: everything the owner sees, plus `appliedBusinessIds`, `sharedBusinessIds`, `failedLogins`, `lockedUntil` and `updatedAt`. No password hash or token is ever shown |
-| `PUT /admin/developers/{developerId}` | the profile body of `PUT /api/v1/me`, every field optional | Changes the profile of any account. The same checks as for the owner apply |
-| `PUT /admin/developers/{developerId}/status` | `{ "status": "ACTIVE" or "DISABLED" }` | A disabled developer cannot sign in, their portal tokens are refused with `403 ACCOUNT_DISABLED`, and their keys are refused on `/v1` with the same code. `PENDING` cannot be set; an account leaves it by confirming its address |
-| `PUT /admin/developers/{developerId}/role` | `{ "role": "DEVELOPER" or "ADMIN" }` | See the safeguards above |
-| `PUT /admin/developers/{developerId}/email` | `{ "email", "verified"? }` | Changes the sign in address. `verified` defaults to `true`; with `false` a confirmation link is sent to the new address. Every session of the account ends. `409 EMAIL_TAKEN` when another account has it |
-| `POST /admin/developers/{developerId}/verify-email` | none | Counts the address as confirmed. A `PENDING` account becomes `ACTIVE` |
-| `POST /admin/developers/{developerId}/unlock` | none | Clears the failed sign in count and any lockout |
-| `POST /admin/developers/{developerId}/sign-out` | none | Ends every session of the account on every device |
-| `POST /admin/developers/{developerId}/password-reset` | none | Emails a reset link to an active account. The answer has `requested` and `emailEnabled` |
-| `DELETE /admin/developers/{developerId}` | none | Removes an account that owns nothing, with its email links and linked social identities. Otherwise `409 INVALID_STATE`; disable the account instead |
-| `GET /admin/developers/{developerId}/apps` | query: `environment`, `page`, `size` | The apps of one account |
-| `GET /admin/developers/{developerId}/businesses` | none | The businesses of one account, each marked as applied for or shared |
-| `POST /admin/developers/{developerId}/businesses/{businessId}` | none | Gives the account use of a business it did not apply for. Nothing changes if it already has it |
-| `DELETE /admin/developers/{developerId}/businesses/{businessId}` | none | Takes a shared business back. `409 INVALID_STATE` for a business the account applied for, or one it still has apps on |
+| ![GET][m-get] `/admin/developers` | query: `q`, `status`, `page`, `size` | Searches accounts, newest first. `q` is matched anywhere in the email, username, full name or company name, or against the developer id exactly (at most 100 characters). `status` is `PENDING`, `ACTIVE` or `DISABLED`. Each row has `developerId`, `email`, `username`, `fullName`, `companyName`, `country`, `role`, `status`, `emailVerified`, `businessIds`, `createdAt` and `lastLoginAt`. Use it to find the `developerId` to put on a new merchant |
+| ![GET][m-get] `/admin/administrators` | query: `page`, `size` | The accounts whose role is `ADMIN`, same rows as above |
+| ![POST][m-post] `/admin/developers` | `{ "email", "firstName", "middleName"?, "lastName", "country"?, "phoneNumber"?, "companyName"?, "role"?, "sendInvite"? }` | Creates an `ACTIVE` account with a confirmed address and no password. `role` is `DEVELOPER` (default) or `ADMIN`. Unless `sendInvite` is `false`, the person is emailed a link to choose a password; the answer says whether that email could be sent (`inviteSent`). `409 EMAIL_TAKEN` when the address is used |
+| ![GET][m-get] `/admin/developers/{developerId}` | none | The full account: everything the owner sees, plus `appliedBusinessIds`, `sharedBusinessIds`, `failedLogins`, `lockedUntil` and `updatedAt`. No password hash or token is ever shown |
+| ![PUT][m-put] `/admin/developers/{developerId}` | the profile body of `PUT /api/v1/me`, every field optional | Changes the profile of any account. The same checks as for the owner apply |
+| ![PUT][m-put] `/admin/developers/{developerId}/status` | `{ "status": "ACTIVE" or "DISABLED" }` | A disabled developer cannot sign in, their portal tokens are refused with `403 ACCOUNT_DISABLED`, and their keys are refused on `/v1` with the same code. `PENDING` cannot be set; an account leaves it by confirming its address |
+| ![PUT][m-put] `/admin/developers/{developerId}/role` | `{ "role": "DEVELOPER" or "ADMIN" }` | See the safeguards above |
+| ![PUT][m-put] `/admin/developers/{developerId}/email` | `{ "email", "verified"? }` | Changes the sign in address. `verified` defaults to `true`; with `false` a confirmation link is sent to the new address. Every session of the account ends. `409 EMAIL_TAKEN` when another account has it |
+| ![POST][m-post] `/admin/developers/{developerId}/verify-email` | none | Counts the address as confirmed. A `PENDING` account becomes `ACTIVE` |
+| ![POST][m-post] `/admin/developers/{developerId}/unlock` | none | Clears the failed sign in count and any lockout |
+| ![POST][m-post] `/admin/developers/{developerId}/sign-out` | none | Ends every session of the account on every device |
+| ![POST][m-post] `/admin/developers/{developerId}/password-reset` | none | Emails a reset link to an active account. The answer has `requested` and `emailEnabled` |
+| ![DELETE][m-delete] `/admin/developers/{developerId}` | none | Removes an account that owns nothing, with its email links and linked social identities. Otherwise `409 INVALID_STATE`; disable the account instead |
+| ![GET][m-get] `/admin/developers/{developerId}/apps` | query: `environment`, `page`, `size` | The apps of one account |
+| ![GET][m-get] `/admin/developers/{developerId}/businesses` | none | The businesses of one account, each marked as applied for or shared |
+| ![POST][m-post] `/admin/developers/{developerId}/businesses/{businessId}` | none | Gives the account use of a business it did not apply for. Nothing changes if it already has it |
+| ![DELETE][m-delete] `/admin/developers/{developerId}/businesses/{businessId}` | none | Takes a shared business back. `409 INVALID_STATE` for a business the account applied for, or one it still has apps on |
 
-### 5.4 Apps and keys
-
-| Call | Body | Notes |
-|:-|:-|:-|
-| `GET /admin/apps` | query: `developerId`, `businessId`, `environment` (`sandbox` or `production`), `status` (`ACTIVE` or `SUSPENDED`), `name`, `page`, `size` | Every app on the platform, filters combine |
-| `GET /admin/apps/{appId}` | none | Any app |
-| `PUT /admin/apps/{appId}` | `{ "name"?, "description"?, "enabledMethods"?, "limits"?, "callbackUrl"? }` | Changes any app. The rules for the owner apply, for example a production callback URL must be `https`. The wallet service is told |
-| `PUT /admin/apps/{appId}/status` | `{ "status": "ACTIVE" or "SUSPENDED", "reason" }` | `reason` required to suspend. A suspension from here is recorded as `suspendedBy: ADMIN` and the developer cannot lift it |
-| `PUT /admin/apps/{appId}/owner` | `{ "developerId" }` | Hands the app to another active account, which gets use of the app's business. Every key of the app is revoked, so the new owner issues their own. `409 INVALID_STATE` for an unknown, inactive or current owner |
-| `DELETE /admin/apps/{appId}` | none | Suspends the app in the wallet first, then deletes it with its keys |
-| `GET /admin/apps/{appId}/keys` | none | The keys of the app with status and last used time; secrets are never shown |
-| `POST /admin/apps/{appId}/keys` | `{ "label"? }` | Issues a key. The secret is in the answer once and cannot be read again |
-| `POST /admin/apps/{appId}/keys/{key}/rotate` | none | Issues a replacement; the old key keeps working for the rotation grace period |
-| `DELETE /admin/apps/{appId}/keys/{key}` | none | Revokes one key now |
-| `DELETE /admin/apps/{appId}/keys` | none | Revokes every key of the app and returns how many |
-
-### 5.5 Transfers and business claims
+### ![][i-box-8250df] 5.4 Apps and keys
 
 | Call | Body | Notes |
 |:-|:-|:-|
-| `GET /admin/transfers` | query: `status` (`PENDING`, `COMPLETED`, `CANCELLED`, `REJECTED`), `type` (`APP_TRANSFER` or `BUSINESS_CLAIM`), `developerId`, `page`, `size` | Requests newest first. `developerId` matches the requester or the receiver. The code that was sent is never shown |
-| `GET /admin/transfers/{transferId}` | none | One request with both parties, the app or business, attempts used and expiry |
-| `DELETE /admin/transfers/{transferId}` | none | Cancels a request that is still waiting for its code. `409 INVALID_STATE` for one that is done |
+| ![GET][m-get] `/admin/apps` | query: `developerId`, `businessId`, `environment` (`sandbox` or `production`), `status` (`ACTIVE` or `SUSPENDED`), `name`, `page`, `size` | Every app on the platform, filters combine |
+| ![GET][m-get] `/admin/apps/{appId}` | none | Any app |
+| ![PUT][m-put] `/admin/apps/{appId}` | `{ "name"?, "description"?, "enabledMethods"?, "limits"?, "callbackUrl"? }` | Changes any app. The rules for the owner apply, for example a production callback URL must be `https`. The wallet service is told |
+| ![PUT][m-put] `/admin/apps/{appId}/status` | `{ "status": "ACTIVE" or "SUSPENDED", "reason" }` | `reason` required to suspend. A suspension from here is recorded as `suspendedBy: ADMIN` and the developer cannot lift it |
+| ![PUT][m-put] `/admin/apps/{appId}/owner` | `{ "developerId" }` | Hands the app to another active account, which gets use of the app's business. Every key of the app is revoked, so the new owner issues their own. `409 INVALID_STATE` for an unknown, inactive or current owner |
+| ![DELETE][m-delete] `/admin/apps/{appId}` | none | Suspends the app in the wallet first, then deletes it with its keys |
+| ![GET][m-get] `/admin/apps/{appId}/keys` | none | The keys of the app with status and last used time; secrets are never shown |
+| ![POST][m-post] `/admin/apps/{appId}/keys` | `{ "label"? }` | Issues a key. The secret is in the answer once and cannot be read again |
+| ![POST][m-post] `/admin/apps/{appId}/keys/{key}/rotate` | none | Issues a replacement; the old key keeps working for the rotation grace period |
+| ![DELETE][m-delete] `/admin/apps/{appId}/keys/{key}` | none | Revokes one key now |
+| ![DELETE][m-delete] `/admin/apps/{appId}/keys` | none | Revokes every key of the app and returns how many |
 
-## 6. Error codes
+### ![][i-swap-8250df] 5.5 Transfers and business claims
 
-`VALIDATION_FAILED` 400, `OTP_INVALID` 400, `INVALID_TOKEN` 400, `UNAUTHENTICATED` 401, `OAUTH_FAILED` 401, `INVALID_CREDENTIALS` 401, `INVALID_API_KEY` 401, `ENVIRONMENT_MISMATCH` 403, `ACCOUNT_DISABLED` 403, `ACCOUNT_PENDING` 403, `EMAIL_NOT_VERIFIED` 403, `FORBIDDEN` 403, `APP_SUSPENDED` 403, `MERCHANT_SUSPENDED` 403, `LIVE_NOT_ENABLED` 403, `NOT_FOUND` 404, `OAUTH_NOT_CONFIGURED` 404, `APP_NOT_FOUND` 404, `KEY_NOT_FOUND` 404, `MERCHANT_NOT_FOUND` 404, `BUSINESS_NOT_FOUND` 404, `TRANSFER_NOT_FOUND` 404, `WALLET_NOT_FOUND` 404, `EMAIL_TAKEN` 409, `USERNAME_TAKEN` 409, `ACCOUNT_EXISTS` 409, `BUSINESS_EXISTS` 409, `BUSINESS_REQUIRED` 409, `WALLET_ALREADY_LINKED` 409, `INVALID_STATE` 409, `DUPLICATE_REQUEST` 409, `OTP_EXPIRED` 410, `PAYLOAD_TOO_LARGE` 413, `WALLET_NOT_USABLE` 422, `LIMIT_REACHED` 422, `OAUTH_EMAIL_REQUIRED` 422, `ACCOUNT_LOCKED` 423, `RATE_LIMITED` 429, `INTERNAL_ERROR` 500, `UPSTREAM_UNAVAILABLE` 503, `UPSTREAM_TIMEOUT` 504.
+| Call | Body | Notes |
+|:-|:-|:-|
+| ![GET][m-get] `/admin/transfers` | query: `status` (`PENDING`, `COMPLETED`, `CANCELLED`, `REJECTED`), `type` (`APP_TRANSFER` or `BUSINESS_CLAIM`), `developerId`, `page`, `size` | Requests newest first. `developerId` matches the requester or the receiver. The code that was sent is never shown |
+| ![GET][m-get] `/admin/transfers/{transferId}` | none | One request with both parties, the app or business, attempts used and expiry |
+| ![DELETE][m-delete] `/admin/transfers/{transferId}` | none | Cancels a request that is still waiting for its code. `409 INVALID_STATE` for one that is done |
+
+## ![][i-alert-b3261e] 6. Error codes
+
+
+| Status | Codes |
+|:-|:-|
+| ![400][h-400] | `VALIDATION_FAILED` `OTP_INVALID` `INVALID_TOKEN` |
+| ![401][h-401] | `UNAUTHENTICATED` `OAUTH_FAILED` `INVALID_CREDENTIALS` `INVALID_API_KEY` |
+| ![403][h-403] | `ENVIRONMENT_MISMATCH` `ACCOUNT_DISABLED` `ACCOUNT_PENDING` `EMAIL_NOT_VERIFIED` `FORBIDDEN` `APP_SUSPENDED` `MERCHANT_SUSPENDED` `LIVE_NOT_ENABLED` |
+| ![404][h-404] | `NOT_FOUND` `OAUTH_NOT_CONFIGURED` `APP_NOT_FOUND` `KEY_NOT_FOUND` `MERCHANT_NOT_FOUND` `BUSINESS_NOT_FOUND` `TRANSFER_NOT_FOUND` `WALLET_NOT_FOUND` |
+| ![409][h-409] | `EMAIL_TAKEN` `USERNAME_TAKEN` `ACCOUNT_EXISTS` `BUSINESS_EXISTS` `BUSINESS_REQUIRED` `WALLET_ALREADY_LINKED` `INVALID_STATE` `DUPLICATE_REQUEST` |
+| ![410][h-410] | `OTP_EXPIRED` |
+| ![413][h-413] | `PAYLOAD_TOO_LARGE` |
+| ![422][h-422] | `WALLET_NOT_USABLE` `LIMIT_REACHED` `OAUTH_EMAIL_REQUIRED` |
+| ![423][h-423] | `ACCOUNT_LOCKED` |
+| ![429][h-429] | `RATE_LIMITED` |
+| ![500][h-500] | `INTERNAL_ERROR` |
+| ![503][h-503] | `UPSTREAM_UNAVAILABLE` |
+| ![504][h-504] | `UPSTREAM_TIMEOUT` |
+
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=110&section=footer" alt="" width="100%">
+</p>
+
+[h-400]: https://img.shields.io/badge/400-Bad%20request-d29922?style=flat
+[h-401]: https://img.shields.io/badge/401-Unauthorized-b3261e?style=flat
+[h-403]: https://img.shields.io/badge/403-Forbidden-b3261e?style=flat
+[h-404]: https://img.shields.io/badge/404-Not%20found-6e7781?style=flat
+[h-409]: https://img.shields.io/badge/409-Conflict-d29922?style=flat
+[h-410]: https://img.shields.io/badge/410-Gone-d29922?style=flat
+[h-413]: https://img.shields.io/badge/413-Payload%20too%20large-d29922?style=flat
+[h-422]: https://img.shields.io/badge/422-Unprocessable-d29922?style=flat
+[h-423]: https://img.shields.io/badge/423-Locked-b3261e?style=flat
+[h-429]: https://img.shields.io/badge/429-Too%20many%20requests-d29922?style=flat
+[h-500]: https://img.shields.io/badge/500-Server%20error-8b1a14?style=flat
+[h-503]: https://img.shields.io/badge/503-Unavailable-8b1a14?style=flat
+[h-504]: https://img.shields.io/badge/504-Timeout-8b1a14?style=flat
+[i-alert-b3261e]: https://img.shields.io/badge/-%20-b3261e?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTAuMjkgMy44NiAxLjgyIDE4YTIgMiAwIDAgMCAxLjcxIDNoMTYuOTRhMiAyIDAgMCAwIDEuNzEtM0wxMy43MSAzLjg2YTIgMiAwIDAgMC0zLjQyIDB6Ii8%2BPHBhdGggZD0iTTEyIDl2NE0xMiAxN2guMDEiLz48L3N2Zz4%3D
+[i-box-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgOGEyIDIgMCAwIDAtMS0xLjczbC03LTRhMiAyIDAgMCAwLTIgMGwtNyA0QTIgMiAwIDAgMCAzIDh2OGEyIDIgMCAwIDAgMSAxLjczbDcgNGEyIDIgMCAwIDAgMiAwbDctNEEyIDIgMCAwIDAgMjEgMTZ6Ii8%2BPHBhdGggZD0iTTMuMyA3IDEyIDEybDguNy01TTEyIDIyVjEyIi8%2BPC9zdmc%2B
+[i-box-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgOGEyIDIgMCAwIDAtMS0xLjczbC03LTRhMiAyIDAgMCAwLTIgMGwtNyA0QTIgMiAwIDAgMCAzIDh2OGEyIDIgMCAwIDAgMSAxLjczbDcgNGEyIDIgMCAwIDAgMiAwbDctNEEyIDIgMCAwIDAgMjEgMTZ6Ii8%2BPHBhdGggZD0iTTMuMyA3IDEyIDEybDguNy01TTEyIDIyVjEyIi8%2BPC9zdmc%2B
+[i-building-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0IiB5PSIyIiB3aWR0aD0iMTYiIGhlaWdodD0iMjAiIHJ4PSIyIi8%2BPHBhdGggZD0iTTkgMjJ2LTRoNnY0TTggNmguMDFNMTIgNmguMDFNMTYgNmguMDFNOCAxMGguMDFNMTIgMTBoLjAxTTE2IDEwaC4wMU04IDE0aC4wMU0xMiAxNGguMDFNMTYgMTRoLjAxIi8%2BPC9zdmc%2B
+[i-chart-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMyAzdjE4aDE4Ii8%2BPHBhdGggZD0iTTcgMTZWOU0xMiAxNlY1TTE3IDE2di00Ii8%2BPC9zdmc%2B
+[i-code-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTYgMThsNi02LTYtNk04IDZsLTYgNiA2IDYiLz48L3N2Zz4%3D
+[i-file-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQgMkg2YTIgMiAwIDAgMC0yIDJ2MTZhMiAyIDAgMCAwIDIgMmgxMmEyIDIgMCAwIDAgMi0yVjh6Ii8%2BPHBvbHlsaW5lIHBvaW50cz0iMTQgMiAxNCA4IDIwIDgiLz48cGF0aCBkPSJNMTYgMTNIOE0xNiAxN0g4TTEwIDlIOCIvPjwvc3ZnPg%3D%3D
+[i-globe-1f6feb]: https://img.shields.io/badge/-%20-1f6feb?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0yIDEyaDIwTTEyIDJhMTUuMyAxNS4zIDAgMCAxIDQgMTAgMTUuMyAxNS4zIDAgMCAxLTQgMTAgMTUuMyAxNS4zIDAgMCAxLTQtMTAgMTUuMyAxNS4zIDAgMCAxIDQtMTB6Ii8%2BPC9zdmc%2B
+[i-key-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSI3LjUiIGN5PSIxNS41IiByPSI0LjUiLz48cGF0aCBkPSJtMjEgMi05LjYgOS42TTE1LjUgNy41bDMgM0wyMiA3bC0zLTMiLz48L3N2Zz4%3D
+[i-layout-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSIzIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIi8%2BPHBhdGggZD0iTTMgOWgxOE05IDIxVjkiLz48L3N2Zz4%3D
+[i-log-in-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTUgM2g0YTIgMiAwIDAgMSAyIDJ2MTRhMiAyIDAgMCAxLTIgMmgtNCIvPjxwYXRoIGQ9Ik0xMCAxN2w1LTUtNS01TTE1IDEySDMiLz48L3N2Zz4%3D
+[i-log-out-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNOSAyMUg1YTIgMiAwIDAgMS0yLTJWNWEyIDIgMCAwIDEgMi0yaDQiLz48cGF0aCBkPSJNMTYgMTdsNS01LTUtNU0yMSAxMkg5Ii8%2BPC9zdmc%2B
+[i-mail-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIyIiB5PSI0IiB3aWR0aD0iMjAiIGhlaWdodD0iMTYiIHJ4PSIyIi8%2BPHBhdGggZD0ibTIyIDctMTAgNkwyIDciLz48L3N2Zz4%3D
+[i-share-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxOCIgY3k9IjUiIHI9IjMiLz48Y2lyY2xlIGN4PSI2IiBjeT0iMTIiIHI9IjMiLz48Y2lyY2xlIGN4PSIxOCIgY3k9IjE5IiByPSIzIi8%2BPHBhdGggZD0iTTguNiAxMy41bDYuOCA0TTE1LjQgNi41bC02LjggNCIvPjwvc3ZnPg%3D%3D
+[i-shield-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMjJzOC00IDgtMTBWNWwtOC0zLTggM3Y3YzAgNiA4IDEwIDggMTB6Ii8%2BPC9zdmc%2B
+[i-sliders-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCAyMXYtN000IDEwVjNNMTIgMjF2LTlNMTIgOFYzTTIwIDIxdi01TTIwIDEyVjNNMSAxNGg2TTkgOGg2TTE3IDE2aDYiLz48L3N2Zz4%3D
+[i-swap-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcgM2w0IDQtNCA0TTMgN2gxOE03IDIxbC00LTQgNC00TTIxIDE3SDMiLz48L3N2Zz4%3D
+[i-swap-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcgM2w0IDQtNCA0TTMgN2gxOE03IDIxbC00LTQgNC00TTIxIDE3SDMiLz48L3N2Zz4%3D
+[i-user-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTkgMjF2LTJhNCA0IDAgMCAwLTQtNEg5YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg%3D%3D
+[i-user-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTkgMjF2LTJhNCA0IDAgMCAwLTQtNEg5YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iNyIgcj0iNCIvPjwvc3ZnPg%3D%3D
+[i-user-plus-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTYgMjF2LTJhNCA0IDAgMCAwLTQtNEg2YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8%2BPHBhdGggZD0iTTE5IDh2Nk0yMiAxMWgtNiIvPjwvc3ZnPg%3D%3D
+[i-users-0b7a43]: https://img.shields.io/badge/-%20-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcgMjF2LTJhNCA0IDAgMCAwLTQtNEg1YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8%2BPHBhdGggZD0iTTIzIDIxdi0yYTQgNCAwIDAgMC0zLTMuODdNMTYgMy4xM2E0IDQgMCAwIDEgMCA3Ljc1Ii8%2BPC9zdmc%2B
+[i-users-8250df]: https://img.shields.io/badge/-%20-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcgMjF2LTJhNCA0IDAgMCAwLTQtNEg1YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8%2BPHBhdGggZD0iTTIzIDIxdi0yYTQgNCAwIDAgMC0zLTMuODdNMTYgMy4xM2E0IDQgMCAwIDEgMCA3Ljc1Ii8%2BPC9zdmc%2B
+[m-delete]: https://img.shields.io/badge/DELETE-b3261e?style=flat
+[m-get]: https://img.shields.io/badge/GET-1f6feb?style=flat
+[m-post]: https://img.shields.io/badge/POST-0b7a43?style=flat
+[m-put]: https://img.shields.io/badge/PUT-9a6700?style=flat
+[s-admin]: https://img.shields.io/badge/Admin%20API-8250df?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMjJzOC00IDgtMTBWNWwtOC0zLTggM3Y3YzAgNiA4IDEwIDggMTB6Ii8%2BPC9zdmc%2B
+[s-portal]: https://img.shields.io/badge/Portal%20API-0b7a43?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTcgMjF2LTJhNCA0IDAgMCAwLTQtNEg1YTQgNCAwIDAgMC00IDR2MiIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8%2BPHBhdGggZD0iTTIzIDIxdi0yYTQgNCAwIDAgMC0zLTMuODdNMTYgMy4xM2E0IDQgMCAwIDEgMCA3Ljc1Ii8%2BPC9zdmc%2B
+[s-public]: https://img.shields.io/badge/Public%20API-1f6feb?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0yIDEyaDIwTTEyIDJhMTUuMyAxNS4zIDAgMCAxIDQgMTAgMTUuMyAxNS4zIDAgMCAxLTQgMTAgMTUuMyAxNS4zIDAgMCAxLTQtMTAgMTUuMyAxNS4zIDAgMCAxIDQtMTB6Ii8%2BPC9zdmc%2B
