@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premisave Developer Console</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --sunken: #eef0f4;
+  --ink: #0f172a;
+  --ink-2: #475467;
+  --ink-3: #8792a2;
+  --line: #e4e7ec;
+  --line-2: #d0d5dd;
+  --accent: #2d5bff;
+  --accent-ink: #ffffff;
+  --side: #0e1a33;
+  --side-2: #16264a;
+  --side-ink: #d5dcec;
+  --side-ink-2: #7f8cab;
+  --good: #11805a;
+  --bad: #c0261d;
+  --warn: #9a5b00;
+  --info: #1d5fd1;
+  --code-bg: #0b1220;
+  --code-ink: #d6deee;
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  --pop: 0 12px 32px rgba(15, 23, 42, .18);
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "JetBrains Mono", "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0e15;
+  --surface: #111722;
+  --surface-2: #151c29;
+  --sunken: #0d121b;
+  --ink: #e6eaf2;
+  --ink-2: #9aa5b8;
+  --ink-3: #667085;
+  --line: #1e2736;
+  --line-2: #2a3548;
+  --accent: #7c9bff;
+  --accent-ink: #0a1020;
+  --side: #0c111b;
+  --side-2: #151d2c;
+  --side-ink: #cfd7e6;
+  --side-ink-2: #6f7c95;
+  --good: #3ddc9b;
+  --bad: #ff8a80;
+  --warn: #f2b84b;
+  --info: #7fb2ff;
+  --code-bg: #080c13;
+  --code-ink: #d2dbec;
+  --shadow: none;
+  --pop: 0 12px 32px rgba(0, 0, 0, .55);
+}
+/* accent palettes, light then dark */
+:root[data-accent="emerald"] { --accent: #0b8f66; }
+:root[data-accent="violet"] { --accent: #6a4dff; }
+:root[data-accent="graphite"] { --accent: #1f2937; }
+:root[data-theme="dark"][data-accent="blue"] { --accent: #7c9bff; }
+:root[data-theme="dark"][data-accent="emerald"] { --accent: #3ddc9b; }
+:root[data-theme="dark"][data-accent="violet"] { --accent: #a99aff; }
+:root[data-theme="dark"][data-accent="graphite"] { --accent: #cdd5e2; }
+:root[data-theme="dark"][data-accent="emerald"], :root[data-theme="dark"][data-accent="graphite"] { --accent-ink: #07130e; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+#app { height: 100%; }
+body { font: 13.5px/1.5 var(--sans); background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; font-feature-settings: "tnum" 1, "cv11" 1; letter-spacing: -.003em; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -.012em; }
+h3 { font-size: 14px; }
+.mono { font-family: var(--mono); font-size: 12px; letter-spacing: 0; }
+.muted { color: var(--ink-2); }
+.small { font-size: 12px; }
+.hide { display: none !important; }
+.ico { display: inline-flex; width: 16px; height: 16px; flex: none; }
+.ico svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.mark { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.mark .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 14px; letter-spacing: -.02em; flex: none; }
+.mark small { display: block; font-weight: 500; font-size: 11px; opacity: .65; line-height: 1.1; margin-top: 1px; }
+
+/* buttons and fields */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface); font-weight: 550; line-height: 1; box-shadow: var(--shadow); transition: background .12s, border-color .12s; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); border-color: color-mix(in srgb, var(--ink) 28%, var(--line-2)); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { background: color-mix(in srgb, var(--accent) 88%, #000); }
+.btn.danger { color: var(--bad); }
+.btn.ghost { border-color: transparent; background: transparent; box-shadow: none; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--sunken); color: var(--ink); }
+.btn.sm { height: 26px; padding: 0 9px; font-size: 12px; border-radius: 5px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.icon-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ink-2); }
+.icon-btn:hover { background: var(--sunken); color: var(--ink); }
+label.fl { display: block; font-size: 12px; font-weight: 550; color: var(--ink-2); margin: 0 0 5px; }
+label.fl .req { color: var(--bad); margin-left: 2px; }
+.inp, select.inp, textarea.inp { width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); transition: border-color .12s, box-shadow .12s; }
+.inp::placeholder { color: var(--ink-3); }
+.inp:focus { border-color: var(--accent); box-shadow: var(--ring); outline: none; }
+textarea.inp { height: auto; padding: 8px 10px; font-family: var(--mono); font-size: 12px; resize: vertical; min-height: 76px; line-height: 1.5; }
+input[type=range] { accent-color: var(--accent); }
+input[type=checkbox] { accent-color: var(--accent); }
+.hint { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+/* tags, methods, status */
+.pill { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: .01em; background: var(--sunken); color: var(--ink-2); white-space: nowrap; }
+.pill.good { background: color-mix(in srgb, var(--good) 13%, transparent); color: var(--good); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 13%, transparent); color: var(--bad); }
+.pill.warn { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.pill.info { background: color-mix(in srgb, var(--info) 13%, transparent); color: var(--info); }
+.verb { display: inline-block; min-width: 44px; text-align: center; font-family: var(--mono); font-size: 10.5px; font-weight: 700; padding: 2px 0; border-radius: 4px; letter-spacing: .04em; border: 1px solid currentColor; background: transparent; }
+.verb.GET { color: var(--info); }
+.verb.POST { color: var(--good); }
+.verb.PUT, .verb.PATCH { color: var(--warn); }
+.verb.DELETE { color: var(--bad); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.dot.good { background: var(--good); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+
+/* sign in */
+.login { min-height: 100%; display: grid; grid-template-columns: minmax(340px, 5fr) 6fr; }
+.login .brand { background: var(--side); color: var(--side-ink); padding: 40px clamp(28px, 5vw, 64px); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 32px 32px; background-position: -1px -1px; }
+.login .brand::after { content: ""; position: absolute; inset: auto 0 0 0; height: 55%; background: linear-gradient(to top, var(--side), transparent); pointer-events: none; }
+.login .brand > * { position: relative; z-index: 1; }
+.login h1 { font-size: 30px; line-height: 1.15; color: #fff; }
+.login .lede { color: var(--side-ink-2); margin: 10px 0 0; max-width: 40ch; font-size: 14px; }
+.login .conn { margin-top: 30px; display: grid; gap: 1px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,.08); max-width: 420px; }
+.login .conn .c { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; background: rgba(12, 22, 44, .92); font-size: 12.5px; }
+.login .conn .c b { font-weight: 550; color: #fff; }
+.login .conn .c span.v { color: var(--side-ink-2); font-family: var(--mono); font-size: 11.5px; }
+.login .panel { display: grid; place-items: center; padding: 32px 20px; position: relative; }
+.login .panel .corner { position: absolute; right: 16px; top: 16px; }
+.login form { width: min(380px, 100%); }
+.login form h2 { font-size: 22px; margin-bottom: 4px; }
+.login .field { margin-top: 14px; }
+.login .err { margin-top: 14px; padding: 10px 12px; border-radius: 6px; background: color-mix(in srgb, var(--bad) 11%, transparent); color: var(--bad); font-size: 12.5px; white-space: pre-wrap; border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent); }
+.login details { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
+.login details summary { cursor: pointer; font-weight: 550; color: var(--ink-2); }
+.pwbox { position: relative; }
+.pwbox .icon-btn { position: absolute; right: 1px; top: 1px; width: 32px; height: 32px; }
+.recent { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.recent button { font-size: 12px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink-2); }
+.recent button:hover { color: var(--ink); border-color: var(--ink-3); }
+
+/* shell */
+.shell { height: 100%; display: grid; grid-template-columns: 232px minmax(0, 1fr); grid-template-rows: 100%; }
+.side { background: var(--side); color: var(--side-ink); display: flex; flex-direction: column; min-height: 0; }
+.side .mark { padding: 16px 16px 14px; color: #fff; }
+.side nav { overflow-y: auto; padding: 2px 8px 12px; flex: 1; }
+.side .grp { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--side-ink-2); padding: 16px 10px 6px; font-weight: 600; }
+.side a.nav { position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: var(--side-ink); text-decoration: none; cursor: pointer; font-weight: 500; }
+.side a.nav .ico { opacity: .75; }
+.side a.nav:hover { background: var(--side-2); }
+.side a.nav.on { background: color-mix(in srgb, var(--accent) 26%, transparent); color: #fff; }
+.side a.nav.on .ico { opacity: 1; }
+.side a.nav.on::before { content: ""; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+:root[data-theme="dark"][data-accent="graphite"] .side a.nav.on { background: rgba(255,255,255,.1); }
+.side .foot { padding: 10px 12px 12px; border-top: 1px solid rgba(255,255,255,.07); display: flex; gap: 6px; flex-wrap: wrap; }
+.side .foot .btn { background: transparent; color: var(--side-ink); border-color: rgba(255,255,255,.14); box-shadow: none; }
+.side .foot .btn:hover { background: var(--side-2); }
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.top { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--surface); flex: none; }
+.top h1 { font-size: 15px; }
+.env { display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink-2); font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); }
+.chip { display: inline-flex; align-items: baseline; gap: 8px; padding: 0 4px; color: var(--ink-2); font-size: 12px; }
+.chip .amt { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.who { position: relative; }
+.who > button { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px 0 4px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface); }
+.who > button:hover { background: var(--surface-2); }
+.avatar { width: 24px; height: 24px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 11.5px; flex: none; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); width: 320px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: var(--pop); padding: 4px; z-index: 40; }
+.menu .it { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+.menu .it:hover { background: var(--sunken); }
+.menu .it.on { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+.content > .page { max-width: 1120px; margin: 0 auto; }
+.page > .lead { color: var(--ink-2); margin: 0 0 18px; max-width: 74ch; }
+.page h2.sec { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 28px 0 10px; font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
+.stack { display: grid; gap: 12px; }
+.tabs { display: flex; gap: 20px; flex-wrap: wrap; margin: 0 0 16px; border-bottom: 1px solid var(--line); max-width: 100%; }
+.tabs button { padding: 8px 0 9px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; font-weight: 550; color: var(--ink-2); }
+.tabs button:hover { color: var(--ink); }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.notice { padding: 9px 12px; border-radius: 6px; background: color-mix(in srgb, var(--info) 10%, transparent); color: var(--info); font-size: 12.5px; margin-bottom: 14px; border: 1px solid color-mix(in srgb, var(--info) 22%, transparent); }
+.notice.warn { background: color-mix(in srgb, var(--warn) 11%, transparent); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 26%, transparent); }
+.notice.bad { background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 26%, transparent); }
+
+/* panels */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.card.pad { padding: 16px; }
+details.act > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-radius: 8px; min-height: 44px; }
+details.act > summary:hover { background: var(--surface-2); }
+details.act > summary::-webkit-details-marker { display: none; }
+details.act[open] > summary { border-bottom: 1px solid var(--line); border-bottom-left-radius: 0; border-bottom-right-radius: 0; background: var(--surface-2); }
+details.act > summary .t { font-weight: 600; }
+details.act > summary .p { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+details.act > summary .pill { margin-left: auto; }
+details.act > summary .chev { color: var(--ink-3); transition: transform .12s; }
+details.act[open] > summary .chev { transform: rotate(90deg); }
+.act .body { padding: 14px; display: grid; gap: 12px; }
+.act .note { color: var(--ink-2); font-size: 12.5px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.fields .wide { grid-column: 1 / -1; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.result { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.result .rh { display: flex; gap: 10px; align-items: center; padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--line); flex-wrap: wrap; min-height: 34px; }
+.result .rh .msg { font-weight: 550; min-width: 0; overflow-wrap: anywhere; }
+.result .rb { padding: 12px; max-height: 420px; overflow: auto; }
+.result .rtabs { margin-left: auto; display: flex; gap: 2px; }
+.result .rtabs button { height: 22px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; font-size: 12px; color: var(--ink-2); }
+.result .rtabs button.on { background: var(--sunken); color: var(--ink); }
+pre.json { margin: 0; padding: 10px 12px; border-radius: 6px; background: var(--code-bg); color: var(--code-ink); font: 12px/1.55 var(--mono); overflow: auto; white-space: pre-wrap; word-break: break-word; }
+pre.json .k { color: #8fb6ff; } pre.json .s { color: #a8dd9a; } pre.json .n { color: #f1c27d; } pre.json .b { color: #d9a6e8; } pre.json .z { color: #7d8aa3; }
+.kv { display: grid; grid-template-columns: minmax(130px, max-content) 1fr; gap: 7px 20px; }
+.kv .k { color: var(--ink-2); font-size: 12.5px; }
+.kv .v { overflow-wrap: anywhere; font-weight: 500; font-variant-numeric: tabular-nums; }
+table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.t th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--ink-2); padding: 8px 10px; border-bottom: 1px solid var(--line-2); position: sticky; top: 0; background: var(--surface-2); white-space: nowrap; }
+table.t td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; max-width: 260px; overflow-wrap: anywhere; }
+table.t tr.clk { cursor: pointer; }
+table.t tr.clk:hover td { background: var(--surface-2); }
+table.t td.num, table.t th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tw { overflow: auto; border: 1px solid var(--line); border-radius: 6px; max-height: 460px; }
+.tw table.t tr:last-child td { border-bottom: 0; }
+
+/* wallet overview */
+.balance { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+.balance .cell { padding: 16px 18px; border-left: 1px solid var(--line); min-width: 0; }
+.balance .cell:first-child { border-left: 0; background: var(--side); color: var(--side-ink); }
+.balance .lab { font-size: 11.5px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; }
+.balance .cell:first-child .lab { color: var(--side-ink-2); }
+.balance .num { font-size: 30px; font-weight: 600; letter-spacing: -.025em; margin: 6px 0 8px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.balance .val { font-size: 15px; font-weight: 600; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.balance .sub { color: var(--side-ink-2); font-size: 12px; }
+.balance .btn { background: rgba(255,255,255,.1); color: var(--side-ink); border-color: rgba(255,255,255,.2); box-shadow: none; }
+.balance .btn:hover { background: rgba(255,255,255,.18); }
+
+/* escrow */
+.esc { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.esc > * { min-width: 0; }
+.steps { display: grid; gap: 0; }
+.stepbtn { position: relative; display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 10px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; text-align: left; width: 100%; }
+.stepbtn:hover { background: var(--surface-2); border-color: var(--line); }
+.stepbtn:not(:last-child)::after { content: ""; position: absolute; left: 21px; top: 38px; bottom: -10px; width: 1px; background: var(--line-2); }
+.stepbtn .n { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 11.5px; position: relative; z-index: 1; }
+.stepbtn b { display: block; font-weight: 600; }
+.stepbtn span.d { color: var(--ink-2); font-size: 12.5px; }
+.stepbtn .ico { color: var(--ink-3); }
+.bar { height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.mathtbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; margin-top: 4px; }
+.mathtbl td { padding: 6px 0; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.mathtbl td:last-child { text-align: right; font-weight: 600; color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
+.mathtbl tr.sum td { border-bottom: 0; border-top: 1px solid var(--ink-3); color: var(--ink); font-weight: 650; padding-top: 8px; }
+.tl { display: grid; gap: 0; max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.tl .ev { display: grid; grid-template-columns: 38px 1fr; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: start; }
+.tl .ev:last-child { border-bottom: 0; }
+.tl .ev .m { color: var(--ink-2); font-size: 12px; overflow-wrap: anywhere; }
+.tl .ev .pill { justify-content: center; }
+.tl .empty { border: 0; }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); }
+.bal { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.bal:last-child { border-bottom: 0; }
+.bal .fig { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* log drawer */
+.drawer { position: fixed; left: 232px; right: 0; bottom: 0; height: 44vh; background: var(--surface); border-top: 1px solid var(--line-2); box-shadow: 0 -8px 24px rgba(15,23,42,.12); z-index: 30; display: flex; flex-direction: column; transform: translateY(102%); transition: transform .16s ease; }
+.drawer.open { transform: none; }
+.drawer .dh { display: flex; gap: 10px; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); min-height: 40px; }
+.drawer .dl { overflow: auto; flex: 1; }
+.lg { border-bottom: 1px solid var(--line); }
+.lg > .l1 { display: grid; grid-template-columns: 60px 52px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 5px 14px; cursor: pointer; }
+.lg > .l1:hover { background: var(--surface-2); }
+.lg .u { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11.5px; }
+.lg .det { padding: 6px 14px 12px; display: grid; gap: 8px; }
+
+/* modal and toast */
+.modal-bg { position: fixed; inset: 0; background: rgba(9, 14, 26, .5); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 60; padding: 20px; }
+.modal { width: min(600px, 100%); max-height: 90vh; overflow: auto; background: var(--surface); border-radius: 10px; border: 1px solid var(--line-2); box-shadow: var(--pop); }
+.modal .mh { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); gap: 10px; }
+.modal .mh h2 { font-size: 15px; }
+.modal .mb { padding: 16px; display: grid; gap: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; }
+.seg button { height: 30px; padding: 0 14px; border: 0; background: var(--surface); color: var(--ink-2); font-weight: 550; border-left: 1px solid var(--line-2); }
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: var(--sunken); color: var(--ink); }
+.swatches { display: flex; gap: 10px; }
+.sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line-2); cursor: pointer; padding: 0; }
+.sw.on { border-color: var(--surface); box-shadow: 0 0 0 2px var(--ink); }
+#toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; display: grid; gap: 8px; z-index: 80; justify-items: center; }
+.toast { padding: 8px 14px; border-radius: 6px; background: #0f172a; color: #f1f5f9; box-shadow: var(--pop); max-width: 420px; font-size: 12.5px; border: 1px solid rgba(255,255,255,.1); }
+.toast.bad { background: #7f1d1d; color: #fff; }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: sp .7s linear infinite; display: inline-block; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.empty { padding: 22px; text-align: center; color: var(--ink-3); border: 1px dashed var(--line-2); border-radius: 8px; font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: .01s !important; } }
+
+@media (max-width: 900px) {
+  .login { grid-template-columns: 1fr; }
+  .login .brand { padding: 24px; gap: 20px; }
+  .login .conn { margin-top: 18px; }
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .side { flex-direction: row; align-items: center; overflow-x: auto; }
+  .side .mark, .side .foot, .side .grp { display: none; }
+  .side nav { display: flex; gap: 4px; padding: 6px; overflow-x: auto; }
+  .side a.nav { white-space: nowrap; }
+  .side a.nav.on::before { display: none; }
+  .balance { grid-template-columns: 1fr 1fr; }
+  .balance .cell:first-child { grid-column: 1 / -1; }
+  .balance .cell:nth-child(3) { border-left: 0; }
+  .balance .cell:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .esc { grid-template-columns: 1fr; }
+  .drawer { left: 0; }
+  .content { padding: 14px; }
+  .top { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 12px; gap: 6px; }
+  .env { display: none; }
+}
+@media (max-width: 640px) {
+  .who > button .small, .who > button .pill { display: none; }
+  .esc, .grid2, .fields { grid-template-columns: minmax(0, 1fr); }
+  .chip span:first-child { display: none; }
+}
+
+/* ---- developer console additions ---- */
+.stp { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.stp:first-of-type { border-top: 0; }
+.stp .n { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line-2); display: grid; place-items: center; font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+.stp.done .n { background: var(--good); border-color: var(--good); color: #fff; }
+.stp .n .ico svg { width: 13px; height: 13px; stroke-width: 2.4; }
+.bizrow { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.secretbox { border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line)); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); border-radius: 8px; padding: 12px 14px; }
+.secretbox .sh { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.secretbox .srow { display: flex; gap: 10px; align-items: center; margin-top: 6px; min-width: 0; }
+.secretbox .srow .k { width: 52px; flex: none; color: var(--ink-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.secretbox code { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; }
+.multi { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 4px 0; }
+.chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-family: var(--mono); }
+pre.cmd { margin: 0; padding: 12px 14px; background: var(--side); color: var(--side-ink); border-radius: 8px; font-family: var(--mono); font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+details.plain { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--surface); }
+details.plain summary { cursor: pointer; font-weight: 550; }
+input[type=file].inp { padding: 5px 8px; height: auto; }
+.stack > *, .page > * { min-width: 0; }
+pre.cmd { max-width: 100%; }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript>This test console needs JavaScript.</noscript>
+<script>
+'use strict';
+/* ============================================================
+   Premisave Developer Console: a stand-in portal for testing the
+   developer service (sign in, businesses, apps, keys, admin).
+   ============================================================ */
+
+// ---------- storage ----------
+function mkStore(kind) {
+  return {
+    get(k) { try { return window[kind].getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { window[kind].setItem(k, v); } catch (e) { /* storage blocked */ } },
+    del(k) { try { window[kind].removeItem(k); } catch (e) { /* storage blocked */ } }
+  };
+}
+const LS = mkStore('localStorage');
+const SS = mkStore('sessionStorage');
+function jget(store, k, dflt) { try { const v = store.get(k); return v ? JSON.parse(v) : dflt; } catch (e) { return dflt; } }
+
+
+// ---------- state ----------
+const DEFAULT_VARS = {
+  developer_email: '',
+  developer_password: '',
+  new_password: '',
+  developer_id: '',
+  target_developer_id: '',
+  business_id: '',
+  merchant_number: '',
+  test_merchant_number: 'PRM-TEST-0001',
+  wallet_account: '',
+  document_id: '',
+  app_id: '',
+  live_app_id: '',
+  api_key: '',
+  api_secret: '',
+  live_api_key: '',
+  live_api_secret: '',
+  admin_key_id: '',
+  transfer_id: '',
+  to_email: '',
+  otp: '',
+  email_token: '',
+  payment_id: ''
+};
+const S = {
+  cfg: Object.assign({ dev: 'http://localhost:8091' }, jget(LS, 'dc-cfg', {})),
+  vars: Object.assign({}, DEFAULT_VARS, jget(LS, 'dc-vars', {})),
+  sessions: jget(SS, 'dc-sessions', {}),
+  active: SS.get('dc-active') || '',
+  recent: jget(LS, 'dc-recent', []),
+  log: [],
+  page: SS.get('dc-page') || 'overview',
+  theme: LS.get('dc-theme') || 'system',
+  accent: LS.get('dc-accent') || 'violet',
+  logOpen: false,
+  builderPreset: null
+};
+function saveCfg() { LS.set('dc-cfg', JSON.stringify(S.cfg)); }
+function saveVars() { LS.set('dc-vars', JSON.stringify(S.vars)); }
+function saveSessions() { SS.set('dc-sessions', JSON.stringify(S.sessions)); SS.set('dc-active', S.active); }
+function session() { return S.sessions[S.active] || null; }
+
+// ---------- dom helpers ----------
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else el.setAttribute(k, v);
+  }
+  add(el, kids);
+  return el;
+}
+function fill(el, ...kids) { el.replaceChildren(); add(el, kids); return el; }
+function add(el, kids) {
+  for (const c of kids) {
+    if (c === null || c === undefined || c === false) continue;
+    if (Array.isArray(c)) add(el, c);
+    else el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+}
+const ICONS = {
+  wallet: '<path d="M3 7a2 2 0 0 1 2-2h13v3"/><path d="M3 7v10a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-1z"/><circle cx="16.5" cy="13.5" r="1.1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  send: '<path d="M4 12l16-8-6 17-3-7z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0 5 5L10 21a2.1 2.1 0 0 1-3-3z"/><path d="M14.7 6.3L17 4l3 3-2.3 2.3"/>',
+  heart: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  bolt: '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  out: '<path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.5-4M4 5v4h4M4 13a8 8 0 0 0 14.5 4M20 19v-4h-4"/>',
+  card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'
+};
+function ico(name) { return h('span', { class: 'ico', html: '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || '') + '</svg>' }); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function toast(msg, bad) {
+  let box = document.getElementById('toasts');
+  if (!box) { box = h('div', { id: 'toasts' }); document.body.append(box); }
+  const t = h('div', { class: 'toast' + (bad ? ' bad' : '') }, msg);
+  box.append(t);
+  setTimeout(() => t.remove(), bad ? 6000 : 3200);
+}
+function copyText(text, what) {
+  const done = () => toast((what || 'Text') + ' copied');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = h('textarea', { style: { position: 'fixed', opacity: 0 } }); ta.value = text; document.body.append(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed', true); }
+  ta.remove();
+}
+function modal(title, body, opts) {
+  const bg = h('div', { class: 'modal-bg', onmousedown: e => { if (e.target === bg) close(); } });
+  const close = () => bg.remove();
+  const box = h('div', { class: 'modal', role: 'dialog', 'aria-label': title },
+    h('div', { class: 'mh' }, h('h2', null, title), h('span', { class: 'spacer' }), h('button', { class: 'icon-btn', 'aria-label': 'Close', onclick: close }, ico('x'))),
+    h('div', { class: 'mb' }, body));
+  bg.append(box); document.body.append(bg);
+  if (opts && opts.onclose) bg.addEventListener('remove', opts.onclose);
+  return { close };
+}
+
+// ---------- formatting ----------
+function fmtMoney(v, cur) {
+  if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '-';
+  const n = Number(v);
+  return (cur ? cur + ' ' : '') + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtVal(v) {
+  if (v === null || v === undefined) return '-';
+  if (typeof v === 'object') return JSON.stringify(v);
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return v.replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, ' UTC');
+  return String(v);
+}
+function jsonHtml(obj) {
+  const s = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  return esc(s).replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false)\b|\bnull\b|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, (m, str, colon, bool) => {
+    if (str) return colon ? '<span class="k">' + str + '</span>' + colon : '<span class="s">' + str + '</span>';
+    if (bool) return '<span class="b">' + m + '</span>';
+    if (m === 'null') return '<span class="z">null</span>';
+    return '<span class="n">' + m + '</span>';
+  });
+}
+function jsonView(obj) { return h('pre', { class: 'json', html: jsonHtml(obj) }); }
+function decodeJwt(t) {
+  try { let p = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); while (p.length % 4) p += '='; return JSON.parse(decodeURIComponent(escape(atob(p)))); } catch (e) { return {}; }
+}
+
+// ---------- variables ({{name}} placeholders, like the Postman environment) ----------
+function interp(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, name) => {
+    if (name === '$timestamp') return String(Math.floor(Date.now() / 1000));
+    if (name === '$guid') return (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+    if (name === '$randomInt') return String(Math.floor(Math.random() * 1000));
+    if (name === 'token') return (session() || {}).token || '';
+    if (name === 'my_user_id' || name === 'my_developer_id') return (session() || {}).developerId || '';
+    if (name === 'my_email') return S.active || '';
+    if (Object.prototype.hasOwnProperty.call(S.vars, name)) return S.vars[name] == null ? '' : String(S.vars[name]);
+    return '';
+  });
+}
+function interpDeep(v) {
+  if (typeof v === 'string') return interp(v);
+  if (Array.isArray(v)) return v.map(interpDeep);
+  if (v && typeof v === 'object') { const o = {}; for (const [k, x] of Object.entries(v)) o[k] = interpDeep(x); return o; }
+  return v;
+}
+function setVars(obj) {
+  const saved = [];
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (v === undefined || v === null || v === '') continue;
+    S.vars[k] = String(v); saved.push(k);
+  }
+  if (saved.length) { saveVars(); toast('Saved ' + saved.join(', ') + ' to variables'); }
+}
+
+Object.assign(ICONS, {
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1v-9"/>',
+  building: '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"/>',
+  box: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 16h5"/>'
+});
+
+// ---------- error codes ----------
+const ERRORS = [
+  ['VALIDATION_FAILED', 400, 'A field is missing or not valid. data.details or the message names the field.'],
+  ['OTP_INVALID', 400, 'The six digit code is wrong. Attempts are limited.'],
+  ['INVALID_TOKEN', 400, 'The email or reset link token is not valid or was already used.'],
+  ['UNAUTHENTICATED', 401, 'The bearer token is missing, expired, signed out or revoked. Sign in again.'],
+  ['OAUTH_FAILED', 401, 'The provider rejected the token or it was issued to another app.'],
+  ['INVALID_CREDENTIALS', 401, 'Wrong email or password. Same answer for unknown emails and provider only accounts.'],
+  ['INVALID_API_KEY', 401, 'Unknown key, wrong secret, revoked key or an expired rotating key. Same answer for all.'],
+  ['ENVIRONMENT_MISMATCH', 403, 'A sandbox key was used on /v1/live, or a live key on /v1/sandbox.'],
+  ['EMAIL_NOT_VERIFIED', 403, 'Confirm the email address first (needed to create a business).'],
+  ['ACCOUNT_DISABLED', 403, 'Staff disabled this account.'],
+  ['ACCOUNT_PENDING', 403, 'The email address is not confirmed yet. Open the confirmation link, then sign in.'],
+  ['FORBIDDEN', 403, 'Not allowed: not an administrator, a shared business, or a suspension placed by staff.'],
+  ['APP_SUSPENDED', 403, 'The app is suspended: it can read but not create or change anything.'],
+  ['MERCHANT_SUSPENDED', 403, 'The merchant is not active in this environment.'],
+  ['LIVE_NOT_ENABLED', 403, 'Production is not approved yet for the business (application still pending).'],
+  ['NOT_FOUND', 404, 'No such route or object.'],
+  ['APP_NOT_FOUND', 404, 'Unknown app, or it belongs to another developer.'],
+  ['KEY_NOT_FOUND', 404, 'Unknown key for that app.'],
+  ['MERCHANT_NOT_FOUND', 404, 'The wallet service has no such merchant.'],
+  ['BUSINESS_NOT_FOUND', 404, 'The business is not on this account.'],
+  ['TRANSFER_NOT_FOUND', 404, 'No such transfer or claim for this account.'],
+  ['WALLET_NOT_FOUND', 404, 'No Premisave wallet has that account number.'],
+  ['OAUTH_NOT_CONFIGURED', 404, 'That social provider is not switched on in the service.'],
+  ['EMAIL_TAKEN', 409, 'An account already uses this email.'],
+  ['USERNAME_TAKEN', 409, 'The username is taken.'],
+  ['ACCOUNT_EXISTS', 409, 'A social sign in matched an existing account the provider could not vouch for. Sign in the old way.'],
+  ['BUSINESS_EXISTS', 409, 'A business with these details already exists.'],
+  ['BUSINESS_REQUIRED', 409, 'The account has no business yet. Apply for one first.'],
+  ['WALLET_ALREADY_LINKED', 409, 'A production app already uses that wallet.'],
+  ['INVALID_STATE', 409, 'The object is not in a state that allows this step, for example the business has no merchant number yet.'],
+  ['DUPLICATE_REQUEST', 409, 'The same request was already made.'],
+  ['OTP_EXPIRED', 410, 'The code expired. Ask for a new one.'],
+  ['PAYLOAD_TOO_LARGE', 413, 'The upload is too large (5 MB for a document or picture).'],
+  ['OAUTH_EMAIL_REQUIRED', 422, 'The provider gave no email address.'],
+  ['WALLET_NOT_USABLE', 422, 'The wallet is frozen or cannot be used.'],
+  ['LIMIT_REACHED', 422, 'A limit was reached: apps per environment, keys per app or businesses per account.'],
+  ['ACCOUNT_LOCKED', 423, 'Too many failed sign ins. Wait 15 minutes or ask staff to unlock.'],
+  ['RATE_LIMITED', 429, 'Too many requests, or a username changed too recently. Check retryAfterSeconds.'],
+  ['INTERNAL_ERROR', 500, 'Unexpected failure. Quote the requestId.'],
+  ['UPSTREAM_UNAVAILABLE', 503, 'The wallet service (or a mail or storage provider) cannot be reached.'],
+  ['UPSTREAM_TIMEOUT', 504, 'The wallet service did not answer in time. The operation may still have happened.']
+];
+const ERR_HINT = Object.fromEntries(ERRORS.map(e => [e[0], e[2]]));
+
+// ---------- requests ----------
+let seq = 0;
+function maskKey(k) { return k ? (k.length > 8 ? k.slice(0, 4) + '...' + k.slice(-3) : '***') : ''; }
+async function call(o) {
+  const sess = o.session || session();
+  let url = (o.url || ((S.cfg.dev || '').replace(/\/+$/, '') + interp(o.path || '')));
+  if (o.query) {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(o.query)) { const iv = interp(v); if (iv !== '' && iv !== null && iv !== undefined) q.append(k, iv); }
+    const qs = q.toString(); if (qs) url += (url.includes('?') ? '&' : '?') + qs;
+  }
+  const headers = { Accept: 'application/json' };
+  let sentAuth = 'none';
+  if (o.auth === 'jwt' && sess && sess.token) { headers.Authorization = 'Bearer ' + sess.token; sentAuth = 'jwt'; }
+  if (o.headers) for (const [k, v] of Object.entries(o.headers)) headers[k] = interp(String(v));
+  let body, bodyNote;
+  const method = o.method || 'GET';
+  if (o.form) { body = o.form; bodyNote = o.formNote || '(multipart form)'; }
+  else if (o.binary) { body = o.binary; headers['Content-Type'] = o.contentType || o.binary.type || 'application/octet-stream'; bodyNote = '(' + headers['Content-Type'] + ' file, ' + o.binary.size + ' bytes)'; }
+  else if (o.body !== undefined && o.body !== null && method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
+    body = typeof o.body === 'string' ? o.body : JSON.stringify(o.body);
+    bodyNote = body;
+  }
+  const entry = { id: ++seq, at: new Date(), method, url, sentAuth, reqBody: bodyNote, reqHeaders: Object.assign({}, headers), status: 0, ms: 0, resText: '', resData: null };
+  if (entry.reqHeaders.Authorization) entry.reqHeaders.Authorization = 'Bearer ' + maskKey(entry.reqHeaders.Authorization.slice(7));
+  const t0 = performance.now();
+  let res;
+  try {
+    res = await fetch(url, { method, headers, body });
+  } catch (e) {
+    entry.ms = Math.round(performance.now() - t0); entry.net = true; entry.error = String(e && e.message || e);
+    pushLog(entry);
+    return finish(entry, false, o);
+  }
+  entry.status = res.status;
+  let blob = null;
+  if (o.blob && res.ok) { blob = await res.blob(); entry.resText = '(binary file, ' + blob.size + ' bytes, ' + (blob.type || 'unknown type') + ')'; }
+  else entry.resText = await res.text();
+  entry.ms = Math.round(performance.now() - t0);
+  try { entry.resData = entry.resText && !blob ? JSON.parse(entry.resText) : null; } catch (e) { entry.resData = null; }
+  pushLog(entry);
+  if (res.status === 401 && o.auth === 'jwt' && sess && !o.noExpire) {
+    const code = entry.resData && entry.resData.data && entry.resData.data.code;
+    if (!code || code === 'UNAUTHENTICATED') { sess.expired = true; saveSessions(); if (typeof buildWho === 'function') buildWho(); }
+  }
+  const out = finish(entry, res.ok, o); out.blob = blob;
+  return out;
+}
+function finish(entry, ok, o) {
+  const d = entry.resData;
+  const wrapped = d && typeof d === 'object' && !Array.isArray(d) && 'success' in d && 'message' in d;
+  const payload = wrapped ? d.data : d;
+  return {
+    ok, status: entry.status, ms: entry.ms, net: !!entry.net, entry,
+    data: d, text: entry.resText,
+    payload,
+    code: !ok && payload && typeof payload === 'object' ? (payload.code || '') : '',
+    requestId: payload && typeof payload === 'object' ? (payload.requestId || '') : '',
+    message: wrapped ? d.message : (d && typeof d === 'object' && d.message) || '',
+    wrapped, error: entry.error
+  };
+}
+function claimsOf(token) { const c = decodeJwt(token); return { exp: c.exp || 0, jti: c.jti || '' }; }
+function explainFail(res) {
+  if (res.net) {
+    return 'Could not reach ' + new URL(res.entry.url, location.href).origin + '.\n' +
+      'Check that the developer service is running and that the address in Connection is right.\n' +
+      'If it is running, the browser may be blocking the call (CORS). The service only opens /api/v1 to the origins in DEVELOPER_PORTAL_ORIGINS, and a page opened as a file has no origin. Add ' + (location.origin === 'null' ? 'the origin you serve this page from' : location.origin) + ' to DEVELOPER_PORTAL_ORIGINS, restart the service, and serve this page with:  python3 -m http.server 3000';
+  }
+  const m = res.message || (typeof res.data === 'string' ? res.data : '') || res.text || ('HTTP ' + res.status);
+  return m + (res.code ? '  [' + res.code + ']' : '');
+}
+function hintFor(res) {
+  if (res.net) return '';
+  if (res.code && ERR_HINT[res.code]) return ERR_HINT[res.code] + (res.requestId ? '  Request id: ' + res.requestId : '');
+  switch (res.status) {
+    case 401: return 'The token is missing, expired or rejected. Sign in again.';
+    case 403: return 'Not allowed for this account or in this state.';
+    case 404: return 'Not found: an id or number does not exist for this account.';
+    case 409: return 'Conflict: the object is in a state that does not allow this.';
+    case 422: return 'Rejected by a business rule.';
+    case 400: return 'The request was not valid. See the message and field details.';
+    default: return '';
+  }
+}
+
+// ---------- request log ----------
+function pushLog(e) { S.log.unshift(e); if (S.log.length > 250) S.log.pop(); if (typeof renderLog === 'function') renderLog(); }
+function curlOf(e) {
+  const parts = ['curl -X ' + e.method + " '" + e.url + "'"];
+  for (const [k, v] of Object.entries(e.reqHeaders)) {
+    if (k === 'Accept') continue;
+    let val = v;
+    if (k === 'Authorization') val = 'Bearer $TOKEN';
+    parts.push("  -H '" + k + ': ' + val + "'");
+  }
+  if (e.reqBody && e.reqBody[0] !== '(') parts.push("  -d '" + e.reqBody.replace(/'/g, "'\\''") + "'");
+  else if (e.reqBody) parts.push('  # body: ' + e.reqBody);
+  return parts.join(' \\\n');
+}
+
+// ---------- sessions ----------
+async function loadMe(sess) {
+  const r = await call({ method: 'GET', path: '/api/v1/me', auth: 'jwt', session: sess, noExpire: true });
+  if (r.ok && r.payload) {
+    const m = r.payload;
+    Object.assign(sess, { userId: m.developerId || '', developerId: m.developerId || '', role: m.role || '', status: m.status || '', emailVerified: !!m.emailVerified, fullName: m.fullName || '', username: m.username || '', businessIds: m.businessIds || [] });
+  }
+  return r;
+}
+async function signIn(email, password) {
+  const res = await call({ method: 'POST', path: '/api/v1/auth/login', body: { email, password }, auth: 'none' });
+  if (!res.ok) return { error: explainFail(res), res };
+  const d = res.payload || {};
+  if (!d.accessToken) return { error: 'The sign in response had no accessToken. Response: ' + (res.text || '').slice(0, 300), res };
+  await addSession(email, d.accessToken);
+  return { ok: true };
+}
+async function addSession(email, token) {
+  const claims = claimsOf(token);
+  const probe = { token, email: email || '', ...claims };
+  const r = await loadMe(probe);
+  const key = (r.ok && r.payload && r.payload.email) || email || probe.developerId || 'token-user';
+  probe.email = key; probe.expired = false;
+  S.sessions[key] = probe;
+  S.active = key;
+  if (key.includes('@') && !S.recent.includes(key)) { S.recent.unshift(key); S.recent = S.recent.slice(0, 8); LS.set('dc-recent', JSON.stringify(S.recent)); }
+  if (probe.developerId) S.vars.developer_id = probe.developerId;
+  S.vars.developer_email = key;
+  if (probe.businessIds && probe.businessIds.length === 1 && !S.vars.business_id) S.vars.business_id = probe.businessIds[0];
+  saveVars(); saveSessions();
+}
+async function signOut(key) {
+  const s = S.sessions[key]; if (!s) return;
+  if (!s.expired) { try { await call({ method: 'POST', path: '/api/v1/me/logout', auth: 'jwt', session: s, body: {}, noExpire: true }); } catch (e) { /* ignore */ } }
+  delete S.sessions[key];
+  if (S.active === key) S.active = Object.keys(S.sessions)[0] || '';
+  saveSessions();
+}
+
+
+// ---------- result rendering ----------
+function kvView(obj) {
+  const g = h('div', { class: 'kv' });
+  for (const [k, v] of Object.entries(obj)) {
+    let val;
+    if (v !== null && typeof v === 'object') val = h('span', { class: 'mono' }, JSON.stringify(v));
+    else if (typeof v === 'boolean') val = h('span', { class: 'pill ' + (v ? 'good' : '') }, String(v));
+    else if (/status$/i.test(k) && typeof v === 'string') val = h('span', { class: 'pill ' + statusTone(v) }, v);
+    else val = fmtVal(v);
+    g.append(h('div', { class: 'k' }, k), h('div', { class: 'v' }, val));
+  }
+  return g;
+}
+function statusTone(s) {
+  s = String(s).toUpperCase();
+  if (/^(SUCCESS|COMPLETED|APPROVED|ACTIVE|VERIFIED|CONFIRMED|LIVE|ENABLED|OPEN)$/.test(s)) return 'good';
+  if (/^(FAILED|REJECTED|CANCELLED|CANCELED|DISABLED|SUSPENDED|REVOKED|EXPIRED|DECLINED)$/.test(s)) return 'bad';
+  if (/^(PENDING|ROTATING|PROCESSING|PENDING_APPROVAL|UNDER_REVIEW|SUBMITTED|AWAITING.*)$/.test(s)) return 'warn';
+  return 'info';
+}
+// ids in a row that can be saved into a variable with one click
+const USE_AS = { appId: 'app_id', businessId: 'business_id', transferId: 'transfer_id', developerId: 'target_developer_id', documentId: 'document_id', merchantNumber: 'merchant_number', key: 'api_key' };
+function useChips(r) {
+  const chips = [];
+  for (const [k, varName] of Object.entries(USE_AS)) {
+    if (typeof r[k] === 'string' && r[k]) {
+      const names = k === 'key' ? ['api_key', 'admin_key_id'] : k === 'appId' ? ['app_id', 'live_app_id'] : [varName];
+      for (const n of names) chips.push(h('button', { class: 'btn sm', type: 'button', onclick: e => { e.stopPropagation(); setVars({ [n]: r[k] }); } }, 'Use ' + k + ' as {{' + n + '}}'));
+    }
+  }
+  return chips.length ? h('div', { class: 'actions', style: { marginBottom: '8px' } }, chips) : null;
+}
+function tableView(rows) {
+  if (!rows.length) return h('div', { class: 'empty' }, 'No rows.');
+  const sample = rows.slice(0, 25);
+  const keys = [];
+  for (const r of sample) if (r && typeof r === 'object') for (const [k, v] of Object.entries(r)) {
+    if (!keys.includes(k) && (v === null || typeof v !== 'object')) keys.push(k);
+  }
+  const pri = ['appId', 'businessId', 'transferId', 'developerId', 'key', 'name', 'email', 'username', 'type', 'environment', 'status', 'role', 'merchantNumber', 'label', 'createdAt'];
+  keys.sort((a, b) => { const ia = pri.indexOf(a), ib = pri.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+  const cols = keys.slice(0, 8);
+  const tb = h('tbody');
+  rows.forEach(r => {
+    if (r === null || typeof r !== 'object') { tb.append(h('tr', null, h('td', { colspan: cols.length || 1 }, fmtVal(r)))); return; }
+    const detail = h('tr', { class: 'hide' }, h('td', { colspan: cols.length }, useChips(r), jsonView(r)));
+    const tr = h('tr', { class: 'clk', onclick: () => detail.classList.toggle('hide') },
+      cols.map(k => {
+        const v = r[k];
+        const td = h('td');
+        if (/status$/i.test(k) && typeof v === 'string') td.append(h('span', { class: 'pill ' + statusTone(v) }, v));
+        else td.append(fmtVal(v));
+        return td;
+      }));
+    tb.append(tr, detail);
+  });
+  return h('div', { class: 'tw' }, h('table', { class: 't' },
+    h('thead', null, h('tr', null, cols.map(k => h('th', null, k)))), tb));
+}
+// the one time secret of a new or rotated key
+function secretBox(o) {
+  const row = (lab, val) => h('div', { class: 'srow' }, h('span', { class: 'k' }, lab), h('code', null, val), h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(val, lab) }, ico('copy'), 'Copy'));
+  return h('div', { class: 'secretbox' },
+    h('div', { class: 'sh' }, ico('key'), h('b', null, 'Store this secret now'), h('span', { class: 'muted small' }, 'It is shown once and cannot be retrieved later.')),
+    row('key', o.key), row('secret', o.secret));
+}
+function findSecret(p) {
+  if (!p || typeof p !== 'object') return null;
+  if (p.secret && p.key) return { key: p.key, secret: p.secret };
+  if (p.apiKey && p.apiKey.secret) return { key: p.apiKey.key, secret: p.apiKey.secret };
+  return null;
+}
+function summaryView(res) {
+  const p = res.payload;
+  const box = h('div', { class: 'stack' });
+  if (res.net) { box.append(h('div', { class: 'notice bad', style: { whiteSpace: 'pre-wrap', margin: 0 } }, explainFail(res))); return box; }
+  if (!res.ok) {
+    box.append(h('div', { class: 'notice bad', style: { margin: 0, whiteSpace: 'pre-wrap' } }, explainFail(res)));
+    const hint = hintFor(res); if (hint) box.append(h('div', { class: 'hint' }, hint));
+    if (p && typeof p === 'object' && Object.keys(p).length) box.append(kvView(p));
+    return box;
+  }
+  if (Array.isArray(p)) { box.append(tableView(p)); return box; }
+  if (p && typeof p === 'object') {
+    const sec = findSecret(p); if (sec) box.append(secretBox(sec));
+    const list = Array.isArray(p.content) ? p.content : null;
+    if (list) {
+      box.append(tableView(list));
+      const pg = p.page && typeof p.page === 'object' ? p.page : p;
+      const meta = {}; for (const k of ['totalElements', 'totalPages', 'number', 'size']) if (k in pg) meta[k] = pg[k];
+      if (Object.keys(meta).length) box.append(h('div', { class: 'hint' }, Object.entries(meta).map(([k, v]) => k + ': ' + v).join('   ')));
+      return box;
+    }
+    const arrKey = Object.keys(p).find(k => Array.isArray(p[k]) && p[k].length && typeof p[k][0] === 'object');
+    const scalars = {}; for (const [k, v] of Object.entries(p)) if (!(Array.isArray(v) && typeof (v[0] || 0) === 'object') && !(sec && (k === 'secret' || k === 'secretNotice' || k === 'apiKey'))) scalars[k] = v;
+    if (Object.keys(scalars).length) box.append(kvView(scalars));
+    if (arrKey) { box.append(h('div', { class: 'fl' }, arrKey)); box.append(tableView(p[arrKey])); }
+    return box;
+  }
+  if (p === null || p === undefined || p === '') box.append(h('div', { class: 'muted' }, res.message || 'Done (empty body).'));
+  else box.append(h('div', { class: 'mono' }, String(p)));
+  return box;
+}
+function renderResult(res, opts) {
+  const e = res.entry;
+  const tone = res.net ? 'bad' : res.ok ? 'good' : (res.status >= 500 ? 'bad' : 'warn');
+  const body = h('div', { class: 'rb' });
+  const tabs = {};
+  const modes = { Summary: () => summaryView(res), JSON: () => jsonView(res.data !== null && res.data !== undefined ? res.data : (res.text || '(empty)')), Request: () => requestView(e) };
+  const bar = h('div', { class: 'rtabs' });
+  const show = name => { body.replaceChildren(modes[name]()); for (const [n, b] of Object.entries(tabs)) b.classList.toggle('on', n === name); };
+  for (const n of Object.keys(modes)) { tabs[n] = h('button', { type: 'button', onclick: () => show(n) }, n); bar.append(tabs[n]); }
+  const box = h('div', { class: 'result' },
+    h('div', { class: 'rh' },
+      h('span', { class: 'pill ' + tone }, res.net ? 'No response' : res.status + ' ' + (res.ok ? 'OK' : 'Error')),
+      h('span', { class: 'msg' }, res.net ? 'Network error' : (res.message || '')),
+      h('span', { class: 'muted small' }, res.ms + ' ms'),
+      bar),
+    body);
+  show((opts && opts.mode) || 'Summary');
+  return box;
+}
+function requestView(e) {
+  const w = h('div', { class: 'stack' });
+  w.append(h('div', { class: 'mono' }, e.method + ' ' + e.url));
+  w.append(h('div', { class: 'kv' }, Object.entries(e.reqHeaders).flatMap(([k, v]) => [h('div', { class: 'k' }, k), h('div', { class: 'v mono' }, v)])));
+  if (e.reqBody) { let b = e.reqBody; try { b = JSON.parse(b); } catch (x) { /* raw */ } w.append(jsonView(b)); }
+  w.append(h('div', { class: 'actions' },
+    h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(curlOf(e), 'cURL') }, ico('copy'), 'Copy cURL'),
+    h('button', { class: 'btn sm', type: 'button', onclick: () => openInBuilder(e) }, ico('tool'), 'Open in builder')));
+  return w;
+}
+function openInBuilder(e) {
+  const base = (S.cfg.dev || '').replace(/\/+$/, '');
+  const path = e.url.startsWith(base) ? e.url.slice(base.length) : e.url;
+  S.builderPreset = { method: e.method, path, auth: e.sentAuth, body: e.reqBody && e.reqBody[0] !== '(' ? (() => { try { return JSON.stringify(JSON.parse(e.reqBody), null, 2); } catch (x) { return e.reqBody; } })() : '' };
+  go('builder');
+}
+
+// ---------- request cards (one per endpoint, built from a definition) ----------
+function fieldInput(f) {
+  const dv = typeof f.d === 'function' ? f.d() : f.d;
+  let el;
+  if (f.t === 'select') {
+    el = h('select', { class: 'inp', id: f._id }, (f.o || []).map(o => { const v = typeof o === 'object' ? o.v : o, l = typeof o === 'object' ? o.l : (o === '' ? 'Any' : o); return h('option', { value: v }, l); }));
+    if (dv !== undefined) el.value = dv;
+  } else if (f.t === 'json' || f.t === 'textarea') {
+    el = h('textarea', { class: 'inp', id: f._id, rows: f.rows || 4, spellcheck: 'false' });
+    el.value = dv === undefined ? '' : (typeof dv === 'string' ? dv : JSON.stringify(dv, null, 2));
+  } else if (f.t === 'checkbox') {
+    el = h('input', { type: 'checkbox', id: f._id }); el.checked = !!dv;
+  } else if (f.t === 'multi') {
+    const chosen = Array.isArray(dv) ? dv : [];
+    const boxes = (f.o || []).map(o => { const cb = h('input', { type: 'checkbox', value: o }); cb.checked = chosen.includes(o); return h('label', { class: 'chk' }, cb, ' ', o); });
+    el = h('div', { class: 'multi', id: f._id }, boxes);
+    el.getVal = () => [...el.querySelectorAll('input:checked')].map(i => i.value);
+  } else if (f.t === 'file') {
+    el = h('input', { class: 'inp', id: f._id, type: 'file', accept: f.accept || null });
+  } else {
+    el = h('input', { class: 'inp', id: f._id, type: f.t === 'number' ? 'text' : (f.t || 'text'), inputmode: f.t === 'number' ? 'decimal' : null, autocomplete: 'off', spellcheck: 'false', placeholder: f.ph || '' });
+    el.value = dv === undefined || dv === null ? '' : dv;
+  }
+  return el;
+}
+let fieldSeq = 0;
+function setPath(obj, path, val) {
+  const parts = path.split('.'); let o = obj;
+  for (let i = 0; i < parts.length - 1; i++) { o[parts[i]] = o[parts[i]] && typeof o[parts[i]] === 'object' ? o[parts[i]] : {}; o = o[parts[i]]; }
+  o[parts[parts.length - 1]] = val;
+}
+function saveBlob(blob, name) {
+  const a = h('a', { href: URL.createObjectURL(blob), download: name || 'download' });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function actionCard(def, opts) {
+  opts = opts || {};
+  const inputs = {};
+  const fields = (def.f || []).map(f => Object.assign({ _id: 'f' + (++fieldSeq) }, f));
+  const form = h('div', { class: 'fields' });
+  for (const f of fields) {
+    const el = fieldInput(f); inputs[f.k] = { f, el };
+    const wrap = h('div', { class: f.w || f.t === 'json' || f.t === 'textarea' || f.t === 'multi' ? 'wide' : '' });
+    if (f.t === 'checkbox') wrap.append(h('label', { class: 'fl', for: f._id }, el, ' ', f.l || f.k));
+    else wrap.append(h('label', { class: 'fl', for: f._id }, f.l || f.k, f.r ? h('span', { class: 'req' }, '*') : null), el);
+    if (f.h) wrap.append(h('div', { class: 'hint' }, f.h));
+    form.append(wrap);
+  }
+  const out = h('div');
+  const send = h('button', { class: 'btn primary', type: 'button' }, def.kind === 'download' ? 'Download' : 'Send');
+  const preview = h('div', { class: 'hide' });
+  const buildReq = () => {
+    const req = { path: def.p, query: {}, body: undefined, form: undefined, binary: undefined };
+    const body = def.fixed ? JSON.parse(JSON.stringify(def.fixed)) : {};
+    const form = new FormData();
+    let hasBody = !!def.fixed || (def.m !== 'GET' && def.m !== 'DELETE' && fields.some(f => (f.in || 'body') === 'body'));
+    for (const f of fields) {
+      const { el } = inputs[f.k];
+      const where = f.in || 'body';
+      let v;
+      if (f.t === 'checkbox') v = el.checked;
+      else if (f.t === 'multi') { v = el.getVal(); if (!v.length) { if (f.r) return { error: (f.l || f.k) + ' needs at least one choice' }; continue; } }
+      else if (f.t === 'file') {
+        const file = el.files && el.files[0];
+        if (!file) { if (f.r) return { error: 'Choose a file for ' + (f.l || f.k) }; continue; }
+        if (def.kind === 'binary') { req.binary = file; continue; }
+        form.append(f.k, file, file.name); continue;
+      } else v = el.value.trim();
+      if (where === 'path') { req.path = req.path.replace('{' + f.k + '}', encodeURIComponent(interp(String(v)))); continue; }
+      if (f.t !== 'multi' && v === '' && f.t !== 'checkbox') { if (f.r) return { error: (f.l || f.k) + ' is required' }; continue; }
+      if (where === 'query') { req.query[f.k] = v; continue; }
+      if (f.t === 'number') { const iv = interp(String(v)); const n = Number(iv); if (iv === '' || isNaN(n)) return { error: (f.l || f.k) + ' must be a number' }; v = n; }
+      else if (f.t === 'json') { try { v = JSON.parse(interp(String(v))); } catch (x) { return { error: (f.l || f.k) + ' is not valid JSON' }; } }
+      else if (typeof v === 'string') v = interp(v);
+      if (def.kind === 'multipart') { form.append(f.k, String(v)); continue; }
+      setPath(body, f.k, v);
+    }
+    if (def.kind === 'multipart') req.form = form;
+    else if (def.kind === 'binary') { if (!req.binary) return { error: 'Choose a file' }; }
+    else if (hasBody && def.m !== 'GET') req.body = body;
+    return req;
+  };
+  const run = async () => {
+    const req = buildReq();
+    if (req.error) { toast(req.error, true); return; }
+    if (def.a === 'jwt' && !session()) { toast('Sign in first', true); return; }
+    send.disabled = true; const lbl = send.textContent; send.replaceChildren(h('span', { class: 'spin' }), ' Sending');
+    const res = await call({ method: def.m, path: req.path, query: req.query, body: req.body, form: req.form, formNote: req.form ? '(multipart form: ' + [...req.form.keys()].join(', ') + ')' : undefined, binary: req.binary, blob: def.kind === 'download', auth: def.a });
+    send.disabled = false; send.textContent = lbl;
+    out.replaceChildren(renderResult(res));
+    if (res.ok && def.kind === 'download' && res.blob) saveBlob(res.blob, def.filename || 'document');
+    if (res.ok && def.capture) { try { setVars(def.capture(res.payload, res, req.body || {})); } catch (x) { /* ignore */ } }
+    if (res.ok && def.onOk) { try { await def.onOk(res); } catch (x) { /* ignore */ } }
+    if (opts.onResult) opts.onResult(res);
+  };
+  send.addEventListener('click', run);
+  const prevBtn = h('button', { class: 'btn ghost sm', type: 'button', onclick: () => {
+    const req = buildReq(); preview.classList.toggle('hide');
+    if (req.error) { preview.replaceChildren(h('div', { class: 'notice bad', style: { margin: 0 } }, req.error)); return; }
+    const q = new URLSearchParams(); for (const [k, v] of Object.entries(req.query || {})) q.append(k, interp(v));
+    fill(preview, h('div', { class: 'mono', style: { marginBottom: '6px' } }, def.m + ' ' + interp(req.path) + (q.toString() ? '?' + q : '') + '   (' + ({ jwt: def.admin ? 'administrator token' : 'Bearer token', none: 'no auth' }[def.a]) + ')'),
+      req.body !== undefined ? jsonView(req.body) : req.form ? h('div', { class: 'mono' }, 'multipart form: ' + [...req.form.keys()].join(', ')) : req.binary ? h('div', { class: 'mono' }, 'file body: ' + req.binary.name) : null);
+  } }, 'Preview request');
+  const authBadge = def.a === 'jwt' ? (def.admin ? ['bad', 'Admin token'] : ['info', 'Bearer token']) : ['', 'Public'];
+  const det = h('details', { class: 'card act', open: opts.open ? true : null },
+    h('summary', null,
+      h('span', { class: 'verb ' + def.m }, def.m),
+      h('span', { class: 't' }, def.t),
+      h('span', { class: 'p' }, def.p),
+      h('span', { class: 'pill ' + authBadge[0] }, authBadge[1]),
+      h('span', { class: 'chev' }, ico('chev'))),
+    h('div', { class: 'body' },
+      def.note ? h('div', { class: 'note' }, def.note) : null,
+      fields.length ? form : null,
+      h('div', { class: 'actions' }, send, prevBtn),
+      preview, out));
+  det._run = run;
+  return det;
+}
+function cardList(defs, opts) { return h('div', { class: 'stack' }, defs.map(d => actionCard(d, opts))); }
+function tabbed(items, initial) {
+  // items: [{ id, label, build: () => Node }]
+  const holder = h('div'); const bar = h('div', { class: 'tabs', role: 'tablist' }); const btns = {};
+  const cache = {};
+  const pick = id => {
+    for (const [k, b] of Object.entries(btns)) b.classList.toggle('on', k === id);
+    const it = items.find(i => i.id === id); if (!cache[id] || it.fresh) cache[id] = it.build();
+    holder.replaceChildren(cache[id]);
+  };
+  for (const it of items) { btns[it.id] = h('button', { type: 'button', role: 'tab', onclick: () => pick(it.id) }, it.label); bar.append(btns[it.id]); }
+  pick(initial || items[0].id);
+  return h('div', null, bar, holder);
+}
+
+// ---------- endpoint catalog (mirrors the Postman collection of the developer service) ----------
+function scan(o, names) {
+  const want = names.map(n => n.toLowerCase()); const q = [o]; let guard = 0;
+  while (q.length && guard++ < 500) {
+    const x = q.shift();
+    if (x && typeof x === 'object') {
+      for (const [k, v] of Object.entries(x)) if (want.includes(k.toLowerCase()) && v !== null && typeof v !== 'object') return v;
+      for (const v of Object.values(x)) if (v && typeof v === 'object') q.push(v);
+    }
+  }
+  return '';
+}
+const J = 'jwt', N = 'none';
+const METHODS = ['MOBILE_MONEY', 'CARD', 'BANK_TRANSFER', 'PAYPAL', 'CRYPTO', 'PREMISAVE_WALLET'];
+const pageQ = [{ k: 'page', l: 'Page', in: 'query', d: 0, t: 'number' }, { k: 'size', l: 'Size', in: 'query', d: 20, t: 'number' }];
+const pf = (k, l, d) => ({ k, l, in: 'path', d, r: 1 });
+const APP = pf('appId', 'App id', '{{app_id}}');
+const LIVE_APP = pf('appId', 'App id (production)', '{{live_app_id}}');
+const BIZ = pf('businessId', 'Business id', '{{business_id}}');
+const DEV = pf('developerId', 'Developer id', '{{target_developer_id}}');
+const TRF = pf('transferId', 'Transfer id', '{{transfer_id}}');
+const limitFields = [
+  { k: 'limits.singleTransactionUsd', l: 'Limit: single transaction (USD)', d: '', h: 'Optional. Production limits must fit inside the merchant\'s' },
+  { k: 'limits.dailyVolumeUsd', l: 'Limit: daily volume (USD)', d: '' },
+  { k: 'limits.monthlyVolumeUsd', l: 'Limit: monthly volume (USD)', d: '' },
+  { k: 'limits.dailyPayoutCount', l: 'Limit: payouts per day', d: '', t: 'number' }
+];
+const appCapture = (live) => (p) => {
+  const o = {}; o[live ? 'live_app_id' : 'app_id'] = p.appId;
+  if (p.apiKey) { o[live ? 'live_api_key' : 'api_key'] = p.apiKey.key; o[live ? 'live_api_secret' : 'api_secret'] = p.apiKey.secret; }
+  if (p.merchantNumber && !live) o.merchant_number = p.merchantNumber;
+  return o;
+};
+// a social or password flow that returns a session: add it as an account
+async function adoptSession(res) {
+  const t = res.payload && res.payload.accessToken;
+  if (t) { await addSession('', t); renderApp(); }
+}
+
+// ----- account: public flows -----
+const ACCESS = {
+  'Sign up': [
+    { id: 'signup', t: 'Sign up', m: 'POST', p: '/api/v1/auth/signup', a: N,
+      note: 'Creates the account as PENDING and emails a confirmation link. No token comes back: confirm the email (or open the link), then sign in. Needs at least a 10 character password.',
+      f: [{ k: 'email', l: 'Email', d: 'dev+{{$timestamp}}@example.com', r: 1 }, { k: 'firstName', l: 'First name', d: 'Wanjiku', r: 1 }, { k: 'middleName', l: 'Middle name', d: 'Grace' }, { k: 'lastName', l: 'Last name', d: 'Kamau', r: 1 },
+          { k: 'password', l: 'Password', d: 'a long passphrase 123', r: 1 }, { k: 'country', l: 'Country (2 letters)', d: 'KE', r: 1 }, { k: 'phoneNumber', l: 'Phone number', d: '+254 700 123 456' }, { k: 'companyName', l: 'Company name', d: 'Kamau Ventures Ltd' },
+          { k: 'acceptTerms', l: 'I accept the terms', t: 'checkbox', d: true }, { k: 'marketingOptIn', l: 'Marketing emails', t: 'checkbox', d: false }],
+      capture: (p, r, b) => ({ developer_email: b.email, developer_password: b.password }) }
+  ],
+  'Confirm email': [
+    { id: 'verify', t: 'Confirm email address', m: 'POST', p: '/api/v1/auth/verify-email', a: N, note: 'The token is in the emailed link (verify-email?token=...). With mail logging on in development, the service log prints the link.', f: [{ k: 'token', l: 'Token', d: '{{email_token}}', r: 1 }] },
+    { id: 'resend-pub', t: 'Resend confirmation (by email)', m: 'POST', p: '/api/v1/auth/resend-verification', a: N, note: 'Answers the same for an unknown address. One link per 60 seconds and 5 per hour.', f: [{ k: 'email', l: 'Email', d: '{{developer_email}}', r: 1 }] }
+  ],
+  'Reset password': [
+    { id: 'forgot', t: 'Forgot password', m: 'POST', p: '/api/v1/auth/forgot-password', a: N, note: 'Emails a reset link that lasts 60 minutes. Answers the same for an unknown address.', f: [{ k: 'email', l: 'Email', d: '{{developer_email}}', r: 1 }] },
+    { id: 'reset', t: 'Reset password', m: 'POST', p: '/api/v1/auth/reset-password', a: N, note: 'Ends every session, clears a lockout and counts the address as confirmed.', f: [{ k: 'token', l: 'Token', d: '{{email_token}}', r: 1 }, { k: 'newPassword', l: 'New password', d: 'a new long passphrase 456', r: 1 }] }
+  ],
+  'Social sign in': [
+    { id: 'soc-list', t: 'List providers', m: 'GET', p: '/api/v1/auth/social/providers', a: N, note: 'Providers that are switched on, with their public client ids.' },
+    { id: 'soc-google', t: 'Google (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/google', a: N, note: 'Paste a Google ID token. The easiest way to get one is the social-login-test.html page of the service repo, which also shows the request body to paste here.', f: [{ k: 'token', l: 'Google ID token', t: 'textarea', r: 1, rows: 3 }], onOk: adoptSession },
+    { id: 'soc-fb', t: 'Facebook (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/facebook', a: N, note: 'Paste a Facebook user access token that includes the email permission.', f: [{ k: 'token', l: 'Facebook access token', t: 'textarea', r: 1, rows: 3 }], onOk: adoptSession },
+    { id: 'soc-gh', t: 'GitHub (sign up or sign in)', m: 'POST', p: '/api/v1/auth/social/github', a: N, note: 'Paste the one time code GitHub redirects back with. A code works once.', f: [{ k: 'token', l: 'GitHub code', r: 1 }], onOk: adoptSession }
+  ]
+};
+
+// ----- account: signed in -----
+const PROFILE = {
+  'Profile': [
+    { id: 'me-get', t: 'Current developer', m: 'GET', p: '/api/v1/me', a: J },
+    { id: 'me-put', t: 'Update profile and address', m: 'PUT', p: '/api/v1/me', a: J, note: 'Only the fields you fill in change. The email address cannot be changed here.',
+      f: [{ k: 'firstName', l: 'First name' }, { k: 'middleName', l: 'Middle name' }, { k: 'lastName', l: 'Last name' }, { k: 'country', l: 'Country (2 letters)' }, { k: 'phoneNumber', l: 'Phone number' }, { k: 'companyName', l: 'Company name' },
+          { k: 'addressLine1', l: 'Address line 1' }, { k: 'addressLine2', l: 'Address line 2' }, { k: 'city', l: 'City' }, { k: 'stateOrRegion', l: 'State or region' }, { k: 'postalCode', l: 'Postal code' }, { k: 'timezone', l: 'Timezone', ph: 'Africa/Nairobi' }],
+      onOk: async () => { const s = session(); if (s) { await loadMe(s); saveSessions(); buildWho(); updateChip(); } } }
+  ],
+  'Username': [
+    { id: 'un-check', t: 'Check a username', m: 'GET', p: '/api/v1/me/username-available', a: J, f: [{ k: 'username', in: 'query', l: 'Username', d: 'wanjiku.kamau', r: 1 }], note: 'reason is OK, CURRENT, TAKEN, RESERVED or INVALID.' },
+    { id: 'un-set', t: 'Change username', m: 'PUT', p: '/api/v1/me', a: J, note: 'Allowed once every 7 days, the first change is free. 3 to 30 lower case letters and digits with single dots, hyphens or underscores.', f: [{ k: 'username', l: 'New username', d: '', r: 1 }],
+      onOk: async () => { const s = session(); if (s) { await loadMe(s); saveSessions(); buildWho(); } } }
+  ],
+  'Picture': [
+    { id: 'pic-put', t: 'Upload profile picture', m: 'PUT', p: '/api/v1/me/profile-picture', a: J, kind: 'binary', note: 'The request body is the image itself (JPEG, PNG or WebP, at most 5 MB), not form data. Needs Cloudinary configured on the service, otherwise 503.', f: [{ k: 'file', l: 'Image', t: 'file', accept: 'image/jpeg,image/png,image/webp', r: 1 }] },
+    { id: 'pic-del', t: 'Remove profile picture', m: 'DELETE', p: '/api/v1/me/profile-picture', a: J }
+  ],
+  'Password': [
+    { id: 'pw', t: 'Change password', m: 'PUT', p: '/api/v1/me/password', a: J, note: 'Ends every earlier token and returns a fresh session, which this page keeps for the active account. An account created through a provider can leave the current password empty to set a first one.',
+      f: [{ k: 'currentPassword', l: 'Current password', t: 'password', d: '{{developer_password}}' }, { k: 'newPassword', l: 'New password', t: 'password', d: '{{new_password}}', r: 1 }],
+      onOk: res => { const s = session(), t = res.payload && res.payload.accessToken; if (s && t) { s.token = t; Object.assign(s, claimsOf(t)); s.expired = false; saveSessions(); toast('Session replaced with the new token'); } } }
+  ],
+  'Sessions': [
+    { id: 'resend-me', t: 'Resend confirmation email', m: 'POST', p: '/api/v1/me/resend-verification', a: J },
+    { id: 'logout', t: 'Sign out this token', m: 'POST', p: '/api/v1/me/logout', a: J, note: 'Other devices stay signed in. Using the same token again returns 401.',
+      onOk: () => { const k = S.active; delete S.sessions[k]; S.active = Object.keys(S.sessions)[0] || ''; saveSessions(); renderApp(); } },
+    { id: 'logout-all', t: 'Sign out everywhere', m: 'POST', p: '/api/v1/me/logout-all', a: J, note: 'Ends every token of this account on every device, including this one.',
+      onOk: () => { const k = S.active; delete S.sessions[k]; S.active = Object.keys(S.sessions)[0] || ''; saveSessions(); renderApp(); } },
+    { id: 'meta-numbers', t: 'Sandbox test merchant numbers', m: 'GET', p: '/api/v1/meta/test-merchant-numbers', a: J, capture: p => ({ test_merchant_number: p.default }) }
+  ]
+};
+
+// ----- businesses -----
+const DOC_TYPES = ['business registration', 'certificate of incorporation', 'tax compliance', 'director id', 'proof of address', 'bank statement', 'authorisation letter', 'other'];
+const BUSINESS = {
+  'Businesses': [
+    { id: 'biz-apply', t: 'Apply for a business', m: 'POST', p: '/api/v1/businesses', a: J, note: 'Needs a confirmed email address. Creates a merchant in the wallet service and opens its application as a draft. Send again with another name for the next business.',
+      f: [{ k: 'name', l: 'Name', d: 'Acme Limited', r: 1 }, { k: 'tradingName', l: 'Trading name', d: 'Acme' }, { k: 'country', l: 'Country (2 letters)', d: 'KE', r: 1 }, { k: 'currency', l: 'Currency (3 letters)', d: 'KES' },
+          { k: 'paymentMethods', l: 'Payment methods', t: 'multi', o: METHODS, d: ['MOBILE_MONEY', 'CARD'] }, { k: 'contactEmail', l: 'Contact email', d: 'finance@acme.example.com' }, { k: 'contactPhone', l: 'Contact phone', d: '254712345678' }],
+      capture: p => ({ business_id: p.businessId, merchant_number: p.merchantNumber }) },
+    { id: 'biz-list', t: 'List my businesses', m: 'GET', p: '/api/v1/businesses', a: J, note: 'Each row has its application summary and the next step.' },
+    { id: 'biz-get', t: 'Get a business', m: 'GET', p: '/api/v1/businesses/{businessId}', a: J, f: [BIZ], capture: p => ({ merchant_number: p.merchantNumber }) }
+  ],
+  'Application': [
+    { id: 'app-get', t: 'Get the application', m: 'GET', p: '/api/v1/businesses/{businessId}/application', a: J, note: 'Status, form, documents, returnItems, missing and readyToSubmit.', f: [BIZ] },
+    { id: 'app-save', t: 'Save the application form', m: 'PUT', p: '/api/v1/businesses/{businessId}/application', a: J, note: 'Send what you have, it can be saved again until it is submitted. walletAccountNumber (the wallet owner\'s email) is required to submit. With onBehalf set, applicantRole and an authorisation letter are required too.',
+      f: [BIZ, { k: 'businessType', l: 'Business type', d: 'LIMITED_COMPANY' }, { k: 'registeredName', l: 'Registered name', d: 'Acme Traders Ltd' }, { k: 'tradingName', l: 'Trading name', d: 'Acme' }, { k: 'registrationNumber', l: 'Registration number', d: 'CPR/2020/1234' }, { k: 'taxPin', l: 'Tax PIN', d: 'P051234567Z' },
+          { k: 'country', l: 'Country', d: 'KE' }, { k: 'city', l: 'City', d: 'Nairobi' }, { k: 'physicalAddress', l: 'Physical address', d: 'Moi Avenue 12' }, { k: 'website', l: 'Website', d: 'https://acme.example.com' }, { k: 'industry', l: 'Industry', d: 'Retail' },
+          { k: 'businessDescription', l: 'Business description', d: 'Sells household goods online' }, { k: 'expectedMonthlyVolumeUsd', l: 'Expected monthly volume (USD)', t: 'number', d: 25000 },
+          { k: 'contactName', l: 'Contact name', d: 'Jane Doe' }, { k: 'contactEmail', l: 'Contact email', d: 'finance@acme.example.com' }, { k: 'contactPhone', l: 'Contact phone', d: '254712345678' },
+          { k: 'walletAccountNumber', l: 'Wallet account number (owner email)', d: '{{wallet_account}}' }, { k: 'onBehalf', l: 'Applying for someone else\'s business', t: 'checkbox', d: false }, { k: 'applicantRole', l: 'Your role to the business' },
+          { k: 'directors', l: 'Directors (JSON list)', t: 'json', rows: 6, d: [{ fullName: 'Jane Doe', idNumber: '12345678', role: 'Director', ownershipPercent: 100 }] }] },
+    { id: 'doc-up', t: 'Upload a document', m: 'POST', p: '/api/v1/businesses/{businessId}/application/documents', a: J, kind: 'multipart', note: 'Form data. A PDF, PNG or JPEG of at most 5 MB. Needs Google Drive configured on the wallet service, otherwise 503.',
+      f: [BIZ, { k: 'type', l: 'Document type', t: 'select', o: DOC_TYPES, d: 'business registration' }, { k: 'file', l: 'File', t: 'file', accept: 'application/pdf,image/png,image/jpeg', r: 1 }], capture: p => ({ document_id: p.documentId }) },
+    { id: 'doc-dl', t: 'Download a document', m: 'GET', p: '/api/v1/businesses/{businessId}/application/documents/{documentId}/content', a: J, kind: 'download', f: [BIZ, pf('documentId', 'Document id', '{{document_id}}')] },
+    { id: 'doc-del', t: 'Remove a document', m: 'DELETE', p: '/api/v1/businesses/{businessId}/application/documents/{documentId}', a: J, f: [BIZ, pf('documentId', 'Document id', '{{document_id}}')] },
+    { id: 'app-submit', t: 'Submit for review', m: 'POST', p: '/api/v1/businesses/{businessId}/application/submit', a: J, note: 'Possible once nothing is missing. The wallet owner is emailed.', f: [BIZ] },
+    { id: 'app-tl', t: 'Application timeline', m: 'GET', p: '/api/v1/businesses/{businessId}/application/timeline', a: J, f: [BIZ] }
+  ]
+};
+
+// ----- apps -----
+const APPS = {
+  'Apps': [
+    { id: 'apps-list', t: 'List apps', m: 'GET', p: '/api/v1/apps', a: J, f: [{ k: 'businessId', in: 'query', l: 'Business id', d: '' }, { k: 'environment', in: 'query', l: 'Environment', t: 'select', o: ['', 'sandbox', 'production'], d: '' }, { k: 'status', in: 'query', l: 'Status', t: 'select', o: ['', 'ACTIVE', 'SUSPENDED'], d: '' }].concat(pageQ) },
+    { id: 'app-one', t: 'Get an app', m: 'GET', p: '/api/v1/apps/{appId}', a: J, f: [APP] },
+    { id: 'app-upd', t: 'Update an app', m: 'PUT', p: '/api/v1/apps/{appId}', a: J, note: 'Environment, merchant number and wallet cannot change. Fields you leave empty stay as they are.',
+      f: [APP, { k: 'name', l: 'Name' }, { k: 'description', l: 'Description' }, { k: 'enabledMethods', l: 'Enabled methods', t: 'multi', o: METHODS }].concat(limitFields, [{ k: 'callbackUrl', l: 'Callback URL', h: 'https only, http allowed in sandbox' }]) },
+    { id: 'app-susp', t: 'Suspend an app', m: 'POST', p: '/api/v1/apps/{appId}/suspend', a: J, note: 'A suspended app can read but not create or change anything.', f: [APP, { k: 'reason', l: 'Reason', d: 'Rotating integration' }] },
+    { id: 'app-react', t: 'Reactivate an app', m: 'POST', p: '/api/v1/apps/{appId}/reactivate', a: J, note: 'Refused with 403 if staff placed the suspension.', f: [APP] }
+  ],
+  'Create sandbox app': [
+    { id: 'app-sbx', t: 'Create a sandbox app', m: 'POST', p: '/api/v1/apps', a: J, fixed: { environment: 'sandbox' }, note: 'Returns the first key and its secret once, and the console saves them as {{api_key}} and {{api_secret}}. A sandbox app uses one of the test merchant numbers and takes no wallet.',
+      f: [{ k: 'businessId', l: 'Business id', d: '{{business_id}}', h: 'Optional while the account has exactly one business' }, { k: 'name', l: 'Name', d: 'Checkout backend', r: 1 }, { k: 'description', l: 'Description', d: 'Test checkout' }, { k: 'merchantNumber', l: 'Merchant number (test)', d: '{{test_merchant_number}}' },
+          { k: 'enabledMethods', l: 'Enabled methods', t: 'multi', o: METHODS, d: ['MOBILE_MONEY', 'CARD'] }].concat(limitFields, [{ k: 'callbackUrl', l: 'Callback URL', d: 'https://merchant.example.com/hooks/premisave' }]),
+      capture: appCapture(false) }
+  ],
+  'Go live': [
+    { id: 'app-live', t: 'Create a production app (go live)', m: 'POST', p: '/api/v1/apps', a: J, fixed: { environment: 'production' }, note: 'Needs production approved for the business (403 LIVE_NOT_ENABLED before that) and the Premisave wallet account that receives the money. Only one live app can use a wallet. The console saves the key as {{live_api_key}} and {{live_api_secret}}.',
+      f: [{ k: 'businessId', l: 'Business id', d: '{{business_id}}' }, { k: 'name', l: 'Name', d: 'Checkout backend', r: 1 }, { k: 'description', l: 'Description' }, { k: 'premisaveWalletAccount', l: 'Premisave wallet account (email)', d: '{{wallet_account}}', h: 'May be left empty when the business application names a wallet' },
+          { k: 'enabledMethods', l: 'Enabled methods', t: 'multi', o: METHODS, d: ['MOBILE_MONEY'] }].concat(limitFields, [{ k: 'callbackUrl', l: 'Callback URL', h: 'https only' }]),
+      capture: appCapture(true) }
+  ]
+};
+const KEYS = [
+  { id: 'k-list', t: 'List keys', m: 'GET', p: '/api/v1/apps/{appId}/keys', a: J, note: 'Secrets are never listed.', f: [APP] },
+  { id: 'k-new', t: 'Create a key', m: 'POST', p: '/api/v1/apps/{appId}/keys', a: J, note: 'The secret is shown once. At most 5 active keys per app.', f: [APP, { k: 'label', l: 'Label', d: 'Second server' }], capture: p => ({ api_key: p.key, api_secret: p.secret }) },
+  { id: 'k-rot', t: 'Rotate a key', m: 'POST', p: '/api/v1/apps/{appId}/keys/{key}/rotate', a: J, note: 'Issues a new key. The old one keeps working as ROTATING for the grace period (24 hours by default).', f: [APP, pf('key', 'Key', '{{api_key}}')], capture: p => ({ api_key: p.key, api_secret: p.secret }) },
+  { id: 'k-rev', t: 'Revoke a key', m: 'DELETE', p: '/api/v1/apps/{appId}/keys/{key}', a: J, note: 'Stops working at once.', f: [APP, pf('key', 'Key', '{{api_key}}')] }
+];
+
+// ----- transfers -----
+const TRANSFERS = {
+  'Move an app': [
+    { id: 't-app', t: 'Transfer a production app', m: 'POST', p: '/api/v1/apps/{appId}/transfer', a: J, note: 'Emails a six digit code to the address linked to the business (the wallet account named on the application). The owner shares the code with the person receiving the app.', f: [LIVE_APP, { k: 'toEmail', l: 'Receiving developer email', d: '{{to_email}}', r: 1 }], capture: p => ({ transfer_id: p.transferId }) },
+    { id: 't-claim', t: 'Claim a business by merchant number', m: 'POST', p: '/api/v1/transfers/claim', a: J, note: 'Ask to use an approved business from this account. The same code goes to the business owner.', f: [{ k: 'merchantNumber', l: 'Merchant number', d: '{{merchant_number}}', r: 1 }], capture: p => ({ transfer_id: p.transferId }) }
+  ],
+  'Confirm and manage': [
+    { id: 't-conf', t: 'Confirm with the code', m: 'POST', p: '/api/v1/transfers/{transferId}/confirm', a: J, note: 'The six digit code the business owner shared. A few wrong tries lock the request.', f: [TRF, { k: 'otp', l: 'Six digit code', d: '{{otp}}', r: 1 }] },
+    { id: 't-resend', t: 'Send a new code', m: 'POST', p: '/api/v1/transfers/{transferId}/resend', a: J, f: [TRF] },
+    { id: 't-cancel', t: 'Cancel a request', m: 'DELETE', p: '/api/v1/transfers/{transferId}', a: J, note: 'Only while it is not confirmed.', f: [TRF] }
+  ],
+  'Requests': [
+    { id: 't-list', t: 'List transfers', m: 'GET', p: '/api/v1/transfers', a: J, note: 'Requests this account started and apps on their way to it.' },
+    { id: 't-get', t: 'Get a transfer', m: 'GET', p: '/api/v1/transfers/{transferId}', a: J, f: [TRF] }
+  ]
+};
+
+// ----- administration -----
+const adm = d => Object.assign({ a: J, admin: true }, d);
+const ADMIN = {
+  'Overview': [
+    adm({ id: 'a-stats', t: 'Platform statistics', m: 'GET', p: '/api/v1/admin/stats', note: 'Counts of developers, apps and transfers.' }),
+    adm({ id: 'a-audit', t: 'Audit trail', m: 'GET', p: '/api/v1/admin/audit', note: 'Every admin change, with who, what, to what and when.', f: [{ k: 'actorId', in: 'query', l: 'Actor id', d: '' }, { k: 'targetId', in: 'query', l: 'Target id', d: '' }, { k: 'action', in: 'query', l: 'Action contains', d: '' }].concat(pageQ) })
+  ],
+  'Developers': [
+    adm({ id: 'a-devs', t: 'Search developers', m: 'GET', p: '/api/v1/admin/developers', note: 'Search by email, username, name, company or developer id.', f: [{ k: 'q', in: 'query', l: 'Search', d: '' }, { k: 'status', in: 'query', l: 'Status', t: 'select', o: ['', 'PENDING', 'ACTIVE', 'DISABLED'], d: '' }].concat(pageQ) }),
+    adm({ id: 'a-admins', t: 'List administrators', m: 'GET', p: '/api/v1/admin/administrators', f: pageQ }),
+    adm({ id: 'a-new', t: 'Create a developer account', m: 'POST', p: '/api/v1/admin/developers', note: 'Creates the account with a role and can send an invitation.',
+      f: [{ k: 'email', l: 'Email', d: 'amina.otieno+{{$timestamp}}@example.com', r: 1 }, { k: 'firstName', l: 'First name', d: 'Amina', r: 1 }, { k: 'middleName', l: 'Middle name' }, { k: 'lastName', l: 'Last name', d: 'Otieno', r: 1 }, { k: 'country', l: 'Country', d: 'KE' }, { k: 'phoneNumber', l: 'Phone number', d: '+254 700 555 010' }, { k: 'companyName', l: 'Company', d: 'Otieno Digital' },
+          { k: 'role', l: 'Role', t: 'select', o: ['DEVELOPER', 'ADMIN'], d: 'DEVELOPER' }, { k: 'sendInvite', l: 'Send an invitation email', t: 'checkbox', d: true }],
+      capture: p => ({ target_developer_id: p.developerId }) }),
+    adm({ id: 'a-dev', t: 'Get a developer', m: 'GET', p: '/api/v1/admin/developers/{developerId}', f: [DEV] }),
+    adm({ id: 'a-dev-put', t: 'Change a profile', m: 'PUT', p: '/api/v1/admin/developers/{developerId}', f: [DEV, { k: 'firstName', l: 'First name' }, { k: 'lastName', l: 'Last name' }, { k: 'companyName', l: 'Company' }, { k: 'country', l: 'Country' }, { k: 'phoneNumber', l: 'Phone number' }] }),
+    adm({ id: 'a-dev-status', t: 'Disable or enable', m: 'PUT', p: '/api/v1/admin/developers/{developerId}/status', note: 'Disabled accounts cannot sign in. An administrator cannot disable themselves, and the last active administrator cannot be disabled.', f: [DEV, { k: 'status', l: 'Status', t: 'select', o: ['DISABLED', 'ACTIVE'], d: 'DISABLED', r: 1 }, { k: 'reason', l: 'Reason' }] }),
+    adm({ id: 'a-dev-role', t: 'Change role', m: 'PUT', p: '/api/v1/admin/developers/{developerId}/role', f: [DEV, { k: 'role', l: 'Role', t: 'select', o: ['ADMIN', 'DEVELOPER'], d: 'ADMIN', r: 1 }] }),
+    adm({ id: 'a-dev-email', t: 'Change sign in email', m: 'PUT', p: '/api/v1/admin/developers/{developerId}/email', f: [DEV, { k: 'email', l: 'New email', r: 1 }, { k: 'verified', l: 'Count it as confirmed', t: 'checkbox', d: true }] }),
+    adm({ id: 'a-dev-verify', t: 'Count email as confirmed', m: 'POST', p: '/api/v1/admin/developers/{developerId}/verify-email', f: [DEV] }),
+    adm({ id: 'a-dev-unlock', t: 'Unlock an account', m: 'POST', p: '/api/v1/admin/developers/{developerId}/unlock', f: [DEV] }),
+    adm({ id: 'a-dev-out', t: 'End every session', m: 'POST', p: '/api/v1/admin/developers/{developerId}/sign-out', f: [DEV] }),
+    adm({ id: 'a-dev-reset', t: 'Email a password reset link', m: 'POST', p: '/api/v1/admin/developers/{developerId}/password-reset', f: [DEV] }),
+    adm({ id: 'a-dev-apps', t: 'Apps of a developer', m: 'GET', p: '/api/v1/admin/developers/{developerId}/apps', f: [DEV].concat(pageQ) }),
+    adm({ id: 'a-dev-biz', t: 'Businesses of a developer', m: 'GET', p: '/api/v1/admin/developers/{developerId}/businesses', f: [DEV] }),
+    adm({ id: 'a-share', t: 'Share a business with a developer', m: 'POST', p: '/api/v1/admin/developers/{developerId}/businesses/{businessId}', f: [DEV, BIZ] }),
+    adm({ id: 'a-unshare', t: 'Take a shared business back', m: 'DELETE', p: '/api/v1/admin/developers/{developerId}/businesses/{businessId}', f: [DEV, BIZ] }),
+    adm({ id: 'a-dev-del', t: 'Delete a developer', m: 'DELETE', p: '/api/v1/admin/developers/{developerId}', note: 'Only an account that owns no apps and applied for no business. Disable it otherwise.', f: [DEV] })
+  ],
+  'Apps and keys': [
+    adm({ id: 'a-apps', t: 'Search apps', m: 'GET', p: '/api/v1/admin/apps', f: [{ k: 'developerId', in: 'query', l: 'Developer id', d: '' }, { k: 'businessId', in: 'query', l: 'Business id', d: '' }, { k: 'environment', in: 'query', l: 'Environment', t: 'select', o: ['', 'sandbox', 'production'], d: '' }, { k: 'status', in: 'query', l: 'Status', t: 'select', o: ['', 'ACTIVE', 'SUSPENDED'], d: '' }, { k: 'name', in: 'query', l: 'Name', d: '' }].concat(pageQ) }),
+    adm({ id: 'a-app', t: 'Get any app', m: 'GET', p: '/api/v1/admin/apps/{appId}', f: [APP] }),
+    adm({ id: 'a-app-put', t: 'Change any app', m: 'PUT', p: '/api/v1/admin/apps/{appId}', f: [APP, { k: 'name', l: 'Name' }, { k: 'description', l: 'Description' }, { k: 'callbackUrl', l: 'Callback URL' }] }),
+    adm({ id: 'a-app-status', t: 'Suspend or reactivate', m: 'PUT', p: '/api/v1/admin/apps/{appId}/status', note: 'A reason is required to suspend. A staff suspension cannot be lifted by the developer.', f: [APP, { k: 'status', l: 'Status', t: 'select', o: ['SUSPENDED', 'ACTIVE'], d: 'SUSPENDED', r: 1 }, { k: 'reason', l: 'Reason', d: 'Chargeback review' }] }),
+    adm({ id: 'a-app-owner', t: 'Hand the app to another account', m: 'PUT', p: '/api/v1/admin/apps/{appId}/owner', f: [APP, { k: 'developerId', l: 'New owner developer id', d: '{{target_developer_id}}', r: 1 }] }),
+    adm({ id: 'a-keys', t: 'List keys of an app', m: 'GET', p: '/api/v1/admin/apps/{appId}/keys', f: [APP] }),
+    adm({ id: 'a-key-new', t: 'Issue a key', m: 'POST', p: '/api/v1/admin/apps/{appId}/keys', f: [APP, { k: 'label', l: 'Label', d: 'Staff test' }], capture: p => ({ admin_key_id: p.key }) }),
+    adm({ id: 'a-key-rot', t: 'Rotate a key', m: 'POST', p: '/api/v1/admin/apps/{appId}/keys/{key}/rotate', f: [APP, pf('key', 'Key', '{{admin_key_id}}')], capture: p => ({ admin_key_id: p.key }) }),
+    adm({ id: 'a-key-rev', t: 'Revoke a key', m: 'DELETE', p: '/api/v1/admin/apps/{appId}/keys/{key}', f: [APP, pf('key', 'Key', '{{admin_key_id}}')] }),
+    adm({ id: 'a-key-revall', t: 'Revoke every key of an app', m: 'DELETE', p: '/api/v1/admin/apps/{appId}/keys', f: [APP] }),
+    adm({ id: 'a-app-del', t: 'Delete an app and its keys', m: 'DELETE', p: '/api/v1/admin/apps/{appId}', note: 'The wallet service is told the app is closing first.', f: [APP] })
+  ],
+  'Transfers': [
+    adm({ id: 'a-trs', t: 'Search transfers and claims', m: 'GET', p: '/api/v1/admin/transfers', f: [{ k: 'status', in: 'query', l: 'Status', t: 'select', o: ['', 'PENDING', 'COMPLETED', 'CANCELLED', 'REJECTED'], d: '' }, { k: 'type', in: 'query', l: 'Type', t: 'select', o: ['', 'APP_TRANSFER', 'BUSINESS_CLAIM'], d: '' }, { k: 'developerId', in: 'query', l: 'Developer id', d: '' }].concat(pageQ) }),
+    adm({ id: 'a-tr', t: 'Get a transfer', m: 'GET', p: '/api/v1/admin/transfers/{transferId}', f: [TRF] }),
+    adm({ id: 'a-tr-del', t: 'Cancel a waiting request', m: 'DELETE', p: '/api/v1/admin/transfers/{transferId}', f: [TRF] })
+  ]
+};
+
+// ---------- theme ----------
+function resolvedTheme() { return S.theme === 'system' ? (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : S.theme; }
+function applyTheme(t) { S.theme = t; document.documentElement.setAttribute('data-theme', resolvedTheme()); LS.set('dc-theme', t); }
+function applyAccent(a) { S.accent = a; document.documentElement.setAttribute('data-accent', a); LS.set('dc-accent', a); }
+function themeButton() {
+  const b = h('button', { class: 'icon-btn', type: 'button', title: 'Switch light and dark', 'aria-label': 'Switch light and dark theme', onclick: () => {
+    applyTheme(resolvedTheme() === 'dark' ? 'light' : 'dark'); b.replaceChildren(ico(resolvedTheme() === 'dark' ? 'sun' : 'moon'));
+  } }, ico(resolvedTheme() === 'dark' ? 'sun' : 'moon'));
+  return b;
+}
+const ACCENTS = [['blue', '#2d5bff', 'Blue'], ['emerald', '#0b8f66', 'Emerald'], ['violet', '#6a4dff', 'Violet'], ['graphite', '#1f2937', 'Graphite']];
+function openAppearance() {
+  const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Theme' });
+  const sw = h('div', { class: 'swatches', role: 'group', 'aria-label': 'Accent colour' });
+  const draw = () => {
+    seg.replaceChildren(...['light', 'dark', 'system'].map(m => h('button', { type: 'button', class: S.theme === m ? 'on' : '', onclick: () => { applyTheme(m); draw(); } }, m[0].toUpperCase() + m.slice(1))));
+    sw.replaceChildren(...ACCENTS.map(([k, col, label]) => h('button', { type: 'button', class: 'sw' + (S.accent === k ? ' on' : ''), title: label, 'aria-label': label, style: { background: col }, onclick: () => { applyAccent(k); draw(); } })));
+  };
+  draw();
+  modal('Appearance', h('div', { class: 'stack' }, h('div', null, h('label', { class: 'fl' }, 'Theme'), seg), h('div', null, h('label', { class: 'fl' }, 'Accent'), sw)));
+}
+
+
+// ---------- connection settings and variables ----------
+let connTimer = null;
+function connectionFields() {
+  const i = h('input', { class: 'inp', type: 'text', placeholder: 'http://localhost:8091', autocomplete: 'off', spellcheck: 'false' });
+  i.value = S.cfg.dev || '';
+  i.addEventListener('input', () => { S.cfg.dev = i.value.trim(); saveCfg(); clearTimeout(connTimer); connTimer = setTimeout(() => { if (window.checkConnections) checkConnections(); }, 500); });
+  return h('div', { class: 'stack' },
+    h('div', null, h('label', { class: 'fl' }, 'Developer service'), i),
+    h('div', { class: 'hint' }, 'Saved in this browser. The service opens /api/v1 only to the origins in DEVELOPER_PORTAL_ORIGINS, so open this page from one of them, for example http://localhost:3000.'));
+}
+function openSettings() {
+  const body = h('div', { class: 'stack' }, connectionFields(),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn', type: 'button', onclick: async () => {
+        const r = await call({ method: 'GET', path: '/api/v1/auth/social/providers', auth: 'none' });
+        toast(r.net ? 'Developer service not reachable, or blocked by CORS' : 'Developer service answered ' + r.status, r.net || r.status >= 500);
+      } }, 'Test connection')));
+  modal('Connection', body);
+}
+function openVars() {
+  const body = h('div', { class: 'stack' });
+  const list = h('div', { class: 'stack' });
+  const draw = () => {
+    list.replaceChildren(...Object.keys(S.vars).sort().map(k => {
+      const i = h('input', { class: 'inp', spellcheck: 'false' }); i.value = S.vars[k];
+      i.addEventListener('input', () => { S.vars[k] = i.value; saveVars(); });
+      return h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, h('span', { class: 'mono', style: { width: '210px', flex: 'none', overflow: 'hidden', textOverflow: 'ellipsis' } }, k), i,
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Remove ' + k, onclick: () => { delete S.vars[k]; saveVars(); draw(); } }, ico('x')));
+    }));
+  };
+  draw();
+  const nk = h('input', { class: 'inp', placeholder: 'new_variable' });
+  body.append(h('p', { class: 'muted small', style: { margin: 0 } }, 'Use {{name}} in any field, like the Postman environment. Built in: {{$timestamp}}, {{$guid}}, {{$randomInt}}, {{my_developer_id}}, {{my_email}}. Responses fill ids in automatically (business, app, key, transfer), and any id in a table row can be saved with one click.'),
+    list, h('div', { class: 'row' }, nk, h('button', { class: 'btn', type: 'button', onclick: () => { const k = nk.value.trim(); if (k) { S.vars[k] = ''; saveVars(); nk.value = ''; draw(); } } }, 'Add')));
+  modal('Variables', body);
+}
+
+// ---------- sign in ----------
+function loginForm(onDone) {
+  const email = h('input', { class: 'inp', type: 'email', autocomplete: 'username', placeholder: 'you@example.com', list: 'recent-emails', required: true });
+  const pass = h('input', { class: 'inp', type: 'password', autocomplete: 'current-password', placeholder: 'Password', required: true });
+  const tokenIn = h('input', { class: 'inp', placeholder: 'Paste an access token to skip the password', spellcheck: 'false' });
+  const err = h('div', { class: 'err hide' });
+  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%', justifyContent: 'center', marginTop: '16px' } }, 'Sign in');
+  const eye = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Show password', onclick: () => { pass.type = pass.type === 'password' ? 'text' : 'password'; } }, ico('eye'));
+  const recent = h('div', { class: 'recent' }, S.recent.map(r => h('button', { type: 'button', onclick: () => { email.value = r; pass.focus(); } }, r)));
+  const dl = h('datalist', { id: 'recent-emails' }, S.recent.map(r => h('option', { value: r })));
+  const fail = m => { err.textContent = m; err.classList.remove('hide'); submit.disabled = false; submit.textContent = 'Sign in'; };
+  const side = (label, defs) => h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { const m = modal(label, h('div', { class: 'stack' }, defs.map(d => actionCard(d, { open: true })))); } }, label);
+  const form = h('form', { novalidate: true, onsubmit: async ev => {
+    ev.preventDefault(); err.classList.add('hide'); submit.disabled = true; submit.textContent = 'Signing in';
+    const t = tokenIn.value.trim().replace(/^Bearer\s+/i, '');
+    if (t) { await addSession(email.value.trim(), t); onDone(); return; }
+    if (!email.value.trim() || !pass.value) return fail('Enter your email and password.');
+    const r = await signIn(email.value.trim(), pass.value);
+    if (r.error) return fail(r.error + (r.res && r.res.code && ERR_HINT[r.res.code] ? '\n' + ERR_HINT[r.res.code] : ''));
+    onDone();
+  } },
+    h('h2', null, 'Sign in'),
+    h('p', { class: 'muted', style: { margin: '0 0 6px' } }, 'Use a developer or administrator account of the developer service. Add several accounts later and switch between them from the top bar.'),
+    h('div', { class: 'field' }, h('label', { class: 'fl' }, 'Email'), email, S.recent.length ? recent : null, dl),
+    h('div', { class: 'field' }, h('label', { class: 'fl' }, 'Password'), h('div', { class: 'pwbox' }, pass, eye)),
+    err, submit,
+    h('div', { class: 'row', style: { marginTop: '10px', justifyContent: 'space-between' } },
+      side('Create an account', ACCESS['Sign up']),
+      side('Forgot password', [ACCESS['Reset password'][0]])),
+    h('details', null, h('summary', null, 'Connection and token'),
+      h('div', { style: { marginTop: '10px' } }, connectionFields()),
+      h('div', { class: 'field' }, h('label', { class: 'fl' }, 'Or paste an access token'), tokenIn,
+        h('div', { class: 'hint' }, 'For example the token from a social sign in. With a token filled in, the password is ignored.'))));
+  return form;
+}
+function connRows() {
+  const row = (id, label) => h('div', { class: 'c' }, h('span', { class: 'dot', id: 'cd-' + id }), h('b', null, label), h('span', { class: 'v', id: 'cv-' + id }, 'checking'));
+  return h('div', { class: 'conn' }, row('dev', 'Developer service'), row('soc', 'Social sign in'), row('origin', 'This page\'s origin'));
+}
+async function checkConnections() {
+  const set = (id, tone, text) => { const d = document.getElementById('cd-' + id), v = document.getElementById('cv-' + id); if (d) d.className = 'dot ' + tone; if (v) v.textContent = text; };
+  set('dev', '', 'checking'); set('soc', '', 'checking');
+  const o = location.origin;
+  if (o === 'null' || location.protocol === 'file:') set('origin', 'warn', 'file: has no origin');
+  else set('origin', 'good', o.replace(/^https?:\/\//, ''));
+  const r = await call({ method: 'GET', path: '/api/v1/auth/social/providers', auth: 'none' });
+  set('dev', r.net ? 'bad' : (r.status < 500 ? 'good' : 'warn'), r.net ? 'unreachable or blocked' : 'reachable');
+  if (r.net) set('soc', 'warn', 'unknown');
+  else {
+    const list = r.ok && r.payload ? (Array.isArray(r.payload.providers) ? r.payload.providers : (Array.isArray(r.payload) ? r.payload : [])) : null;
+    if (list === null) set('soc', 'warn', 'status ' + r.status);
+    else set('soc', list.length ? 'good' : 'warn', list.length ? list.length + ' on' : 'none on');
+  }
+}
+window.checkConnections = checkConnections;
+function renderLogin() {
+  document.title = 'Sign in | Premisave Developer Console';
+  const root = document.getElementById('app');
+  root.replaceChildren(h('div', { class: 'login' },
+    h('div', { class: 'brand' },
+      h('div', { class: 'mark' }, h('span', { class: 'logo' }, 'P'), h('div', null, 'Premisave', h('small', null, 'Developer Console'))),
+      h('div', null,
+        h('h1', null, 'Developer service test console'),
+        h('p', { class: 'lede' }, 'Sign in as a developer to walk through a business application, apps and API keys, app transfers and the public API, or as an administrator to run the staff tools.'),
+        connRows()),
+      h('div', { class: 'small', style: { color: 'var(--side-ink-2)' } }, 'For testing only. Tokens stay in this browser tab.')),
+    h('div', { class: 'panel' },
+      h('div', { class: 'corner row' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: openAppearance }, 'Appearance'), themeButton()),
+      loginForm(() => renderApp()))));
+  checkConnections();
+}
+
+// ---------- shell ----------
+const NAV = [
+  ['Account', 'overview', 'Overview', 'home'], ['Account', 'profile', 'Profile', 'users'], ['Account', 'access', 'Sign up and recovery', 'plus'],
+  ['Build', 'businesses', 'Businesses', 'building'], ['Build', 'apps', 'Apps', 'box'], ['Build', 'keys', 'API keys', 'key'],
+  ['Build', 'transfers', 'Transfers', 'send'], ['Build', 'publicapi', 'Public API', 'globe'],
+  ['Staff', 'admin', 'Administration', 'shield'],
+  ['Tools', 'builder', 'Request builder', 'tool'], ['Tools', 'errors', 'Error codes', 'list']
+];
+const PAGES = {};  // filled in by pages file
+let R = {};
+function go(page) { S.page = page; SS.set('dc-page', page); renderPage(); }
+function renderApp() {
+  if (!session()) { renderLogin(); return; }
+  const root = document.getElementById('app');
+  R = {};
+  const nav = h('nav');
+  let last = '';
+  for (const [g, id, label, icon] of NAV) {
+    if (g !== last) { nav.append(h('div', { class: 'grp' }, g)); last = g; }
+    nav.append(h('a', { class: 'nav', 'data-page': id, tabindex: 0, role: 'link', onclick: () => go(id), onkeydown: e => { if (e.key === 'Enter') go(id); } }, ico(icon), label));
+  }
+  R.chip = h('div', { class: 'chip', title: 'Status of the active account' });
+  R.env = h('span', { class: 'env', title: 'Developer service address' }, h('span', { class: 'dot', id: 'env-dot' }), (S.cfg.dev || '').replace(/^https?:\/\//, ''));
+  R.who = h('div', { class: 'who' });
+  R.title = h('h1', null, '');
+  R.content = h('div', { class: 'content' });
+  R.drawer = h('div', { class: 'drawer' + (S.logOpen ? ' open' : '') });
+  R.logBtn = h('button', { class: 'icon-btn', type: 'button', title: 'Request log', 'aria-label': 'Toggle request log', onclick: () => toggleLog() }, ico('list'));
+  root.replaceChildren(h('div', { class: 'shell' },
+    h('aside', { class: 'side' },
+      h('div', { class: 'mark' }, h('span', { class: 'logo' }, 'P'), h('div', null, 'Premisave', h('small', null, 'Developer Console'))), nav,
+      h('div', { class: 'foot' },
+        h('button', { class: 'btn sm', type: 'button', onclick: openSettings }, 'Connection'),
+        h('button', { class: 'btn sm', type: 'button', onclick: openVars }, 'Variables'),
+        h('button', { class: 'btn sm', type: 'button', onclick: openAppearance }, 'Appearance'))),
+    h('div', { class: 'main' },
+      h('header', { class: 'top' }, R.title, h('span', { class: 'spacer' }), R.env, R.chip, R.logBtn, themeButton(), R.who),
+      R.content)),
+    R.drawer);
+  buildWho(); updateChip(); buildDrawer(); renderPage(); syncSession();
+  call({ method: 'GET', path: '/api/v1/auth/social/providers', auth: 'none' }).then(r => { const d = document.getElementById('env-dot'); if (d) d.className = 'dot ' + (r.net ? 'bad' : r.status < 500 ? 'good' : 'warn'); });
+}
+// re-read the account so role, status and email confirmation are current
+async function syncSession() {
+  const s = session(); if (!s) return;
+  const r = await loadMe(s);
+  if (r.status === 401) s.expired = true; else if (r.ok) s.expired = false;
+  saveSessions(); buildWho(); updateChip();
+}
+function updateChip() {
+  if (!R.chip) return;
+  const s = session(); if (!s) return;
+  R.chip.replaceChildren(h('span', null, 'Email'), s.emailVerified ? h('span', { class: 'pill good' }, 'confirmed') : h('span', { class: 'pill warn' }, 'not confirmed'),
+    s.status ? h('span', { class: 'pill ' + statusTone(s.status) }, s.status) : null);
+}
+function buildWho() {
+  if (!R.who) return;
+  const s = session(); if (!s) return;
+  const initial = (s.email || '?')[0].toUpperCase();
+  const btn = h('button', { type: 'button', 'aria-haspopup': 'true', onclick: () => toggleMenu() }, h('span', { class: 'avatar' }, initial), h('span', { class: 'small', style: { maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, s.email), s.expired ? h('span', { class: 'pill bad' }, 'EXPIRED') : (s.role ? h('span', { class: 'pill info' }, s.role) : null));
+  R.who.replaceChildren(btn);
+}
+let menuEl = null;
+function toggleMenu() {
+  if (menuEl) { menuEl.remove(); menuEl = null; return; }
+  menuEl = h('div', { class: 'menu', role: 'menu' });
+  for (const [k, s] of Object.entries(S.sessions)) {
+    menuEl.append(h('div', { class: 'it' + (k === S.active ? ' on' : ''), onclick: () => { if (k !== S.active) switchTo(k); toggleMenu(); } },
+      h('span', { class: 'avatar' }, (s.email || '?')[0].toUpperCase()),
+      h('div', { style: { minWidth: 0, flex: 1 } }, h('div', { style: { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' } }, s.email), h('div', { class: 'muted mono', style: { fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis' } }, s.developerId || 'developer id unknown')),
+      s.expired ? h('span', { class: 'pill bad' }, 'EXPIRED') : (s.role ? h('span', { class: 'pill info' }, s.role) : null),
+      h('button', { class: 'icon-btn', type: 'button', title: 'Sign out of this account', 'aria-label': 'Sign out ' + s.email, onclick: async e => { e.stopPropagation(); await signOut(k); toggleMenu(); S.active ? (buildWho(), updateChip(), renderPage()) : renderApp(); } }, ico('out'))));
+  }
+  menuEl.append(h('hr'),
+    h('div', { class: 'it', onclick: () => { toggleMenu(); const m = modal('Add an account', loginForm(() => { m.close(); renderApp(); })); } }, ico('plus'), 'Add another account'),
+    h('div', { class: 'it', onclick: async () => { toggleMenu(); for (const k of Object.keys(S.sessions)) await signOut(k); renderApp(); } }, ico('out'), 'Sign out of all'));
+  R.who.append(menuEl);
+  setTimeout(() => document.addEventListener('click', function close(e) { if (menuEl && !R.who.contains(e.target)) { menuEl.remove(); menuEl = null; } document.removeEventListener('click', close); }), 0);
+}
+function switchTo(key) {
+  S.active = key; const s = session(); if (s && s.developerId) S.vars.developer_id = s.developerId; S.vars.developer_email = key; saveVars(); saveSessions();
+  buildWho(); updateChip(); renderPage(); syncSession();
+}
+function renderPage() {
+  if (!R.content) return;
+  document.querySelectorAll('.side a.nav').forEach(a => a.classList.toggle('on', a.dataset.page === S.page));
+  const entry = NAV.find(n => n[1] === S.page) || NAV[0];
+  R.title.textContent = entry[2];
+  document.title = entry[2] + ' | Premisave Developer Console';
+  const build = PAGES[entry[1]];
+  R.content.replaceChildren(h('div', { class: 'page' }, build ? build() : h('div', { class: 'empty' }, 'Page not available')));
+  R.content.scrollTop = 0;
+}
+
+// ---------- request log drawer ----------
+const openLogs = new Set();
+let errorsOnly = false;
+function toggleLog() { S.logOpen = !S.logOpen; R.drawer.classList.toggle('open', S.logOpen); if (S.logOpen) renderLog(); }
+function buildDrawer() {
+  R.logList = h('div', { class: 'dl' });
+  R.drawer.replaceChildren(
+    h('div', { class: 'dh' }, h('b', null, 'Request log'), h('span', { class: 'muted small' }, 'Every call this page makes'), h('span', { class: 'spacer' }),
+      h('label', { class: 'small', style: { display: 'flex', gap: '6px', alignItems: 'center' } }, h('input', { type: 'checkbox', onchange: e => { errorsOnly = e.target.checked; renderLog(); } }), 'Errors only'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => { S.log.length = 0; renderLog(); } }, 'Clear'),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Close log', onclick: toggleLog }, ico('x'))),
+    R.logList);
+  renderLog();
+}
+function renderLog() {
+  if (!R.logList || !S.logOpen) return;
+  const rows = S.log.filter(e => !errorsOnly || e.net || e.status >= 400).slice(0, 120);
+  if (!rows.length) { R.logList.replaceChildren(h('div', { class: 'empty', style: { margin: '14px' } }, 'Nothing yet.')); return; }
+  R.logList.replaceChildren(...rows.map(e => {
+    const tone = e.net ? 'bad' : e.status < 300 ? 'good' : e.status < 500 ? 'warn' : 'bad';
+    const wrap = h('div', { class: 'lg' });
+    const head = h('div', { class: 'l1', onclick: () => { if (openLogs.has(e.id)) openLogs.delete(e.id); else openLogs.add(e.id); renderLog(); } },
+      h('span', { class: 'muted mono' }, e.at.toTimeString().slice(0, 8)),
+      h('span', { class: 'verb ' + e.method }, e.method),
+      h('span', { class: 'u' }, e.url),
+      h('span', { class: 'pill ' + tone }, e.net ? 'ERR' : e.status),
+      h('span', { class: 'muted small' }, e.ms + ' ms'));
+    wrap.append(head);
+    if (openLogs.has(e.id)) {
+      const res = { entry: e, data: e.resData, text: e.resText, ok: !e.net && e.status < 400, status: e.status, ms: e.ms, net: !!e.net, payload: e.resData, message: (e.resData && e.resData.message) || '', error: e.error };
+      wrap.append(h('div', { class: 'det' }, requestView(e), e.net ? h('div', { class: 'notice bad' }, explainFail(res)) : jsonView(e.resData !== null ? e.resData : (e.resText || '(empty body)'))));
+    }
+    return wrap;
+  }));
+}
+
+// ---------- small page helpers ----------
+function lead(text) { return h('p', { class: 'lead' }, text); }
+function sec(text) { return h('h2', { class: 'sec' }, text); }
+function listFor(defs, opts) { return h('div', { class: 'stack' }, defs.map(d => actionCard(d, opts))); }
+function tabsFromMap(map, build, initial, fresh) {
+  return tabbed(Object.keys(map).map(k => ({ id: k, label: k, fresh: !!fresh && fresh.includes(k), build: () => build(map[k], k) })), initial);
+}
+function autoRun(card) { setTimeout(() => card._run && card._run(), 0); return card; }
+function bizStatus(b) {
+  const s = b && b.status;
+  if (s && typeof s === 'object') return { sandbox: s.sandbox, production: s.production };
+  return { sandbox: '', production: typeof s === 'string' ? s : '' };
+}
+
+// ---------- overview ----------
+PAGES.overview = () => {
+  const stats = h('div', { class: 'balance' });
+  const steps = h('div', { class: 'card pad' });
+  const detBox = h('div', { class: 'card pad' });
+  const cell = (lab, val) => h('div', { class: 'cell' }, h('div', { class: 'lab' }, lab), val);
+  const s0 = session() || {};
+  const drawHead = (m) => {
+    m = m || {};
+    fill(stats,
+      h('div', { class: 'cell' }, h('div', { class: 'lab' }, 'Signed in as'),
+        h('div', { class: 'num', style: { fontSize: '22px' } }, m.fullName || s0.fullName || s0.email || '-'),
+        h('div', { class: 'sub mono', style: { wordBreak: 'break-all' } }, m.email || s0.email || '')),
+      cell('Status', h('div', { class: 'val row', style: { gap: '7px' } }, h('span', { class: 'dot ' + ({ good: 'good', bad: 'bad', warn: 'warn' }[statusTone(m.status || s0.status || '')] || '') }), m.status || s0.status || '-')),
+      cell('Role', h('div', { class: 'val' }, m.role || s0.role || '-')),
+      cell('Email', h('div', { class: 'val row', style: { gap: '7px' } }, h('span', { class: 'dot ' + ((m.emailVerified !== undefined ? m.emailVerified : s0.emailVerified) ? 'good' : 'warn') }), (m.emailVerified !== undefined ? m.emailVerified : s0.emailVerified) ? 'Confirmed' : 'Not confirmed')));
+  };
+  const step = (n, done, title, text, action) => h('div', { class: 'stp' + (done ? ' done' : '') },
+    h('span', { class: 'n' }, done ? ico('check') : String(n)),
+    h('div', { style: { minWidth: 0, flex: 1 } }, h('div', { style: { fontWeight: 600 } }, title), h('div', { class: 'hint' }, text)),
+    action || null);
+  const load = async () => {
+    drawHead(null);
+    fill(steps, h('h3', null, 'Getting started'), h('div', { class: 'hint', style: { marginTop: '8px' } }, 'Loading'));
+    const [me, biz, apps] = await Promise.all([
+      call({ method: 'GET', path: '/api/v1/me', auth: 'jwt' }),
+      call({ method: 'GET', path: '/api/v1/businesses', auth: 'jwt' }),
+      call({ method: 'GET', path: '/api/v1/apps', query: { size: 100 }, auth: 'jwt' })]);
+    if (!me.ok) {
+      fill(steps, h('h3', null, 'Getting started'), h('div', { class: 'notice bad', style: { margin: '10px 0 0', whiteSpace: 'pre-wrap' } }, explainFail(me)), me.status === 401 ? h('div', { class: 'hint' }, 'The token has expired or was signed out. Sign in again from the account menu.') : null);
+      return;
+    }
+    const m = me.payload || {}; drawHead(m);
+    const list = x => x.ok && x.payload ? (Array.isArray(x.payload) ? x.payload : (x.payload.content || x.payload.businesses || [])) : [];
+    const bl = list(biz), al = list(apps);
+    const submitted = bl.some(b => b.access === 'SHARED' || (b.application && b.application.status && b.application.status !== 'DRAFT'));
+    const prod = bl.some(b => /^(ACTIVE|APPROVED|LIVE|ENABLED)$/i.test(String(bizStatus(b).production)));
+    const sbx = al.some(a => a.environment === 'sandbox'), live = al.some(a => a.environment === 'production');
+    const goBtn = (label, page) => h('button', { class: 'btn sm', type: 'button', onclick: () => go(page) }, label);
+    fill(steps, h('h3', null, 'Getting started'), h('div', { style: { height: '6px' } }),
+      step(1, !!m.emailVerified, 'Confirm your email address', 'Needed before you can create a business.', m.emailVerified ? null : h('button', { class: 'btn sm', type: 'button', onclick: async () => { const r = await call({ method: 'POST', path: '/api/v1/me/resend-verification', auth: 'jwt' }); toast(r.ok ? 'Confirmation email requested' : explainFail(r), !r.ok); } }, 'Resend link')),
+      step(2, bl.length > 0, 'Apply for a business', bl.length ? bl.length + ' on this account.' : 'A business is a merchant in the wallet service with its own merchant number.', goBtn('Businesses', 'businesses')),
+      step(3, submitted, 'Complete and submit the application', 'Form, documents, and the wallet that receives the money.', goBtn('Application', 'businesses')),
+      step(4, prod, 'Production approved', 'Staff review in the wallet service. Live apps need it.', null),
+      step(5, sbx, 'Create a sandbox app', sbx ? 'You have a sandbox app and a key.' : 'Get a key and secret to try the public API without real money.', goBtn('Apps', 'apps')),
+      step(6, live, 'Go live', live ? 'A production app exists.' : 'Create a production app linked to the business wallet.', goBtn('Apps', 'apps')));
+    fill(detBox, h('h3', null, 'Account'), h('div', { style: { height: '10px' } }), kvView(Object.fromEntries(Object.entries(m).filter(([k, v]) => v === null || typeof v !== 'object'))),
+      bl.length ? h('div', null, h('div', { class: 'fl', style: { marginTop: '14px' } }, 'Businesses'),
+        ...bl.map(b => h('div', { class: 'bizrow' }, h('div', { style: { minWidth: 0, flex: 1 } }, h('b', null, b.name || b.businessId), h('div', { class: 'hint mono' }, b.businessId + (b.merchantNumber ? '   ' + b.merchantNumber : '')), b.nextStep && b.nextStep.message ? h('div', { class: 'hint' }, b.nextStep.message) : null),
+          h('button', { class: 'btn sm', type: 'button', onclick: () => setVars({ business_id: b.businessId, merchant_number: b.merchantNumber }) }, 'Use'))) ) : null);
+  };
+  load();
+  return h('div', null,
+    lead('Where this account stands, and what to do next to reach a live app.'),
+    stats, h('div', { style: { height: '14px' } }),
+    h('div', { class: 'grid2' }, steps, detBox),
+    h('div', { class: 'actions', style: { marginTop: '12px' } }, h('button', { class: 'btn sm', type: 'button', onclick: load }, ico('refresh'), 'Refresh')));
+};
+
+// ---------- profile ----------
+PAGES.profile = () => h('div', null,
+  lead('Your profile, username, picture, password and sessions.'),
+  tabsFromMap(PROFILE, (items, k) => {
+    const cards = items.map(d => actionCard(d, { open: true }));
+    if (k === 'Profile') autoRun(cards[0]);
+    return h('div', { class: 'stack' }, cards);
+  }, undefined, ['Profile']));
+
+// ---------- sign up and recovery ----------
+PAGES.access = () => h('div', null,
+  lead('The public flows that need no token: sign up, confirm the email, reset a password, and sign in with Google, Facebook or GitHub. A social sign in adds the account to this page\'s accounts.'),
+  tabsFromMap(ACCESS, items => listFor(items, { open: true })));
+
+// ---------- businesses ----------
+PAGES.businesses = () => {
+  const box = h('div', { class: 'stack' });
+  const draw = async () => {
+    fill(box, h('div', { class: 'hint' }, 'Loading'));
+    const r = await call({ method: 'GET', path: '/api/v1/businesses', auth: 'jwt' });
+    if (!r.ok) { fill(box, summaryView(r)); return; }
+    const list = Array.isArray(r.payload) ? r.payload : (r.payload && (r.payload.content || r.payload.businesses)) || [];
+    if (!list.length) { fill(box, h('div', { class: 'empty' }, 'No business yet. Apply for one below.')); return; }
+    fill(box, ...list.map(b => {
+      const st = bizStatus(b), app = b.application || {};
+      return h('div', { class: 'card pad' },
+        h('div', { class: 'row' }, h('b', null, b.name || b.businessId), b.access ? h('span', { class: 'pill info' }, b.access) : null,
+          st.production ? h('span', { class: 'pill ' + statusTone(st.production) }, 'production ' + st.production) : null,
+          st.sandbox ? h('span', { class: 'pill ' + statusTone(st.sandbox) }, 'sandbox ' + st.sandbox) : null,
+          h('span', { class: 'spacer' }),
+          h('button', { class: 'btn sm', type: 'button', onclick: () => setVars({ business_id: b.businessId, merchant_number: b.merchantNumber }) }, 'Use as {{business_id}}')),
+        h('div', { class: 'hint mono', style: { marginTop: '4px' } }, b.businessId + (b.merchantNumber ? '   ' + b.merchantNumber : '')),
+        app.status ? h('div', { class: 'small', style: { marginTop: '8px' } }, 'Application ', h('span', { class: 'pill ' + statusTone(app.status) }, app.status), app.readyToSubmit ? '  ready to submit' : (Array.isArray(app.missing) && app.missing.length ? '  missing: ' + app.missing.join(', ') : '')) : null,
+        b.nextStep && b.nextStep.message ? h('div', { class: 'hint', style: { marginTop: '6px' } }, b.nextStep.message) : null);
+    }));
+  };
+  draw();
+  return h('div', null,
+    lead('A business is a merchant in the wallet service. Apply, fill in the application, upload documents and submit it for staff review.'),
+    h('div', { class: 'row', style: { marginBottom: '10px' } }, h('h2', { class: 'sec', style: { margin: 0 } }, 'My businesses'), h('span', { class: 'spacer' }), h('button', { class: 'btn sm', type: 'button', onclick: draw }, ico('refresh'), 'Refresh')),
+    box,
+    h('div', { style: { height: '18px' } }),
+    tabsFromMap(BUSINESS, (items, k) => listFor(items, { open: k === 'Businesses' ? undefined : undefined })));
+};
+
+// ---------- apps, keys, transfers ----------
+PAGES.apps = () => h('div', null,
+  lead('Apps hold the API keys. A sandbox app works with test merchant numbers and fake money. A production app needs an approved business and the Premisave wallet account that receives the money.'),
+  tabsFromMap(APPS, (items, k) => {
+    const cards = items.map((d, i) => actionCard(d, { open: k !== 'Apps' || i === 0 }));
+    if (k === 'Apps') autoRun(cards[0]);
+    return h('div', { class: 'stack' }, cards);
+  }, undefined, ['Apps']));
+PAGES.keys = () => h('div', null,
+  lead('Keys belong to an app. Pick the app with the {{app_id}} variable, or click a row in the Apps list to use it. The secret is shown once, so copy it from the box that appears.'),
+  listFor(KEYS, { open: true }));
+PAGES.transfers = () => h('div', null,
+  lead('A business is applied for once. Another developer account can take over a production app, or claim the approved business by its merchant number, once the business owner shares a six digit code.'),
+  tabsFromMap(TRANSFERS, items => listFor(items, { open: true })));
+
+// ---------- public API (curl builder, /v1 is never open to browsers) ----------
+PAGES.publicapi = () => {
+  const mk = (tag, attrs, val) => { const e = h(tag, attrs); if (val !== undefined) e.value = val; return e; };
+  const env = h('select', { class: 'inp' }, ['sandbox', 'live'].map(v => h('option', { value: v }, v)));
+  const method = h('select', { class: 'inp' }, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(v => h('option', null, v)));
+  const path = mk('input', { class: 'inp mono', spellcheck: 'false' }, '/payment-methods');
+  const style = h('select', { class: 'inp' }, [['basic', 'HTTP Basic (key:secret)'], ['headers', 'X-Client-Key and X-Client-Secret']].map(([v, l]) => h('option', { value: v }, l)));
+  const key = mk('input', { class: 'inp mono', spellcheck: 'false' }, '{{api_key}}');
+  const secret = mk('input', { class: 'inp mono', spellcheck: 'false' }, '{{api_secret}}');
+  const idem = mk('input', { class: 'inp mono', spellcheck: 'false' }, '{{$guid}}');
+  const body = mk('textarea', { class: 'inp', rows: 8, spellcheck: 'false' }, '');
+  const out = h('pre', { class: 'cmd' });
+  const PRESETS = {
+    'Payment methods': { m: 'GET', p: '/payment-methods', b: '' },
+    'Create payment': { m: 'POST', p: '/payments', b: JSON.stringify({ amount: '25.00', currency: 'USD', merchantReference: 'ORDER-1042', description: 'Order 1042', customer: { name: 'Jane Doe', email: 'jane@example.com', phone: '254712345678' }, method: { type: 'MOBILE_MONEY', provider: 'AUTO' }, callbackUrl: 'https://merchant.example.com/hooks/premisave' }, null, 2) },
+    'Get payment': { m: 'GET', p: '/payments/{{payment_id}}', b: '' },
+    'Balance': { m: 'GET', p: '/balance', b: '' }
+  };
+  const build = () => {
+    const q = s => "'" + interp(s).replace(/'/g, "'\\''") + "'";
+    const lines = ['curl -X ' + method.value + ' ' + q((S.cfg.dev || '').replace(/\/+$/, '') + '/v1/' + env.value + path.value.trim())];
+    if (style.value === 'basic') lines.push('  -u ' + q(key.value + ':' + secret.value));
+    else lines.push('  -H ' + q('X-Client-Key: ' + key.value), '  -H ' + q('X-Client-Secret: ' + secret.value));
+    if (idem.value.trim() && method.value !== 'GET') lines.push('  -H ' + q('Idempotency-Key: ' + idem.value));
+    if (body.value.trim() && method.value !== 'GET') {
+      let b = interp(body.value); try { b = JSON.stringify(JSON.parse(b)); } catch (e) { /* keep as typed */ }
+      lines.push('  -H ' + "'Content-Type: application/json'", '  -d ' + "'" + b.replace(/'/g, "'\\''") + "'");
+    }
+    out.textContent = lines.join(' \\\n');
+  };
+  [env, method, path, style, key, secret, idem, body].forEach(e => e.addEventListener('input', build));
+  const preset = name => { const p = PRESETS[name]; method.value = p.m; path.value = p.p; body.value = p.b; build(); };
+  build();
+  const flow = [
+    ['1', 'The path is checked', 'Dot segments, encoded slashes, backslashes and control characters are refused. An empty remainder is 404.'],
+    ['2', 'The key is authenticated', 'The secret is hashed and compared in constant time. Unknown key, wrong secret, revoked and expired keys all answer 401 INVALID_API_KEY.'],
+    ['3', 'The environment is matched', 'A pk_sandbox_ key works on /v1/sandbox only and a pk_live_ key on /v1/live only (403 ENVIRONMENT_MISMATCH).'],
+    ['4', 'The key is rate limited', '600 calls per minute by default, per key and per instance (429 RATE_LIMITED).'],
+    ['5', 'The app and developer are loaded', 'A disabled developer is 403 ACCOUNT_DISABLED. A suspended app can read but not change anything.'],
+    ['6', 'The call is forwarded to the wallet', 'With the internal key, the app context headers and your Idempotency-Key. Your key and secret are never forwarded.']
+  ];
+  return h('div', null,
+    lead('Merchants call /v1/live and /v1/sandbox from their servers with a key and secret. This page builds the command to run in a terminal.'),
+    h('div', { class: 'notice' }, 'The service never opens /v1 to browsers (no CORS), by design, so this page cannot send these calls itself. Copy the command and run it from a terminal or Postman. The payment operations are the wallet\'s commercial API: a path such as POST /payments there is POST /v1/sandbox/payments here.'),
+    h('div', { class: 'card pad stack' },
+      h('div', { class: 'row' }, h('span', { class: 'fl', style: { margin: 0 } }, 'Start from'), ...Object.keys(PRESETS).map(n => h('button', { class: 'btn sm', type: 'button', onclick: () => preset(n) }, n))),
+      h('div', { class: 'fields' },
+        h('div', null, h('label', { class: 'fl' }, 'Environment'), env), h('div', null, h('label', { class: 'fl' }, 'Method'), method),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Path after /v1/{environment}'), path),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Authentication'), style),
+        h('div', null, h('label', { class: 'fl' }, 'Key'), key), h('div', null, h('label', { class: 'fl' }, 'Secret'), secret),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Idempotency-Key'), idem, h('div', { class: 'hint' }, 'Repeat a call with the same key to learn the outcome after a timeout (504).')),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Body (JSON)'), body)),
+      h('div', null, h('label', { class: 'fl' }, 'Command'), out),
+      h('div', { class: 'actions' }, h('button', { class: 'btn primary', type: 'button', onclick: () => copyText(out.textContent, 'Command') }, ico('copy'), 'Copy command'))),
+    sec('What the service does with a call'),
+    h('div', { class: 'card pad' }, ...flow.map(([n, t, d]) => h('div', { class: 'stp' }, h('span', { class: 'n' }, n), h('div', null, h('div', { style: { fontWeight: 600 } }, t), h('div', { class: 'hint' }, d))))));
+};
+
+// ---------- administration ----------
+PAGES.admin = () => {
+  const s = session() || {};
+  const warn = s.role !== 'ADMIN' ? h('div', { class: 'notice warn' }, 'The active account is ' + (s.role || 'not an administrator') + '. These calls need an ADMIN account and answer 403 FORBIDDEN otherwise. Add an administrator from the account menu, or make this one an administrator with the internal key (below).') : null;
+  const cmd = "curl -X PUT '" + (S.cfg.dev || '').replace(/\/+$/, '') + "/internal/admin/developers/<developerId>/role' \\\n  -H 'X-API-Key: $DEVELOPER_INTERNAL_API_KEY' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"role\":\"ADMIN\"}'";
+  return h('div', null,
+    lead('Staff tools: accounts, apps, keys, business sharing and transfers, with an audit trail of every change. The first administrator comes from DEVELOPER_ADMIN_EMAILS or the startup seed.'),
+    warn,
+    h('details', { class: 'plain' }, h('summary', null, 'Using the internal key instead of an administrator account'),
+      h('p', { class: 'hint' }, 'Every call below also exists under /internal/admin with an X-API-Key header (DEVELOPER_INTERNAL_API_KEY). That entrance is not open to browsers, so use a terminal. For example, to promote an account:'),
+      h('pre', { class: 'cmd' }, cmd), h('div', { class: 'actions' }, h('button', { class: 'btn sm', type: 'button', onclick: () => copyText(cmd, 'Command') }, ico('copy'), 'Copy'))),
+    tabsFromMap(ADMIN, (items, k) => {
+      const cards = items.map((d, i) => actionCard(d, { open: k === 'Overview' && i === 0 }));
+      if (k === 'Overview' && s.role === 'ADMIN') autoRun(cards[0]);
+      return h('div', { class: 'stack' }, cards);
+    }, undefined, ['Overview']));
+};
+
+// ---------- request builder ----------
+PAGES.builder = () => {
+  const pre = S.builderPreset || {}; S.builderPreset = null;
+  const method = h('select', { class: 'inp' }, ['GET', 'POST', 'PUT', 'DELETE'].map(m => h('option', null, m))); method.value = pre.method || 'GET';
+  const path = h('input', { class: 'inp', placeholder: '/api/v1/me', spellcheck: 'false' }); path.value = pre.path || '/api/v1/me';
+  const auth = h('select', { class: 'inp' }, [['jwt', 'Bearer token of the active account'], ['none', 'No authentication']].map(([v, l]) => h('option', { value: v }, l))); auth.value = pre.auth === 'none' ? 'none' : 'jwt';
+  const hdr = h('textarea', { class: 'inp', rows: 2, spellcheck: 'false' }); hdr.value = '{}';
+  const body = h('textarea', { class: 'inp', rows: 9, spellcheck: 'false', placeholder: '{ }' }); body.value = pre.body || '';
+  const out = h('div'); const send = h('button', { class: 'btn primary', type: 'button' }, 'Send');
+  send.addEventListener('click', async () => {
+    let headers, b;
+    try { headers = JSON.parse(hdr.value || '{}'); } catch (e) { return toast('Headers are not valid JSON', true); }
+    if (body.value.trim() && method.value !== 'GET') { try { b = JSON.parse(interp(body.value)); } catch (e) { return toast('Body is not valid JSON', true); } }
+    send.disabled = true;
+    const p = path.value.trim();
+    const res = await call(/^https?:\/\//.test(p) ? { url: interp(p), method: method.value, body: b, headers, auth: auth.value } : { method: method.value, path: p, body: b, headers, auth: auth.value });
+    send.disabled = false; out.replaceChildren(renderResult(res));
+  });
+  return h('div', null, lead('Send any request to the developer service with the active account\'s token. Only /api/v1 is reachable from a browser.'),
+    h('div', { class: 'card pad stack' },
+      h('div', { class: 'fields' },
+        h('div', null, h('label', { class: 'fl' }, 'Method'), method),
+        h('div', null, h('label', { class: 'fl' }, 'Authentication'), auth),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Path (or full URL)'), path),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Extra headers (JSON)'), hdr),
+        h('div', { class: 'wide' }, h('label', { class: 'fl' }, 'Body (JSON)'), body)),
+      h('div', { class: 'actions' }, send), out));
+};
+
+// ---------- error codes ----------
+PAGES.errors = () => {
+  const q = h('input', { class: 'inp', placeholder: 'Filter by code, status or words', spellcheck: 'false' });
+  const body = h('tbody');
+  const draw = () => {
+    const t = q.value.trim().toLowerCase();
+    body.replaceChildren(...ERRORS.filter(e => !t || (e[0] + ' ' + e[1] + ' ' + e[2]).toLowerCase().includes(t)).map(e =>
+      h('tr', null, h('td', { class: 'mono' }, e[0]), h('td', null, h('span', { class: 'pill ' + (e[1] >= 500 ? 'bad' : e[1] >= 400 ? 'warn' : '') }, e[1])), h('td', null, e[2]))));
+  };
+  q.addEventListener('input', draw); draw();
+  return h('div', null,
+    lead('Errors come back as { success: false, message, data: { code, requestId } }. Quote the requestId when asking for help.'),
+    h('div', { style: { marginBottom: '12px', maxWidth: '420px' } }, q),
+    h('div', { class: 'tw' }, h('table', { class: 't' }, h('thead', null, h('tr', null, h('th', null, 'Code'), h('th', null, 'HTTP'), h('th', null, 'What it means'))), body)));
+};
+
+// ---------- start ----------
+window.addEventListener('error', e => { try { toast('Script error: ' + e.message, true); } catch (x) { /* ignore */ } });
+window.addEventListener('unhandledrejection', e => { try { toast('Unexpected error: ' + (e.reason && e.reason.message || e.reason), true); } catch (x) { /* ignore */ } });
+applyTheme(S.theme);
+applyAccent(S.accent);
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.theme === 'system') applyTheme('system'); });
+renderApp();
+
+</script>
+</body>
+</html>
