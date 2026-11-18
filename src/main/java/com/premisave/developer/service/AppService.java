@@ -74,8 +74,10 @@ public class AppService {
     }
 
     public Created create(Developer developer, CreateAppRequest req) {
-        MerchantInfo merchant = wallet.getMerchant(businesses.resolve(developer, req.businessId()));
         Environment env = parseEnvironment(req.environment());
+        MerchantInfo merchant = wallet.getMerchant(env == Environment.LIVE
+                ? businesses.resolve(developer, req.businessId())
+                : businesses.resolveForSandbox(developer, req.businessId()));
         String status = merchant.statusFor(env);
         if (env == Environment.LIVE && "PENDING_APPROVAL".equals(status)) {
             throw new DeveloperException(ErrorCode.LIVE_NOT_ENABLED, "Production access has not been approved for your business yet");

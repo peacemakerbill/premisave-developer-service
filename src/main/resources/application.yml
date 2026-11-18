@@ -93,7 +93,7 @@ developer:
   internal:
     api-key: ${DEVELOPER_INTERNAL_API_KEY:}
   cors:
-    allowed-origins: ${DEVELOPER_PORTAL_ORIGINS:}
+    allowed-origins: ${DEVELOPER_PORTAL_ORIGINS:http://localhost:3000}
   cloudinary:
     # Profile pictures are stored in Cloudinary. Find the three values on the Cloudinary dashboard. With any of them
     # empty, profile pictures are switched off and everything else works. Pictures go under folder/developerId.
@@ -107,7 +107,8 @@ developer:
     # Sender address on verification and reset emails. When empty the mail server decides (usually the login user).
     from: ${DEVELOPER_MAIL_FROM:}
     # Where the portal runs. Emails link to {portal-base-url}/verify-email?token=... and /reset-password?token=...
-    portal-base-url: ${DEVELOPER_PORTAL_URL:http://localhost:3000}
+    # The Premisave app serves the portal under /developers, so the default includes that path.
+    portal-base-url: ${DEVELOPER_PORTAL_URL:http://localhost:3000/developers}
     verification-ttl-hours: 24
     reset-ttl-minutes: 60
     resend-cooldown-seconds: 60

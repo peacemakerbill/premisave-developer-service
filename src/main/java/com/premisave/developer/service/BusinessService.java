@@ -107,6 +107,7 @@ public class BusinessService {
         Set<String> listed = new HashSet<>();
         for (Map<String, Object> merchant : raw) {
             String id = String.valueOf(merchant.get("merchantId"));
+            if (id.equals(developer.getSandboxWorkspaceId())) continue;
             if (!developer.ownsBusiness(id)) {
                 developer.addBusiness(id);
                 changed = true;
@@ -205,6 +206,47 @@ public class BusinessService {
                     .with("businessIds", ids);
         }
         return ids.get(0);
+    }
+
+    /**
+     * The business a sandbox app is created for. With an id it must be the account's own. Without one, the account's only
+     * business is used, otherwise its sandbox workspace, which is created here the first time it is needed. A sandbox app
+     * needs no business application and no confirmed email address.
+     */
+    public String resolveForSandbox(Developer developer, String businessId) {
+        if (businessId != null && !businessId.isBlank()) return requireOwned(developer, businessId.trim());
+        List<String> ids = developer.businessIds();
+        if (ids.size() == 1) return ids.get(0);
+        if (developer.getSandboxWorkspaceId() != null) return developer.getSandboxWorkspaceId();
+        if (!ids.isEmpty()) return resolve(developer, null);
+        return provisionSandboxWorkspace(developer);
+    }
+
+    private String provisionSandboxWorkspace(Developer developer) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        String owner = developer.getFullName() == null || developer.getFullName().isBlank()
+                ? developer.getEmail() : developer.getFullName().trim();
+        body.put("developerAccountId", developer.getDeveloperId());
+        body.put("businessName", owner + " sandbox");
+        body.put("displayName", "Sandbox workspace");
+        body.put("country", developer.getCountry() == null || developer.getCountry().isBlank()
+                ? "KE" : developer.getCountry().toUpperCase(Locale.ROOT));
+        body.put("contactEmail", developer.getEmail());
+        String id;
+        try {
+            id = String.valueOf(wallet.createMerchant(body).get("merchantId"));
+        } catch (DeveloperException e) {
+            // A reply was lost on an earlier try: the wallet service already has this workspace, so pick it up.
+            if (e.code() == ErrorCode.DUPLICATE_REQUEST && e.extra().get("merchantId") != null) {
+                id = String.valueOf(e.extra().get("merchantId"));
+            } else {
+                throw e;
+            }
+        }
+        developer.setSandboxWorkspaceId(id);
+        developer.setUpdatedAt(Instant.now());
+        developers.save(developer);
+        return id;
     }
 
     private void link(Developer developer, String businessId) {

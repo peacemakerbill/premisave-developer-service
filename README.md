@@ -97,6 +97,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 
 **Apps and API Keys**
 - Up to 10 apps per environment for each business, each `sandbox` or `production`, with its own keys
+- **Sandbox apps need no business.** A developer who has none gets a personal sandbox workspace on the first sandbox app, so test keys are available at once. Production apps still need an approved business
 - Production apps need a linked Premisave wallet and use the business's own merchant number, and one live app per wallet is enforced by a unique index
 - Per-app narrowing of payment methods and limits that can never widen what the merchant already has
 - Keys come with a secret shown once. Rotation keeps the old key working for a grace period, revocation is immediate
@@ -782,7 +783,7 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `DEVELOPER_SEED_ADMIN1_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The first administrator to create |
 | `DEVELOPER_SEED_ADMIN2_EMAIL`, `_FIRST_NAME`, `_LAST_NAME`, `_PASSWORD` | The second administrator to create |
 | `DEVELOPER_PORTAL_ORIGINS` | Browser origins allowed to call `/api/v1`, comma separated. `/v1` is never opened to browsers |
-| `DEVELOPER_PORTAL_URL` | Where the portal runs. Links in emails point here |
+| `DEVELOPER_PORTAL_URL` | Where the portal runs, default `http://localhost:3000/developers`. Emails link to `/verify-email?token=` and `/reset-password?token=` under it, so for the Premisave app use the app address plus `/developers`. A production host must serve `index.html` for those paths |
 | `DEVELOPER_MAIL_FROM` | Sender address on every email |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | The SMTP server. Host defaults to `smtp.gmail.com` and port to `587`. An empty `MAIL_USERNAME` means no email is sent. See [Email Setup](#email-setup) |
 | `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS_ENABLE` | Both default to `true`, which is right for Gmail and most providers |

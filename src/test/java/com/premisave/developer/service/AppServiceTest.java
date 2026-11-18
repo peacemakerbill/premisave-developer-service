@@ -63,6 +63,17 @@ class AppServiceTest {
             super(null, null);
         }
 
+        /** The businesses created through the wallet service, in order, as the sandbox workspace is. */
+        final List<Map<String, Object>> created = new ArrayList<>();
+
+        @Override
+        public Map<String, Object> createMerchant(Map<String, Object> body) {
+            Map<String, Object> merchant = new HashMap<>(body);
+            merchant.put("merchantId", "mer_sbx" + (created.size() + 1));
+            created.add(merchant);
+            return merchant;
+        }
+
         @Override
         public MerchantInfo getMerchant(String merchantId) {
             return new MerchantInfo(merchantId, numbers.getOrDefault(merchantId, "PRM-0000000001"), sandboxStatus, liveStatus, merchantMethods,
@@ -233,10 +244,33 @@ class AppServiceTest {
     }
 
     @Test
-    void aDeveloperWithoutABusinessCannotCreateApps() {
+    void aDeveloperWithoutABusinessCannotCreateProductionApps() {
         Developer none = new Developer();
         none.setDeveloperId("dev_2");
-        assertEquals(ErrorCode.BUSINESS_REQUIRED, fails(() -> service.create(none, sandbox(null))).code());
+        assertEquals(ErrorCode.BUSINESS_REQUIRED, fails(() -> service.create(none, live(null, "owner@acme.test"))).code());
+        assertTrue(wallet.created.isEmpty());
+    }
+
+    @Test
+    void aSandboxAppNeedsNoBusinessAndGetsAHiddenWorkspace() {
+        Developer none = new Developer();
+        none.setDeveloperId("dev_2");
+        none.setEmail("new@acme.test");
+        none.setFullName("Ada Lovelace");
+        none.setCountry("ke");
+
+        AppService.Created first = service.create(none, sandbox(null));
+        assertEquals("mer_sbx1", first.app().getMerchantId());
+        assertEquals("mer_sbx1", none.getSandboxWorkspaceId());
+        assertEquals("Sandbox workspace", wallet.created.get(0).get("displayName"));
+        assertEquals("KE", wallet.created.get(0).get("country"));
+        // It is not a business: it is not listed and does not count toward the limit.
+        assertTrue(none.businessIds().isEmpty());
+        assertTrue(none.ownsBusiness("mer_sbx1"));
+
+        // The next sandbox app reuses it.
+        assertEquals("mer_sbx1", service.create(none, sandbox(null)).app().getMerchantId());
+        assertEquals(1, wallet.created.size());
     }
 
     @Test

@@ -82,6 +82,12 @@ public class Developer {
      */
     private List<String> sharedMerchantIds = new ArrayList<>();
 
+    /**
+     * The hidden business that holds this account's sandbox apps until it applies for a real one. It is created by the first
+     * sandbox app, is never listed as a business and does not count toward the limit of businesses.
+     */
+    private String sandboxWorkspaceId;
+
     private int failedLogins;
     private Instant lockedUntil;
 
@@ -202,8 +208,11 @@ public class Developer {
     }
 
     public boolean ownsBusiness(String businessId) {
-        return businessId != null && businessIds().contains(businessId);
+        return businessId != null && (businessIds().contains(businessId) || businessId.equals(sandboxWorkspaceId));
     }
+
+    public String getSandboxWorkspaceId() { return sandboxWorkspaceId; }
+    public void setSandboxWorkspaceId(String v) { this.sandboxWorkspaceId = v; }
 
     /** Records a business of this account. Does nothing when it is already there. */
     public void addBusiness(String businessId) {
