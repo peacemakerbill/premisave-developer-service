@@ -1,61 +1,48 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=220&section=header&text=Premisave%20Developer%20Service&fontSize=42&fontColor=ffffff&fontAlignY=35&animation=fadeIn&desc=Developer%20Accounts%2C%20Apps%2C%20API%20Keys%20and%20the%20Public%20Payment%20API%20Entry&descAlignY=60&descSize=18" alt="Premisave Developer Service banner" width="100%"/>
-
-<img src="https://wsrv.nl/?url=github.com/peacemakerbill.png&w=140&h=140&fit=cover&mask=circle&output=png" width="140" height="140" alt="Author avatar"/>
-
-<a href="https://readme-typing-svg.demolab.com/">
-  <img src="https://readme-typing-svg.demolab.com/?font=Orbitron&weight=700&size=24&pause=1000&color=2E7D32&center=true&vCenter=true&width=800&lines=Let+Developers+Build+on+the+Premisave+Payment+API" alt="Tagline"/>
-</a>
-
-<a href="https://readme-typing-svg.demolab.com/">
-  <img src="https://readme-typing-svg.demolab.com/?font=JetBrains+Mono&weight=500&size=20&pause=1200&color=2E7D32&center=true&vCenter=true&width=700&lines=Sign+Up+%7C+Email+Confirmation+%7C+Password+Reset;Google+%2F+Facebook+%2F+GitHub+Sign-In;Sandbox+and+Production+Apps+with+Rotating+API+Keys;Public+%2Fv1+Entry+in+Front+of+the+Wallet+Service;Built+on+Spring+Boot+4.1.1+%2B+Java+21" alt="Typing SVG"/>
-</a>
+<img src="docs/assets/banner.svg" alt="Premisave Developer Service. The front door for people who build on Premisave." width="100%"/>
 
 <br/>
 
-[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](#tech-stack)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](#tech-stack)
-[![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)](#tech-stack)
-[![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=jsonwebtokens)](#security-highlights)
-[![Maven](https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](#getting-started)
-[![Postman](https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white)](#api-reference)
+[![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot 4.1](https://img.shields.io/badge/Spring_Boot-4.1-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![MongoDB Spring Data](https://img.shields.io/badge/MongoDB-Spring_Data-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com)
+[![JWT Developer tokens](https://img.shields.io/badge/JWT-Developer_tokens-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io)
+[![Maven Wrapper](https://img.shields.io/badge/Maven-Wrapper-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)](https://maven.apache.org)
 
-<br/>
+![Gmail SMTP](https://img.shields.io/badge/Gmail-SMTP-EA4335?style=flat-square&logo=gmail&logoColor=white)
+![Google Sign-In](https://img.shields.io/badge/Google-Sign--In-4285F4?style=flat-square&logo=google&logoColor=white)
+![Facebook Login](https://img.shields.io/badge/Facebook-Login-1877F2?style=flat-square&logo=facebook&logoColor=white)
+![GitHub OAuth](https://img.shields.io/badge/GitHub-OAuth-181717?style=flat-square&logo=github&logoColor=white)
+![Postman Collection](https://img.shields.io/badge/Postman-Collection-FF6C37?style=flat-square&logo=postman&logoColor=white)
 
-[![Gmail SMTP](https://img.shields.io/badge/Gmail%20SMTP-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](#email-setup)
-[![Google](https://img.shields.io/badge/Google%20Sign--In-4285F4?style=for-the-badge&logo=google&logoColor=white)](#social-sign-in-setup)
-[![Facebook](https://img.shields.io/badge/Facebook%20Login-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](#social-sign-in-setup)
-[![GitHub OAuth](https://img.shields.io/badge/GitHub%20OAuth-181717?style=for-the-badge&logo=github&logoColor=white)](#social-sign-in-setup)
+[![Last commit](https://img.shields.io/github/last-commit/peacemakerbill/premisave-developer-service?style=flat-square&color=14493B)](https://github.com/peacemakerbill/premisave-developer-service/commits/main)
+[![Stars](https://img.shields.io/github/stars/peacemakerbill/premisave-developer-service?style=flat-square&color=14493B)](https://github.com/peacemakerbill/premisave-developer-service/stargazers)
+[![Issues](https://img.shields.io/github/issues/peacemakerbill/premisave-developer-service?style=flat-square&color=14493B)](https://github.com/peacemakerbill/premisave-developer-service/issues)
+[![Frontend](https://img.shields.io/badge/frontend-premisave__flutter__frontend-0E3B2F?style=flat-square&logo=flutter&logoColor=E3A72F)](https://github.com/peacemakerbill/premisave_flutter_frontend)
+
+**[Getting started](#getting-started)** &nbsp;|&nbsp; **[Where it sits](#where-it-sits)** &nbsp;|&nbsp; **[Flutter app](#connected-to-the-flutter-app)** &nbsp;|&nbsp; **[Architecture](#architecture)** &nbsp;|&nbsp; **[API reference](#api-reference)** &nbsp;|&nbsp; **[Environment](#environment-variables)** &nbsp;|&nbsp; **[Known gaps](#known-gaps)**
 
 </div>
 
-<br/>
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
 
-## Menu
+## Contents
 
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Sequence Diagrams](#sequence-diagrams)
-  - [Sign Up and Email Confirmation](#sign-up-and-email-confirmation)
-  - [Sign In](#sign-in)
-  - [Social Sign In](#social-sign-in)
-  - [Logout and Token Revocation](#logout-and-token-revocation)
-  - [Forgot Password](#forgot-password)
-  - [Apply for a Business](#apply-for-a-business)
-  - [Create an App and Its First Key](#create-an-app-and-its-first-key)
-  - [Move an App to Another Account](#move-an-app-to-another-account)
-  - [A Merchant Calls the Public API](#a-merchant-calls-the-public-api)
 - [API Reference](#api-reference)
+- [Where it sits](#where-it-sits)
+- [A request, step by step](#a-request-step-by-step)
+- [Connected to the Flutter app](#connected-to-the-flutter-app)
 - [Getting Started](#getting-started)
-  - [Generating Secrets](#generating-secrets)
 - [Environment Variables](#environment-variables)
 - [Profile Pictures](#profile-pictures)
 - [Email Setup](#email-setup)
 - [Social Sign In Setup](#social-sign-in-setup)
-  - [Trying It in a Browser](#trying-it-in-a-browser)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 - [Security Highlights](#security-highlights)
@@ -67,7 +54,7 @@
 - [License](#license)
 - [Author](#author)
 
-<br/>
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
 
 ## Overview
 
@@ -618,6 +605,112 @@ Every account has a `role`: `DEVELOPER` (the default, also for accounts that exi
 Request and response examples for every endpoint, plus the full list of error codes, are in [DEVELOPER_API.md](DEVELOPER_API.md). A ready-to-import Postman collection and environment are in `postman/`.
 
 <br/>
+
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
+
+## Where it sits
+
+<img src="docs/assets/services.svg" alt="The Flutter app on the left and the seven Premisave services on the right with their ports and the setting that holds each address. This service is picked out." width="100%"/>
+
+The developer service is the front door for people who build on Premisave. Developers sign in to it with their own accounts, and merchant servers call its public `/v1` entry, which forwards to the wallet service. The Flutter app carries a **Developer portal** for the account side.
+
+| Caller | What for | Proves who it is with |
+| --- | --- | --- |
+| Flutter app | Developer portal: sign in, apps, API keys | the developer's own token |
+| Merchant servers | the public `/v1/live` and `/v1/sandbox` entry | an API key and secret |
+| wallet-service | called by this service to do the payments | `X-API-Key` internal key |
+
+It listens on port **8091**. The Flutter app finds it with the setting `DEVELOPER_URL`.
+
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
+
+## A request, step by step
+
+<img src="docs/assets/flow.svg" alt="The request the Flutter app makes, step by step, and who answers each step." width="100%"/>
+
+A developer is not a Premisave user. The key and secret are created here and shown once, and every merchant call enters here first, so the wallet is never exposed.
+
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
+
+## Connected to the Flutter app
+
+<img src="docs/assets/connect.svg" alt="A screen asks a provider, which asks the repository, which uses the API client to call this service." width="100%"/>
+
+The Flutter app's **Developer portal** uses this service. It is on the Home screen for everyone signed in, because anyone may become a developer.
+
+The code is in [`premisave_flutter_frontend`](https://github.com/peacemakerbill/premisave_flutter_frontend): the repository class is `lib/src/data/repositories/developer_repository.dart`, the providers are in `lib/src/state`, and every call below goes through one client built for this service.
+
+### What the app does with it
+
+| Screen | What it does | Calls |
+| --- | --- | --- |
+| Sign in and sign up | A developer account, separate from the person account | `POST /api/v1/auth/login`, `POST /api/v1/auth/signup`, `POST /api/v1/auth/forgot-password`, `GET /api/v1/me`, `POST /api/v1/me/logout` |
+| Apps | List, create, suspend and reactivate apps | `GET /api/v1/apps`, `POST /api/v1/apps`, `POST /api/v1/apps/{id}/suspend`, `POST /api/v1/apps/{id}/reactivate` |
+| API keys | List, create, rotate and revoke keys. A key and its secret are shown once | `GET /api/v1/apps/{id}/keys`, `POST /api/v1/apps/{id}/keys`, `POST /api/v1/apps/{id}/keys/{key}/rotate`, `DELETE /api/v1/apps/{id}/keys/{key}` |
+
+- Answers use the `{ success, message, data, timestamp }` envelope.
+- The token is kept in secure storage under `ps_developer_token`, apart from the person sign in. There is no refresh: when it expires the portal asks for the password again.
+- The portal copies a key and its secret with a button and never shows the secret again, because the service only keeps a hash.
+
+### Settings
+
+In the Flutter app, in `config/env/*.json` or passed with `--dart-define`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `DEVELOPER_URL` | `http://localhost:8091`, or `http://10.0.2.2:8091` on the Android emulator | Where this service lives, with no trailing slash |
+
+On a real phone `localhost` is the phone itself, so use the computer's address on the network. Flutter reads these values only at launch: stop the app and run it again after a change.
+
+In this service's `.env`:
+
+| Variable | Why the app cares |
+| --- | --- |
+| `DEVELOPER_JWT_SECRET` | Signs the developer tokens. Not the auth-service secret |
+| `DEVELOPER_PORTAL_ORIGINS` | Browser origins that may call the portal endpoints |
+| `API_KEY_PEPPER` | Hashes the API keys |
+| `WALLET_SERVICE_URL` | Where payments are forwarded |
+
+### Signing and tokens
+
+This service does **not** accept the auth-service token. A developer has an account here, signs in with `POST /api/v1/auth/login` and gets a token signed with `DEVELOPER_JWT_SECRET`. The app keeps it in secure storage under `ps_developer_token`, apart from the person sign in, sends it only to this service, and has no refresh: an expired token means signing in again.
+
+### Browser rules (CORS)
+
+A phone or desktop build is not stopped by CORS. A browser is, so for the web build this service must allow the address the app is served from, which is `http://localhost:3000` in development.
+
+| Setting | Default | What to do |
+| --- | --- | --- |
+| `DEVELOPER_PORTAL_ORIGINS` | empty, nothing is allowed | **Set it for the web build.** Use `DEVELOPER_PORTAL_ORIGINS=http://localhost:3000`, or a comma separated list of every origin the portal is served from. |
+
+### Run it together
+
+Each command is run in its own terminal. Start the services this one needs first.
+
+```bash
+# 1. premisave-wallet-service
+cd ~/MyProjects/premisave/premisave-wallet-service && ./mvnw spring-boot:run
+
+# 2. this service
+cd ~/MyProjects/premisave/premisave-developer-service && ./mvnw spring-boot:run
+
+# 3. the app, on the port the backends allow for browsers
+cd ~/MyProjects/premisave/premisave_flutter_frontend
+flutter run -d chrome --web-port=3000 --dart-define-from-file=config/env/dev.local.json
+```
+
+Leave `DEVELOPER_URL` empty in the app's file and it finds this service on `localhost:8091`. The same walk through for every service is in [the app's docs](https://github.com/peacemakerbill/premisave_flutter_frontend/blob/main/docs/SERVICES.md).
+
+### If it does not connect
+
+| You see | Likely cause | Do this |
+| --- | --- | --- |
+| Works on a phone, blocked in Chrome | `DEVELOPER_PORTAL_ORIGINS` is empty | Set it to `http://localhost:3000` and restart the service |
+| The portal asks for the password again | The developer token expired | Sign in again. It has no refresh |
+| Sign in fails with a good password | The email is not confirmed yet | Confirm the email first, from the link the service sent |
+| "Could not reach the server" | The service is not running, or `DEVELOPER_URL` points elsewhere | Start it, or set `DEVELOPER_URL` and restart the app |
+
+<img src="docs/assets/divider.svg" alt="" width="100%"/>
 
 ## Getting Started
 
