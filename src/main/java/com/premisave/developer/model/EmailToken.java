@@ -29,6 +29,10 @@ public class EmailToken {
     /** The address the link was sent to. A verification link only counts while the account still has this address. */
     private String email;
 
+    /** Only for LINK_PROVIDER: which provider and which of its accounts the link will join to the developer. */
+    private String provider;
+    private String subject;
+
     private Instant createdAt;
 
     @Indexed(expireAfter = "0s")
@@ -46,6 +50,10 @@ public class EmailToken {
     public void setType(EmailTokenType v) { this.type = v; }
     public String getEmail() { return email; }
     public void setEmail(String v) { this.email = v; }
+    public String getProvider() { return provider; }
+    public void setProvider(String v) { this.provider = v; }
+    public String getSubject() { return subject; }
+    public void setSubject(String v) { this.subject = v; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant v) { this.createdAt = v; }
     public Instant getExpiresAt() { return expiresAt; }

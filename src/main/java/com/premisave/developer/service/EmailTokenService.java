@@ -63,6 +63,11 @@ public class EmailTokenService {
     }
 
     public Issued issue(Developer d, EmailTokenType type) {
+        return issue(d, type, null, null);
+    }
+
+    /** A link that joins one provider account to the developer. The provider and its subject travel in the stored row, never in the link. */
+    public Issued issue(Developer d, EmailTokenType type, String provider, String subject) {
         Instant now = clock.instant();
         String raw = Ids.randomToken(32);
         EmailToken row = new EmailToken();
@@ -71,6 +76,8 @@ public class EmailTokenService {
         row.setDeveloperId(d.getDeveloperId());
         row.setType(type);
         row.setEmail(d.getEmail());
+        row.setProvider(provider);
+        row.setSubject(subject);
         row.setCreatedAt(now);
         row.setExpiresAt(type == EmailTokenType.VERIFY_EMAIL
                 ? now.plus(Duration.ofHours(mail.verificationTtlHours()))

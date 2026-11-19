@@ -26,7 +26,8 @@ class EmailTemplatesTest {
                 EmailTemplates.transferCode("Jane", "123456", "move the production app \"Shop\"", "Acme Ltd", "PRM-0000000001",
                         "Olivia Tester", 15, PORTAL),
                 EmailTemplates.appReceived("Jane", "Olivia", "Shop", "Acme Ltd", "PRM-0000000001", PORTAL),
-                EmailTemplates.appHandedOver("Jane", "Shop", "Acme Ltd", "PRM-0000000001", "n***@dev.test", PORTAL));
+                EmailTemplates.appHandedOver("Jane", "Shop", "Acme Ltd", "PRM-0000000001", "n***@dev.test", PORTAL),
+                EmailTemplates.linkProvider("Jane", "Facebook", LINK, 60, PORTAL));
     }
 
     @Test
@@ -130,6 +131,17 @@ class EmailTemplatesTest {
         assertEquals(2, html.split(java.util.regex.Pattern.quote(LINK), -1).length - 1);
         assertTrue(html.contains("expires in 24 hours"));
         assertTrue(EmailTemplates.verify("Jane", LINK, 1, PORTAL).html().contains("expires in 1 hour."));
+    }
+
+    @Test
+    void theProviderLinkEmailNamesTheProviderCarriesTheLinkAndSaysWhatToDoIfItWasNotYou() {
+        String html = EmailTemplates.linkProvider("Jane", "Facebook", LINK, 60, PORTAL).html();
+        assertEquals("Link Facebook to your Premisave developer account", EmailTemplates.linkProvider("Jane", "Facebook", LINK, 60, PORTAL).subject());
+        assertTrue(html.contains("href=\"" + LINK + "\""));
+        assertEquals(2, html.split(java.util.regex.Pattern.quote(LINK), -1).length - 1);
+        assertTrue(html.contains("Link Facebook"));
+        assertTrue(html.contains("expires in 60 minutes"));
+        assertTrue(html.contains("If this was not you, ignore this email"));
     }
 
     @Test

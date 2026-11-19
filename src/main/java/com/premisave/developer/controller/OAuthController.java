@@ -3,6 +3,7 @@ package com.premisave.developer.controller;
 import com.premisave.developer.dto.ApiResponse;
 import com.premisave.developer.dto.ClientInfo;
 import com.premisave.developer.dto.SocialLoginRequest;
+import com.premisave.developer.dto.VerifyEmailRequest;
 import com.premisave.developer.service.OAuthService;
 import com.premisave.developer.util.Responses;
 
@@ -22,6 +23,10 @@ import java.util.Map;
  * The portal gets the provider's token in the browser and posts it as { "token": "..." }: Google's ID token,
  * Facebook's access token, or GitHub's one time code. The Linux and Windows apps post { "code": "...", "redirectUri": "..." }
  * instead and this service trades the code. First sign in with a new email creates the account.
+ *
+ * When a provider that does not vouch for its addresses (Facebook) brings an address that already has an account, the
+ * answer is 409 ACCOUNT_EXISTS with next CONFIRM_LINK, and the account's mailbox gets a link. The portal posts that
+ * link's token to /link/confirm, and after that the provider signs in like any other.
  */
 @RestController("developerOAuthController")
 @RequestMapping("/api/v1/auth/social")
@@ -54,6 +59,12 @@ public class OAuthController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> github(@Valid @RequestBody SocialLoginRequest req,
                                                                    HttpServletRequest http) {
         return signedIn("github", req, http);
+    }
+
+    /** Public, because the link is opened from an email on a device that may not be signed in. It signs nobody in. */
+    @PostMapping("/link/confirm")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> confirmLink(@Valid @RequestBody VerifyEmailRequest req) {
+        return Responses.ok("Account linked", oauth.confirmLink(req.token()));
     }
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> signedIn(String provider, SocialLoginRequest req,

@@ -403,6 +403,111 @@
           ]
         },
         {
+          "name": "List connected providers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/connections",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "connections"
+              ]
+            },
+            "description": "The providers joined to this account with the address each gave and when, whether the account has a password, and which providers are switched on."
+          },
+          "response": []
+        },
+        {
+          "name": "Connect a provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/connections/facebook",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "connections",
+                "facebook"
+              ]
+            },
+            "description": "Joins a provider account to the signed in developer. Body: { \"token\": ... } (Google ID token, Facebook access token, GitHub code) or { \"code\", \"redirectUri\" } for the desktop apps. Change facebook in the address to google or github. The provider's address does not have to match. Repeating it is harmless. 409 ACCOUNT_EXISTS when that provider account belongs to another developer, 409 INVALID_STATE when a different account of the same provider is already connected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{facebook_access_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disconnect a provider",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/me/connections/facebook",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "connections",
+                "facebook"
+              ]
+            },
+            "description": "Removes the provider from the account. 404 NOT_FOUND when it is not connected, 409 INVALID_STATE when it is the only way to sign in (no password and no other provider): set a password first."
+          },
+          "response": []
+        },
+        {
           "name": "Sign out",
           "request": {
             "method": "POST",
@@ -903,6 +1008,47 @@
               }
             }
           ]
+        },
+        {
+          "name": "Confirm a provider link (from the email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/auth/social/link/confirm",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "social",
+                "link",
+                "confirm"
+              ]
+            },
+            "description": "Facebook never vouches for an address, so when it brings an address that already has an account the service emails that address a link (PORTAL/link-provider?token=THIS) and answers 409 ACCOUNT_EXISTS with data.next CONFIRM_LINK. Paste the token from the link into link_token and send. It works once for 60 minutes and signs nobody in; sign in with the provider again afterwards. 400 INVALID_TOKEN if unknown, used or expired, 409 ACCOUNT_EXISTS if that provider account now belongs to another developer. With DEVELOPER_MAIL_LOG_LINKS=true and no mail server the link is in the service log.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{link_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
       ],
       "description": "The provider token is made in the browser, so no OAuth screen is needed here. Run oauth-test/social-login-test.html (Get the token only mode), copy the token into the matching collection variable and send the request. Google sends an ID token, Facebook an access token, GitHub a one-time code."
@@ -4515,6 +4661,11 @@
     },
     {
       "key": "facebook_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "link_token",
       "value": "",
       "type": "string"
     },

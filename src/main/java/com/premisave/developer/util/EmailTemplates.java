@@ -45,6 +45,16 @@ public final class EmailTemplates {
         return new Message(subject, page("confirm-email", v, subject, "Confirm your email address to finish setting up your account."));
     }
 
+    /** Sent to the address of an account when someone signs in with a provider that uses the same address. Joining is up to the mailbox owner. */
+    public static Message linkProvider(String name, String provider, String link, int validMinutes, String portalUrl) {
+        Map<String, String> v = base(name, portalUrl);
+        v.put("provider", provider);
+        v.put("link", link);
+        v.put("validFor", validMinutes == 1 ? "1 minute" : validMinutes + " minutes");
+        String subject = "Link " + provider + " to your Premisave developer account";
+        return new Message(subject, page("link-provider", v, subject, "Confirm that you want to sign in with " + provider + "."));
+    }
+
     public static Message welcome(String name, String portalUrl) {
         String subject = "Welcome to Premisave";
         return new Message(subject, page("welcome", base(name, portalUrl), subject, "Your account is ready. Here is how to get started."));

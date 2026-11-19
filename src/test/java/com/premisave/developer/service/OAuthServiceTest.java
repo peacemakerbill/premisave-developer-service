@@ -382,6 +382,199 @@ class OAuthServiceTest {
         assertEquals(1, devs.store.size());
     }
 
+    // ---- joining by email
+
+    @Test
+    void facebookWithAnAddressThatHasAnAccountEmailsALinkToThatMailboxAndSignsNobodyIn() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        DeveloperException e = assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, e.code());
+        assertEquals("CONFIRM_LINK", e.extra().get("next"));
+        assertTrue(e.getMessage().contains("j***@example.com"));
+        assertTrue(ids.store.isEmpty());
+        assertNotNull(d.getPasswordHash());
+        assertEquals(1, mailer.sent.size());
+        assertEquals("jane@example.com", mailer.sent.get(0).to());
+        assertEquals("Link Facebook to your Premisave developer account", mailer.sent.get(0).subject());
+        assertTrue(mailer.lastLink("https://portal.example.com/link-provider?token=").length() > 60);
+    }
+
+    @Test
+    void openingTheLinkJoinsFacebookAndFacebookThenSignsInOnItsOwn() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        String token = mailer.lastLink("https://portal.example.com/link-provider?token=").substring("https://portal.example.com/link-provider?token=".length());
+
+        Map<String, Object> done = service.confirmLink(token);
+        assertEquals(true, done.get("linked"));
+        assertEquals("facebook", done.get("provider"));
+        assertTrue(ids.store.containsKey("facebook:f-7"));
+        assertTrue(d.getAuthProviders().contains("facebook"));
+        assertNotNull(d.getPasswordHash());
+
+        Map<String, Object> s = signIn("facebook");
+        assertEquals(false, s.get("newAccount"));
+        assertEquals("dev_local", ids.store.get("facebook:f-7").getDeveloperId());
+        assertNotNull(s.get("accessToken"));
+        assertEquals(1, devs.store.size());
+    }
+
+    @Test
+    void aProviderLinkWorksOnceAndOnlyForTheTokenIssued() {
+        localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        String token = mailer.lastLink("https://portal.example.com/link-provider?token=").substring("https://portal.example.com/link-provider?token=".length());
+        service.confirmLink(token);
+        assertEquals(ErrorCode.INVALID_TOKEN, assertThrows(DeveloperException.class, () -> service.confirmLink(token)).code());
+        assertEquals(ErrorCode.INVALID_TOKEN, assertThrows(DeveloperException.class, () -> service.confirmLink("not-a-token")).code());
+        assertEquals(1, ids.store.size());
+    }
+
+    @Test
+    void aSecondAttemptRightAwayDoesNotSendAnotherEmailAndSaysHowLongToWait() {
+        localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        DeveloperException again = assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, again.code());
+        assertEquals("CONFIRM_LINK", again.extra().get("next"));
+        assertNotNull(again.extra().get("retryAfterSeconds"));
+        assertEquals(1, mailer.sent.size());
+    }
+
+    @Test
+    void withNoMailServerTheOldMessageIsGivenAndNothingIsSent() {
+        localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        AccountEmailService noMail = new AccountEmailService(devs.repo,
+                new EmailTokenService(tokenRepo.repo, TestProps.mail(), TestProps.PEPPER, clock),
+                new MailService(null, Runnable::run, false), hasher, TestProps.mail(), 10, clock);
+        OAuthService s = new OAuthService(new OAuthClient(OAuthClientTest.config(), http), ids.repo, devs.repo, accounts, noMail, clock);
+        DeveloperException e = assertThrows(DeveloperException.class, () -> s.signIn("facebook", "token-1"));
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, e.code());
+        assertTrue(e.getMessage().startsWith("An account with this email already exists. Sign in with"));
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    @Test
+    void confirmingTheLinkOfAnUnconfirmedAccountDropsItsPasswordLikeAVerifiedProviderWould() {
+        Developer d = localAccount("jane@example.com", false);
+        facebook("f-7", "jane@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        String token = mailer.lastLink("https://portal.example.com/link-provider?token=").substring("https://portal.example.com/link-provider?token=".length());
+        int version = d.getTokenVersion();
+        service.confirmLink(token);
+        assertNull(d.getPasswordHash());
+        assertTrue(d.isEmailVerified());
+        assertEquals(version + 1, d.getTokenVersion());
+    }
+
+    @Test
+    void aProviderAccountAlreadyUsedByAnotherDeveloperCannotBeJoinedByLink() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-7", "jane@example.com");
+        assertThrows(DeveloperException.class, () -> signIn("facebook"));
+        String token = mailer.lastLink("https://portal.example.com/link-provider?token=").substring("https://portal.example.com/link-provider?token=".length());
+        com.premisave.developer.model.OAuthIdentity other = new com.premisave.developer.model.OAuthIdentity();
+        other.setId("facebook:f-7");
+        other.setDeveloperId("dev_other");
+        other.setProvider("facebook");
+        ids.store.put(other.getId(), other);
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, assertThrows(DeveloperException.class, () -> service.confirmLink(token)).code());
+        assertFalse(d.getAuthProviders().contains("facebook"));
+    }
+
+    @Test
+    void aDisabledAccountIsNeverEmailedALink() {
+        Developer d = localAccount("jane@example.com", true);
+        d.setStatus(DeveloperStatus.DISABLED);
+        facebook("f-7", "jane@example.com");
+        assertEquals(ErrorCode.ACCOUNT_DISABLED, assertThrows(DeveloperException.class, () -> signIn("facebook")).code());
+        assertTrue(mailer.sent.isEmpty());
+    }
+
+    // ---- connecting from the profile
+
+    @Test
+    void aSignedInDeveloperCanConnectAProviderWhoseAddressDiffersAndSeeItListed() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-9", "other@example.com");
+        Map<String, Object> out = service.connect(d, "facebook", "token-1", null, null);
+        assertTrue(ids.store.containsKey("facebook:f-9"));
+        assertTrue(d.getAuthProviders().contains("facebook"));
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> rows = (java.util.List<Map<String, Object>>) out.get("connections");
+        assertEquals(1, rows.size());
+        assertEquals("facebook", rows.get(0).get("provider"));
+        assertEquals("other@example.com", rows.get(0).get("email"));
+        assertEquals(true, out.get("hasPassword"));
+        // Connecting needs no email.
+        assertTrue(mailer.sent.isEmpty());
+        // Doing it again is harmless.
+        service.connect(d, "facebook", "token-1", null, null);
+        assertEquals(1, ids.store.size());
+    }
+
+    @Test
+    void aProviderAccountOfAnotherDeveloperCannotBeConnected() {
+        Developer d = localAccount("jane@example.com", true);
+        com.premisave.developer.model.OAuthIdentity other = new com.premisave.developer.model.OAuthIdentity();
+        other.setId("facebook:f-9");
+        other.setDeveloperId("dev_other");
+        other.setProvider("facebook");
+        ids.store.put(other.getId(), other);
+        facebook("f-9", "other@example.com");
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, assertThrows(DeveloperException.class, () -> service.connect(d, "facebook", "token-1", null, null)).code());
+    }
+
+    @Test
+    void aSecondAccountAtTheSameProviderIsRefusedUntilTheFirstIsDisconnected() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-9", "a@example.com");
+        service.connect(d, "facebook", "token-1", null, null);
+        facebook("f-10", "b@example.com");
+        assertEquals(ErrorCode.INVALID_STATE, assertThrows(DeveloperException.class, () -> service.connect(d, "facebook", "token-2", null, null)).code());
+        service.disconnect(d, "facebook");
+        service.connect(d, "facebook", "token-2", null, null);
+        assertTrue(ids.store.containsKey("facebook:f-10"));
+        assertFalse(ids.store.containsKey("facebook:f-9"));
+    }
+
+    @Test
+    void disconnectingRemovesItAndFacebookNoLongerSignsInToThatAccount() {
+        Developer d = localAccount("jane@example.com", true);
+        facebook("f-9", "jane@example.com");
+        service.connect(d, "facebook", "token-1", null, null);
+        service.disconnect(d, "facebook");
+        assertTrue(ids.store.isEmpty());
+        assertFalse(d.getAuthProviders().contains("facebook"));
+        assertEquals(ErrorCode.ACCOUNT_EXISTS, assertThrows(DeveloperException.class, () -> signIn("facebook")).code());
+    }
+
+    @Test
+    void theLastWayToSignInCannotBeDisconnected() {
+        google("g-1", "jane@gmail.com", true, "Jane Doe");
+        signIn("google");
+        Developer d = devs.store.get(ids.store.get("google:g-1").getDeveloperId());
+        assertNull(d.getPasswordHash());
+        assertEquals(ErrorCode.INVALID_STATE, assertThrows(DeveloperException.class, () -> service.disconnect(d, "google")).code());
+        assertTrue(ids.store.containsKey("google:g-1"));
+        // With a second provider the first can go.
+        facebook("f-2", "jane@gmail.com");
+        service.connect(d, "facebook", "token-1", null, null);
+        service.disconnect(d, "google");
+        assertEquals(java.util.Set.of("facebook"), d.getAuthProviders());
+    }
+
+    @Test
+    void disconnectingAProviderThatIsNotConnectedIsNotFound() {
+        Developer d = localAccount("jane@example.com", true);
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(DeveloperException.class, () -> service.disconnect(d, "github")).code());
+    }
+
     @Test
     void googleSayingTheAddressIsNotVerifiedDoesNotJoinEither() {
         localAccount("jane@example.com", true);

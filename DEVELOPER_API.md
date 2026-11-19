@@ -321,7 +321,7 @@ How an account is chosen:
 | The provider identity has signed in before | That account |
 | No account has the provider's email | A new account with no password. It is confirmed at once if the provider vouches for the address (Google, GitHub) and unconfirmed with a confirmation email if not (Facebook) |
 | An account with that email exists and the provider vouches for the address | The identity is linked to that account and the developer is signed in. If the existing account had never confirmed its address, its password is removed and its older sessions end (someone may have signed up with this address without owning it); the provider's proof confirms the address |
-| An account with that email exists and the provider does not vouch for the address (Facebook) | `409 ACCOUNT_EXISTS`. Nothing is linked. The developer signs in with the existing method |
+| An account with that email exists and the provider does not vouch for the address (Facebook) | `409 ACCOUNT_EXISTS`, `data.next` is `CONFIRM_LINK`. Nothing is joined yet; a link is emailed to the account's address (see 1.9a). With mail off, or for a disabled account, there is no link |
 | The provider gives no usable email address | `422 OAUTH_EMAIL_REQUIRED` |
 | The account is disabled | `403 ACCOUNT_DISABLED` |
 | The account is new or still pending and the provider does not vouch for the address (Facebook) | `403 ACCOUNT_PENDING`, `data.next` is `CONFIRM_EMAIL`. On a first sign in the account is created and a confirmation link is sent; no session is issued. After the link is used, signing in with the provider again works |
@@ -330,9 +330,23 @@ GitHub: only verified addresses from the account's email list are used, the prim
 
 Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expired or reused token or code, a token issued to another app, provider refused), `404 OAUTH_NOT_CONFIGURED` (the provider is not switched on in this service), `403 ACCOUNT_PENDING`, `409 ACCOUNT_EXISTS`, `422 OAUTH_EMAIL_REQUIRED`, `503 UPSTREAM_UNAVAILABLE` (provider not reachable).
 
+#### 1.9a Joining a provider to an existing account
+
+Two ways, both ending with the provider signing in directly.
+
+**By email link.** When Facebook brings an address that already has an account, `POST /api/v1/auth/social/facebook` answers `409 ACCOUNT_EXISTS` with `data.next = "CONFIRM_LINK"` and emails a single use link to the account's address (`PORTAL/link-provider?token=...`, 60 minutes). Which provider account to join is stored with the link, never in it. The message names the address in part only. A second attempt inside the resend cooldown sends nothing and adds `data.retryAfterSeconds`; the hourly cap is shared with the other single use emails of the account. The portal's `/link-provider` page reads `token` from the query, removes it from the address bar and posts it:
+
+* ![POST][m-post] `/api/v1/auth/social/link/confirm` with `{ "token": "..." }` (public, signs nobody in). Returns `{ "linked": true, "provider", "email" }`. Then the developer signs in with the provider again. `400 INVALID_TOKEN` for a link that is unknown, expired or already used, `409 ACCOUNT_EXISTS` when that provider account now belongs to another developer, `403 ACCOUNT_DISABLED`. If the account had never confirmed its address, its password is removed and its sessions end when the link is used, as with a provider that vouches for the address.
+
+**From Profile.** A signed in developer proves the provider account with a fresh provider token, so no email is needed:
+
+* ![GET][m-get] `/api/v1/me/connections` returns `{ "connections": [{ "provider", "email", "linkedAt" }], "hasPassword", "available": ["google", ...] }`.
+* ![POST][m-post] `/api/v1/me/connections/{provider}` with `{ "token": "..." }` or `{ "code": "...", "redirectUri": "..." }` joins the provider account and returns the same object. Repeating it is harmless. `409 ACCOUNT_EXISTS` when that provider account belongs to another developer, `409 INVALID_STATE` when another account of the same provider is already joined (remove it first).
+* ![DELETE][m-delete] `/api/v1/me/connections/{provider}` removes it and returns the same object. `404 NOT_FOUND` when it is not joined, `409 INVALID_STATE` when it is the only way to sign in (no password and no other provider): set a password first, with `PUT /api/v1/me/password`.
+
 ### ![][i-layout-0b7a43] 1.10 What the portal does
 
-* Routes `/verify-email` and `/reset-password` read `token` from the query string, immediately remove it from the address bar (`history.replaceState`) so it does not stay in history or leak through a Referer header, then POST it. Serve those pages with `Referrer-Policy: no-referrer`.
+* Routes `/verify-email`, `/reset-password` and `/link-provider` read `token` from the query string, immediately remove it from the address bar (`history.replaceState`) so it does not stay in history or leak through a Referer header, then POST it. Serve those pages with `Referrer-Policy: no-referrer`.
 * For GitHub, makes a random `state` before sending the browser away, keeps it in session storage and compares it with the one GitHub returns before posting the code.
 * Registers its origin with Google as an Authorized JavaScript origin, and its callback address with the GitHub OAuth app, exactly as it uses them. Facebook needs no redirect address for the SDK login.
 * After sign up, shows `data.message` and goes to the sign in page, because sign up issues no token. The developer can sign in at once, before confirming the email.
@@ -340,7 +354,7 @@ Errors: `400 VALIDATION_FAILED` (missing token), `401 OAUTH_FAILED` (bad, expire
 
 ### ![][i-mail-0b7a43] 1.11 The emails the service sends
 
-Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all ten are in `email-previews/`; open them in a browser.
+Every email is an HTML page built from a file in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies). Previews of all eleven are in `email-previews/`; open them in a browser.
 
 | Email | When | Contains a link |
 |---|---|---|
@@ -348,6 +362,7 @@ Every email is an HTML page built from a file in `src/main/resources/email/` (`l
 | Welcome to Premisave | The moment the address becomes confirmed (using the link, or a social sign up whose address the provider vouched for) | Portal address only |
 | New sign in to your account | Every successful sign in, by password or by a provider, except the one that creates the account. Shows time (UTC), method, device and network address. Off with `developer.mail.notify-sign-in=false` | Portal "secure my account" address only, never a sign in link |
 | Reset your password | `forgot-password` for an active account | Yes, single use, 60 minutes |
+| Link Facebook to your Premisave developer account | A provider that does not vouch for its address (Facebook) signs in with an address that already has an account. Goes to that account's address. Not sent when mail is off, or while another link is still cooling down | Yes, single use, 60 minutes |
 | Your password was changed | After a password change or a reset | Portal "reset my password" address only |
 | Your Premisave confirmation code | Moving an app or taking up a business by its merchant number (2.4, 2.5). Goes to the address linked to the business, not to the developer who asked, and shows the business, the merchant number, who asked and how long the code lasts | No, a six digit code |
 | A production app was transferred to your account | To the receiving account when the code is confirmed | Portal address only |

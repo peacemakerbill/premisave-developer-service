@@ -250,6 +250,11 @@ public final class TestRepos {
                     store.values().removeIf(x -> x.getDeveloperId().equals(a[0]));
                     return before - store.size();
                 },
+                "findByDeveloperId", a -> store.values().stream().filter(x -> x.getDeveloperId().equals(a[0])).toList(),
+                "delete", a -> {
+                    store.remove(((com.premisave.developer.model.OAuthIdentity) a[0]).getId());
+                    return null;
+                },
                 "insert", a -> {
                     com.premisave.developer.model.OAuthIdentity x = (com.premisave.developer.model.OAuthIdentity) a[0];
                     if (store.containsKey(x.getId())) throw new org.springframework.dao.DuplicateKeyException("duplicate");

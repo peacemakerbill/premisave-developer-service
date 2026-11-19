@@ -1,10 +1,12 @@
 package com.premisave.developer.service;
 
 import com.premisave.developer.config.DeveloperProperties;
+import com.premisave.developer.client.OAuthClient;
 import com.premisave.developer.dto.ClientInfo;
 import com.premisave.developer.enums.DeveloperStatus;
 import com.premisave.developer.enums.EmailTokenType;
 import com.premisave.developer.enums.ErrorCode;
+import com.premisave.developer.enums.OAuthProvider;
 import com.premisave.developer.exception.DeveloperException;
 import com.premisave.developer.model.Developer;
 import com.premisave.developer.model.EmailToken;
@@ -124,6 +126,35 @@ public class AccountEmailService {
         m.put("emailVerified", true);
         m.put("email", d.getEmail());
         return m;
+    }
+
+    /**
+     * Sends the link that joins a provider account to this developer, to the address of the developer account. Whoever
+     * is signing in with the provider cannot read that mailbox unless it is theirs, so a click on the link is the proof.
+     * Returns how many seconds to wait when a link went out a moment ago, or empty when one is on its way.
+     */
+    public Optional<Long> sendProviderLink(Developer d, OAuthProvider provider, String subject) {
+        Optional<Long> wait = tokens.waitSeconds(d, EmailTokenType.LINK_PROVIDER);
+        if (wait.isPresent()) return wait;
+        mail.later("provider link", () -> deliverProviderLink(d, provider, subject));
+        return Optional.empty();
+    }
+
+    private void deliverProviderLink(Developer d, OAuthProvider provider, String subject) {
+        try {
+            EmailTokenService.Issued issued = tokens.issue(d, EmailTokenType.LINK_PROVIDER, provider.key(), subject);
+            String link = config.portalBaseUrl() + "/link-provider?token=" + issued.token();
+            EmailTemplates.Message m = EmailTemplates.linkProvider(greeting(d), OAuthClient.label(provider), link,
+                    config.resetTtlMinutes(), config.portalBaseUrl());
+            mail.send(d.getEmail(), m.subject(), m.html(), link);
+        } catch (RuntimeException e) {
+            log.warn("Could not send a provider link to developer {}: {}", d.getDeveloperId(), e.toString());
+        }
+    }
+
+    /** Uses a provider link up. Throws INVALID_TOKEN when it is unknown, expired or already used. */
+    public EmailToken redeemProviderLink(String token) {
+        return tokens.redeem(token, EmailTokenType.LINK_PROVIDER);
     }
 
     /**
