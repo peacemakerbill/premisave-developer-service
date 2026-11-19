@@ -64,6 +64,10 @@ public class ApiKeyService {
                 .sorted(Comparator.comparing(ApiKey::getCreatedAt).reversed()).toList();
     }
 
+    public ApiKey get(DeveloperApp app, String keyId) {
+        return require(app, keyId);
+    }
+
     /** Replaces a key. The old one keeps working for the grace period so the merchant can switch over without downtime. */
     public Issued rotate(DeveloperApp app, String keyId) {
         ApiKey old = require(app, keyId);

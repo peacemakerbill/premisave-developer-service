@@ -14,6 +14,7 @@ import com.premisave.developer.view.PageViews;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -76,6 +78,18 @@ public class AppController {
                                                                    @PathVariable String appId,
                                                                    @Valid @RequestBody UpdateAppRequest req) {
         return Responses.ok("App updated", AppViews.app(apps.update(developer, appId, req)));
+    }
+
+    /** Removes the app and every key it has. This cannot be undone. */
+    @DeleteMapping("/{appId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> delete(@RequestAttribute Developer developer,
+                                                                   @PathVariable String appId) {
+        long keysRemoved = apps.delete(developer, appId);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("appId", appId);
+        m.put("deleted", true);
+        m.put("keysRemoved", keysRemoved);
+        return Responses.ok("App deleted", m);
     }
 
     @PostMapping("/{appId}/suspend")

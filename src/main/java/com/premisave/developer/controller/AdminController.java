@@ -185,6 +185,13 @@ public class AdminController {
                 apps.search(developerId, null, environment, null, null, PageViews.pageable(page, size)), AppViews::app);
     }
 
+    /** Finds any business by name or merchant number, for sharing one. Pass developerId to mark those it already has. */
+    @GetMapping("/businesses")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchBusinesses(@RequestParam(required = false) String q,
+                                                                              @RequestParam(required = false) String developerId) {
+        return Responses.ok("Businesses retrieved", accounts.searchBusinesses(q, developerId));
+    }
+
     @GetMapping("/developers/{developerId}/businesses")
     public ResponseEntity<ApiResponse<Map<String, Object>>> developerBusinesses(@PathVariable String developerId) {
         return Responses.ok("Businesses retrieved", accounts.businessesOf(developerId));

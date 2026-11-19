@@ -208,6 +208,23 @@ public class AppService {
         return setStatus(a, AppStatus.ACTIVE, null, null);
     }
 
+    /**
+     * Deletes one of the caller's own apps and all its keys, which stop working at once. The wallet service is told first that the
+     * app is suspended so its background work stops; if that cannot be done the app stays suspended and the delete is refused, to
+     * be tried again. A production app gives up its wallet link, so the wallet can go live with another app afterwards. Payments
+     * already made stay in the wallet service's records.
+     */
+    public long delete(Developer developer, String appId) {
+        DeveloperApp a = get(developer, appId);
+        DeveloperApp suspended = setStatus(a, AppStatus.SUSPENDED, SuspendedBy.DEVELOPER, "Deleted by its owner");
+        if (!sync.push(suspended)) {
+            throw DeveloperException.invalidState("The wallet service could not be told the app is closing. The app is suspended; try again shortly");
+        }
+        long removed = keys.deleteAll(appId);
+        apps.deleteById(appId);
+        return removed;
+    }
+
     /** Premisave staff: suspend or reactivate any app. */
     public DeveloperApp adminSetStatus(String appId, AppStatus status, String reason) {
         DeveloperApp a = apps.findById(appId).orElseThrow(() -> new DeveloperException(ErrorCode.APP_NOT_FOUND, "App not found"));

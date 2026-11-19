@@ -19,6 +19,7 @@ public final class KeyViews {
         m.put("label", k.getLabel());
         m.put("status", k.getStatus().name());
         m.put("secretEndsWith", k.getSecretHint());
+        m.put("secretPreview", "sk_" + k.getEnvironment().pathSegment() + "_" + "*".repeat(12) + (k.getSecretHint() == null ? "" : k.getSecretHint()));
         m.put("expiresAt", iso(k.getExpiresAt()));
         m.put("createdAt", iso(k.getCreatedAt()));
         m.put("lastUsedAt", iso(k.getLastUsedAt()));

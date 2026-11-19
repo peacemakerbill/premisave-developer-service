@@ -422,6 +422,7 @@ Errors: `400 VALIDATION_FAILED`, `403 LIVE_NOT_ENABLED`, `403 MERCHANT_SUSPENDED
 | ![PUT][m-put] `/api/v1/apps/{appId}` | Change `name`, `description`, `enabledMethods`, `limits`, `callbackUrl`. Omitted fields are unchanged. Environment, merchant number and wallet cannot change |
 | ![POST][m-post] `/api/v1/apps/{appId}/suspend` | Optional body `{ "reason" }`. While suspended the app can read but not create or change anything |
 | ![POST][m-post] `/api/v1/apps/{appId}/reactivate` | `403 FORBIDDEN` if staff suspended it |
+| ![DELETE][m-delete] `/api/v1/apps/{appId}` | Removes the app and every key it has, for good. `data` has `appId`, `deleted` and `keysRemoved`. The wallet service is told the app is suspended first, so its background work stops; if that cannot be done the app stays suspended and the delete is refused with `409 INVALID_STATE`, to be tried again. A production app gives up its wallet link, so that wallet can go live with another app. Payments already made stay in the wallet service's records. `404 APP_NOT_FOUND` for an unknown app or another developer's app |
 
 Each change reaches the wallet within the 30 second sync interval at the latest, and immediately on the next request that app makes.
 
@@ -470,7 +471,8 @@ A developer account can go live with an approved business that another account a
 
 | Call | Notes |
 |:-|:-|
-| ![GET][m-get] `/api/v1/apps/{appId}/keys` | `data.keys`, without secrets. Each key shows `status` (`ACTIVE`, `ROTATING`, `REVOKED`), `secretEndsWith`, `expiresAt`, `lastUsedAt` |
+| ![GET][m-get] `/api/v1/apps/{appId}/keys` | `data.keys`, without secrets. Each key shows `status` (`ACTIVE`, `ROTATING`, `REVOKED`), `secretEndsWith`, `secretPreview` (for example `sk_sandbox_************ab12`), `expiresAt`, `lastUsedAt` |
+| ![GET][m-get] `/api/v1/apps/{appId}/keys/{key}` | One key with everything stored about it. The secret is not in it: only a keyed hash and the last four characters are kept, so a lost secret cannot be read back. Rotate the key to get a new one. `404 KEY_NOT_FOUND` |
 | ![POST][m-post] `/api/v1/apps/{appId}/keys` | Optional `{ "label" }` (up to 60). `201`. The response carries `key` (`pk_live_...` or `pk_sandbox_...`) and `secret` (`sk_...`), shown once. `422 LIMIT_REACHED` beyond 5 active keys |
 | ![POST][m-post] `/api/v1/apps/{appId}/keys/{key}/rotate` | Issues a new key and secret. The old key becomes `ROTATING` and stops working at `expiresAt` (24 hours by default). `404 KEY_NOT_FOUND`, `409 INVALID_STATE` unless the key is `ACTIVE`. With `developer.keys.rotation-grace-hours=0` the old key is revoked at once |
 | ![DELETE][m-delete] `/api/v1/apps/{appId}/keys/{key}` | Revokes at once |
@@ -577,6 +579,7 @@ GET /api/v1/admin/stats
 | ![DELETE][m-delete] `/admin/developers/{developerId}` | none | Removes an account that owns nothing, with its email links and linked social identities. Otherwise `409 INVALID_STATE`; disable the account instead |
 | ![GET][m-get] `/admin/developers/{developerId}/apps` | query: `environment`, `page`, `size` | The apps of one account |
 | ![GET][m-get] `/admin/developers/{developerId}/businesses` | none | The businesses of one account, each marked as applied for or shared |
+| ![GET][m-get] `/admin/businesses` | query: `q`, `developerId` | Finds any business by name, trading name or merchant number, anywhere in the text and ignoring case, newest first, up to 15. With no `q` it lists the newest. With `developerId` each result carries `alreadyHas`, true when that account has the business already. Use the `businessId` of a result to share it |
 | ![POST][m-post] `/admin/developers/{developerId}/businesses/{businessId}` | none | Gives the account use of a business it did not apply for. Nothing changes if it already has it |
 | ![DELETE][m-delete] `/admin/developers/{developerId}/businesses/{businessId}` | none | Takes a shared business back. `409 INVALID_STATE` for a business the account applied for, or one it still has apps on |
 

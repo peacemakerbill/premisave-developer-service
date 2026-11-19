@@ -2058,6 +2058,36 @@
             "description": "403 FORBIDDEN if Premisave staff suspended it."
           },
           "response": []
+        },
+        {
+          "name": "Delete app",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/apps/{{app_id}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "apps",
+                "{{app_id}}"
+              ]
+            },
+            "description": "Removes the app and every key it has, for good. Its keys stop working at once. A production app gives up its wallet link. Payments already made stay in the wallet records."
+          },
+          "response": []
         }
       ]
     },
@@ -2382,6 +2412,38 @@
                 "keys"
               ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Get key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/apps/{{app_id}}/keys/{{api_key}}",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "apps",
+                "{{app_id}}",
+                "keys",
+                "{{api_key}}"
+              ]
+            },
+            "description": "Everything stored about one key: label, status, when it was created and last used, and the last four characters of the secret (secretEndsWith, with secretPreview). The secret itself is shown once when the key is created or rotated and cannot be read back. To replace a lost secret, rotate the key."
           },
           "response": []
         },
@@ -3557,6 +3619,46 @@
               "response": []
             },
             {
+              "name": "Search businesses (to share)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "X-API-Key",
+                    "value": "{{admin_api_key}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url_dev}}/internal/admin/businesses?q=acme",
+                  "host": [
+                    "{{base_url_dev}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "admin",
+                    "businesses"
+                  ],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "acme"
+                    },
+                    {
+                      "key": "developerId",
+                      "value": "{{target_developer_id}}",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Finds any business by name, trading name or merchant number, anywhere in the text and ignoring case. With no q it lists the newest. Pass developerId to mark the ones that account already has (alreadyHas). Use the businessId of a result to share it."
+              },
+              "response": []
+            },
+            {
               "name": "Share business with developer",
               "request": {
                 "method": "POST",
@@ -4498,6 +4600,42 @@
                 }
               ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Search businesses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_dev}}/api/v1/admin/businesses?q=acme",
+              "host": [
+                "{{base_url_dev}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "businesses"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "acme"
+                }
+              ]
+            },
+            "description": "Administrator sign in: find any business by name or merchant number, for sharing one."
           },
           "response": []
         },

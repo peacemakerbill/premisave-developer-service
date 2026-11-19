@@ -101,7 +101,8 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 - **Sandbox apps need no business.** A developer who has none gets a personal sandbox workspace on the first sandbox app, so test keys are available at once. Production apps still need an approved business
 - Production apps need a linked Premisave wallet and use the business's own merchant number, and one live app per wallet is enforced by a unique index
 - Per-app narrowing of payment methods and limits that can never widen what the merchant already has
-- Keys come with a secret shown once. Rotation keeps the old key working for a grace period, revocation is immediate
+- Keys come with a secret shown once. Only a keyed hash and the last four characters are stored, so a secret can never be read back; rotate the key to replace a lost one. Rotation keeps the old key working for a grace period, revocation is immediate
+- A developer can delete their own app, which removes its keys and frees its wallet link. The wallet service is told first, and if that fails the app stays suspended and the delete is retried
 - App suspension by the developer or by staff. A suspension placed by staff cannot be lifted by the developer
 
 **Public API Entry**
@@ -125,7 +126,7 @@ The design, ownership table and failure behaviour are in [DEVELOPER_SERVICE_SPLI
 **Platform Concerns**
 - One response envelope everywhere and an `X-Request-Id` header on every response
 - Roles `DEVELOPER` and `ADMIN`, with admin endpoints to manage developers, apps, API keys, business sharing and transfers, every change audited
-- Postman collection with 105 requests, ready to import
+- Postman collection with 109 requests, ready to import
 
 <br/>
 
@@ -546,6 +547,7 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | PUT | `/api/v1/apps/{appId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Change name, methods, limits or callback URL |
 | POST | `/api/v1/apps/{appId}/suspend` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Suspend the app |
 | POST | `/api/v1/apps/{appId}/reactivate` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Lift a suspension the developer placed |
+| DELETE | `/api/v1/apps/{appId}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Delete the app and every key it has, for good. A production app gives up its wallet link |
 
 **Transfers** — `/api/v1/apps/{appId}/transfer` and `/api/v1/transfers`
 
@@ -564,6 +566,7 @@ Every response uses the same envelope, and every response carries an `X-Request-
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
 | GET | `/api/v1/apps/{appId}/keys` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | List keys, without secrets |
+| GET | `/api/v1/apps/{appId}/keys/{key}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | One key with its status, dates and the last four characters of the secret. The secret itself cannot be read back, so rotate the key to get a new one |
 | POST | `/api/v1/apps/{appId}/keys` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Create a key, the secret is shown once |
 | POST | `/api/v1/apps/{appId}/keys/{key}/rotate` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Issue a new key, the old one keeps working for the grace period |
 | DELETE | `/api/v1/apps/{appId}/keys/{key}` | ![Auth](https://img.shields.io/badge/-Auth-EF5350?style=flat-square) | Revoke a key at once |
@@ -599,6 +602,7 @@ Every path below works under both prefixes. `/api/v1/admin` takes the bearer tok
 | POST | `/admin/developers/{developerId}/sign-out` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | End every session |
 | POST | `/admin/developers/{developerId}/password-reset` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Email a password reset link |
 | GET | `/admin/developers/{developerId}/apps` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Apps of one account |
+| GET | `/admin/businesses` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Find any business by name, trading name or merchant number (`q`), to share one. `developerId` marks the ones that account already has |
 | GET | `/admin/developers/{developerId}/businesses` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Businesses of one account |
 | POST | `/admin/developers/{developerId}/businesses/{businessId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Share a business with the account |
 | DELETE | `/admin/developers/{developerId}/businesses/{businessId}` | ![Admin](https://img.shields.io/badge/-Admin-D32F2F?style=flat-square) | Take a shared business back |
@@ -672,8 +676,8 @@ The code is in [`premisave_flutter_frontend`](https://github.com/peacemakerbill/
 | Screen | What it does | Calls |
 | --- | --- | --- |
 | Sign in and sign up | A developer account, separate from the person account | `POST /api/v1/auth/login`, `POST /api/v1/auth/signup`, `POST /api/v1/auth/forgot-password`, `GET /api/v1/me`, `POST /api/v1/me/logout` |
-| Apps | List, create, suspend and reactivate apps | `GET /api/v1/apps`, `POST /api/v1/apps`, `POST /api/v1/apps/{id}/suspend`, `POST /api/v1/apps/{id}/reactivate` |
-| API keys | List, create, rotate and revoke keys. A key and its secret are shown once | `GET /api/v1/apps/{id}/keys`, `POST /api/v1/apps/{id}/keys`, `POST /api/v1/apps/{id}/keys/{key}/rotate`, `DELETE /api/v1/apps/{id}/keys/{key}` |
+| Apps | List, create, suspend, reactivate and delete apps | `GET /api/v1/apps`, `POST /api/v1/apps`, `DELETE /api/v1/apps/{id}`, `POST /api/v1/apps/{id}/suspend`, `POST /api/v1/apps/{id}/reactivate` |
+| API keys | List, open, create, rotate and revoke keys. A key and its secret are shown once, and only the last four characters are kept | `GET /api/v1/apps/{id}/keys`, `GET /api/v1/apps/{id}/keys/{key}`, `POST /api/v1/apps/{id}/keys`, `POST /api/v1/apps/{id}/keys/{key}/rotate`, `DELETE /api/v1/apps/{id}/keys/{key}` |
 
 - Answers use the `{ success, message, data, timestamp }` envelope.
 - The token is kept in secure storage under `ps_developer_token`, apart from the person sign in. There is no refresh: when it expires the portal asks for the password again.
@@ -985,7 +989,7 @@ mvn test -Dtest=MailConfigurationCheckTest -Dmail.check=true -Dmail.check.send-t
 
 In IntelliJ, run `MailConfigurationCheckTest` with the VM option `-Dmail.check=true`, from the project folder. MongoDB must be running.
 
-For manual testing, import both files from `postman/` into Postman: the collection has 105 requests grouped as account, email and password, social sign in, businesses and onboarding, apps, transfers and sharing, API keys, the public API and the admin API (internal key and administrator sign in).
+For manual testing, import both files from `postman/` into Postman: the collection has 109 requests grouped as account, email and password, social sign in, businesses and onboarding, apps, transfers and sharing, API keys, the public API and the admin API (internal key and administrator sign in).
 
 To try Google, Facebook and GitHub sign in in a browser, use the page in `oauth-test`. See [Trying It in a Browser](#trying-it-in-a-browser).
 

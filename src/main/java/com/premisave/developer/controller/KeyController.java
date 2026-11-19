@@ -45,6 +45,17 @@ public class KeyController {
         return Responses.ok("Keys retrieved", m);
     }
 
+    /**
+     * Everything stored about one key. The secret is not among it: only a keyed hash and the last four characters are kept, so a
+     * lost secret is replaced by rotating the key, never read back.
+     */
+    @GetMapping("/{key}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> get(@RequestAttribute Developer developer,
+                                                                @PathVariable String appId, @PathVariable String key) {
+        DeveloperApp app = apps.get(developer, appId);
+        return Responses.ok("Key retrieved", KeyViews.key(keys.get(app, key)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> create(@RequestAttribute Developer developer,
                                                                    @PathVariable String appId,

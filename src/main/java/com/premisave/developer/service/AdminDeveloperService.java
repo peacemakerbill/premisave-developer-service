@@ -15,7 +15,9 @@ import com.premisave.developer.repository.OAuthIdentityRepository;
 import com.premisave.developer.util.Ids;
 import com.premisave.developer.util.PersonNames;
 import com.premisave.developer.util.ProfileFields;
+import com.premisave.developer.util.SearchText;
 import com.premisave.developer.view.AdminViews;
+import com.premisave.developer.view.BusinessViews;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -25,7 +27,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -273,6 +277,27 @@ public class AdminDeveloperService {
     /** Every business the account can use, with where each application stands. */
     public Map<String, Object> businessesOf(String developerId) {
         return businesses.list(accounts.require(developerId));
+    }
+
+    /**
+     * Finds businesses by name or merchant number for the staff member sharing one. With no text it lists the newest. A business
+     * the account already has is marked so the picker can say so.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> searchBusinesses(String text, String developerId) {
+        String q = SearchText.clean(text);
+        Developer d = developerId == null || developerId.isBlank() ? null : accounts.require(developerId);
+        Map<String, Object> data = wallet.searchMerchants(q == null ? "" : q, 15);
+        List<Map<String, Object>> raw = data.get("businesses") instanceof List<?> l ? (List<Map<String, Object>>) l : List.of();
+        List<Map<String, Object>> views = new ArrayList<>();
+        for (Map<String, Object> merchant : raw) {
+            Map<String, Object> view = new LinkedHashMap<>(BusinessViews.business(merchant));
+            view.put("alreadyHas", d != null && d.ownsBusiness(String.valueOf(merchant.get("merchantId"))));
+            views.add(view);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("businesses", views);
+        return out;
     }
 
     /** Gives the account use of a business it did not apply for. The business must exist in the wallet service. */

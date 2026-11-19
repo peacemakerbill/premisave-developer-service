@@ -40,6 +40,12 @@ public class WalletApi {
         return call("GET", BASE + "/merchants?developerAccountId=" + q, null);
     }
 
+    /** Staff search of every business by name or merchant number, as { "businesses": [ merchant views ] }. */
+    public Map<String, Object> searchMerchants(String text, int limit) {
+        String q = URLEncoder.encode(text == null ? "" : text, StandardCharsets.UTF_8);
+        return call("GET", BASE + "/merchants/search?q=" + q + "&limit=" + limit, null);
+    }
+
     /** One business by its PRM merchant number, as the wallet service shows it. Unknown numbers are MERCHANT_NOT_FOUND. */
     public Map<String, Object> getMerchantViewByNumber(String merchantNumber) {
         String n = URLEncoder.encode(merchantNumber, StandardCharsets.UTF_8);
