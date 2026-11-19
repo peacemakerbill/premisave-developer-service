@@ -83,6 +83,71 @@ public class OAuthClient {
         }
     }
 
+    /**
+     * Reads who the person is from an authorization code, for a sign in that cannot hand back a token: the Linux and
+     * Windows apps open the provider in a browser and only receive a code on a local address. Google and Facebook are
+     * traded for a token here, with the client secret that never leaves this service, and then checked exactly like a
+     * token. GitHub always works this way.
+     */
+    public OAuthProfile fetchProfileFromCode(OAuthProvider p, String code, String redirectUri) {
+        DeveloperProperties.Provider s = settings(p);
+        try {
+            return switch (p) {
+                case GOOGLE -> google(s, googleIdToken(s, code, redirectUri));
+                case FACEBOOK -> facebook(s, facebookAccessToken(s, code, redirectUri));
+                case GITHUB -> github(s, code);
+            };
+        } catch (IOException e) {
+            log.warn("Sign in with {} failed to reach the provider: {}", p.key(), e.toString());
+            throw new DeveloperException(ErrorCode.UPSTREAM_UNAVAILABLE, "Could not reach " + label(p) + ". Try again shortly.");
+        }
+    }
+
+    private String googleIdToken(DeveloperProperties.Provider s, String code, String redirectUri) throws IOException {
+        needSecret(OAuthProvider.GOOGLE, s, redirectUri, "GOOGLE_CLIENT_SECRET");
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("client_id", s.clientId());
+        form.put("client_secret", s.clientSecret());
+        form.put("code", code);
+        form.put("redirect_uri", redirectUri);
+        form.put("grant_type", "authorization_code");
+        HttpTransport.Reply reply = http.postForm(s.tokenUrl(), Map.of("Accept", "application/json"), form);
+        Map<String, Object> body = object(OAuthProvider.GOOGLE, reply);
+        Object issued = body.get("id_token");
+        if (reply.status() / 100 != 2 || !(issued instanceof String idToken) || idToken.isBlank()) {
+            log.info("Google did not accept the sign in code (status {})", reply.status());
+            throw refused(OAuthProvider.GOOGLE);
+        }
+        return idToken;
+    }
+
+    private String facebookAccessToken(DeveloperProperties.Provider s, String code, String redirectUri) throws IOException {
+        needSecret(OAuthProvider.FACEBOOK, s, redirectUri, "FACEBOOK_CLIENT_SECRET");
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("client_id", s.clientId());
+        q.put("client_secret", s.clientSecret());
+        q.put("redirect_uri", redirectUri);
+        q.put("code", code);
+        HttpTransport.Reply reply = http.get(withQuery(s.tokenUrl(), q), Map.of("Accept", "application/json"));
+        Map<String, Object> body = object(OAuthProvider.FACEBOOK, reply);
+        Object issued = body.get("access_token");
+        if (reply.status() / 100 != 2 || !(issued instanceof String accessToken) || accessToken.isBlank()) {
+            log.info("Facebook did not accept the sign in code (status {})", reply.status());
+            throw refused(OAuthProvider.FACEBOOK);
+        }
+        return accessToken;
+    }
+
+    private static void needSecret(OAuthProvider p, DeveloperProperties.Provider s, String redirectUri, String setting) {
+        if (s.clientSecret() == null) {
+            throw new DeveloperException(ErrorCode.OAUTH_FAILED,
+                    label(p) + " sign in with a code is not switched on. Set " + setting + " on the developer service.");
+        }
+        if (redirectUri == null || redirectUri.isBlank()) {
+            throw DeveloperException.validation("redirectUri", "is required with a code");
+        }
+    }
+
     private OAuthProfile google(DeveloperProperties.Provider s, String idToken) throws IOException {
         Map<String, String> q = new LinkedHashMap<>();
         q.put("id_token", idToken);

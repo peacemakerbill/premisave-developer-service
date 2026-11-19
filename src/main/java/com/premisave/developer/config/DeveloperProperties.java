@@ -259,9 +259,9 @@ public record DeveloperProperties(
      */
     public record OAuth(Provider google, Provider facebook, Provider github) {
 
-        public static final Provider GOOGLE_DEFAULTS = new Provider(null, null, null,
+        public static final Provider GOOGLE_DEFAULTS = new Provider(null, null, "https://oauth2.googleapis.com/token",
                 "https://oauth2.googleapis.com/tokeninfo", null, null);
-        public static final Provider FACEBOOK_DEFAULTS = new Provider(null, null, null,
+        public static final Provider FACEBOOK_DEFAULTS = new Provider(null, null, "https://graph.facebook.com/v21.0/oauth/access_token",
                 "https://graph.facebook.com/v21.0/debug_token", "https://graph.facebook.com/v21.0/me?fields=id,name,email", null);
         public static final Provider GITHUB_DEFAULTS = new Provider(null, null, "https://github.com/login/oauth/access_token",
                 null, "https://api.github.com/user", "https://api.github.com/user/emails");

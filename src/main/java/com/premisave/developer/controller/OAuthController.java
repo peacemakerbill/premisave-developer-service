@@ -20,7 +20,8 @@ import java.util.Map;
 /**
  * Sign up and sign in with Google, Facebook and GitHub, for the developer portal. Each provider has its own endpoint.
  * The portal gets the provider's token in the browser and posts it as { "token": "..." }: Google's ID token,
- * Facebook's access token, or GitHub's one time code. First sign in with a new email creates the account.
+ * Facebook's access token, or GitHub's one time code. The Linux and Windows apps post { "code": "...", "redirectUri": "..." }
+ * instead and this service trades the code. First sign in with a new email creates the account.
  */
 @RestController("developerOAuthController")
 @RequestMapping("/api/v1/auth/social")
@@ -57,6 +58,6 @@ public class OAuthController {
 
     private ResponseEntity<ApiResponse<Map<String, Object>>> signedIn(String provider, SocialLoginRequest req,
                                                                       HttpServletRequest http) {
-        return Responses.ok("Signed in", oauth.signIn(provider, req.token(), ClientInfo.of(http)));
+        return Responses.ok("Signed in", oauth.signIn(provider, req.token(), req.code(), req.redirectUri(), ClientInfo.of(http)));
     }
 }

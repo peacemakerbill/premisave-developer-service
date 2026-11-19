@@ -36,6 +36,10 @@ spring:
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/premisave_developers}
 
+# Shown in the footer of every email, the same setting the auth service uses.
+email:
+  support: ${SUPPORT_EMAIL:thepeacemakerske@gmail.com}
+
 developer:
   jwt:
     secret: ${DEVELOPER_JWT_SECRET}
@@ -132,6 +136,8 @@ developer:
     # (for example Facebook's Graph API version).
     google:
       client-id: ${GOOGLE_CLIENT_ID:}
+      # Only for the Linux and Windows apps, which send a code instead of a token. The same OAuth client as the id above.
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
     facebook:
       client-id: ${FACEBOOK_CLIENT_ID:}
       client-secret: ${FACEBOOK_CLIENT_SECRET:}

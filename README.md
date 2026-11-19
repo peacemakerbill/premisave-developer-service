@@ -794,6 +794,8 @@ All settings live in `.env.example` and `src/main/resources/application.yml`.
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Where profile pictures are stored, from the Cloudinary dashboard. With any of them empty, profile pictures are off and the rest of the service works. See [Profile Pictures](#profile-pictures) |
 | `CLOUDINARY_FOLDER`, `CLOUDINARY_MAX_BYTES` | Folder for the pictures (default `premisave/developers`) and the largest picture accepted (default 5 MB, never more than 10 MB) |
 | `GOOGLE_CLIENT_ID` | Google sign in. Only the client ID is needed, because Google ID tokens are checked against Google and this ID |
+| `GOOGLE_CLIENT_SECRET` | Only for sign in from the Linux and Windows apps. They cannot get a Google ID token, so they send a one-time code and this service trades it, which needs the secret of the same OAuth client |
+| `SUPPORT_EMAIL` | Support address printed in the footer of every email, default `thepeacemakerske@gmail.com`. The same setting the auth service uses |
 | `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Facebook sign in. Both are needed, to ask Facebook which app a token was issued to |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign in. Both are needed, to trade the one-time code for an access token |
 
@@ -881,7 +883,7 @@ To get a test email at every start, also set `DEVELOPER_MAIL_STARTUP_CHECK_SEND_
 | Reset your password | A forgot-password request for an active account |
 | Your password was changed | After a password change or reset |
 
-The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. Previews of all ten are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
+The emails are HTML files in `src/main/resources/email/` (`layout.html` is the frame, the others are the bodies), with `{{placeholders}}` and HTML-escaped values. They share the look of the auth service emails: an indigo header with the skyline, an amber accent, a rounded detail card, callouts, a primary button, a footer with the support address and a dark mode. Previews of all ten are in `email-previews/`, so open them in a browser to see them. Behind a reverse proxy, set `server.forward-headers-strategy=native` so the sign-in notice shows the caller's address instead of the proxy's. More in [DEVELOPER_API.md](DEVELOPER_API.md) section 1.11.
 
 <br/>
 
@@ -907,7 +909,7 @@ A provider is on when it has what it needs: Google needs the client ID, Facebook
 
 Notes per provider:
 
-- **Google.** Add the portal origin, for example `http://localhost:3000`, under **Authorized JavaScript origins**. No redirect address is needed. The service accepts an ID token only when Google says it was issued to `GOOGLE_CLIENT_ID`. While the consent screen is in Testing, add the accounts you sign in with under Test users.
+- **Google.** Add the portal origin, for example `http://localhost:3000`, under **Authorized JavaScript origins**. No redirect address is needed for the browser sign in. The Linux and Windows apps are the exception: they open the browser, get a code on a local port and send it here, so also list `http://localhost:3000/auth.html` (the same address the app uses for GitHub) under **Authorized redirect URIs** and set `GOOGLE_CLIENT_SECRET`. For Facebook add the same address under Valid OAuth Redirect URIs. The service accepts an ID token only when Google says it was issued to `GOOGLE_CLIENT_ID`. While the consent screen is in Testing, add the accounts you sign in with under Test users.
 - **Facebook.** Add the `email` permission to the Login use case, or tokens carry no email and sign in fails with `OAUTH_EMAIL_REQUIRED`. While the app is in Development mode, only accounts with a role on the app can sign in. Facebook never counts as vouching for an address, so a Facebook email that matches an existing account is refused with `ACCOUNT_EXISTS` and the developer signs in the old way. A first Facebook sign in creates the account as `PENDING`, sends the confirmation link and answers `403 ACCOUNT_PENDING` with no session; the developer signs in with Facebook again after opening the link. The service asks Facebook's `debug_token` endpoint whether the token is valid and was issued to this app, so a token from another app is refused. The default endpoints pin Graph API `v21.0`. Check it against Facebook's current version and override `developer.oauth.facebook.verify-url` and `user-info-url` if needed.
 - **GitHub.** Set the Authorization callback URL to the page that receives the code, for example `http://localhost:3000/social-login-test.html`. Start the login with that same address as `redirect_uri`. The body sent to this service holds only the code. Only verified addresses from the account's email list are used, with the primary one preferred.
 

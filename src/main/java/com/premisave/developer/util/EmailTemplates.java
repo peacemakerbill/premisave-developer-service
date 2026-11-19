@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 
 /**
  * The emails. Each one is an HTML file under src/main/resources/email/ with {{name}} style placeholders, wrapped in
- * layout.html. Values are escaped when they are put in; only a placeholder whose name ends in Html is inserted as is,
+ * layout.html, which carries the same design as the auth service emails. Values are escaped when they are put in; only a placeholder whose name ends in Html is inserted as is,
  * and only this class fills those. Placeholders are replaced in one pass, so a value that itself contains {{x}} is
  * never expanded. The pages use tables and inline styles because mail programs ignore most other CSS, and they load
  * no images or scripts.
@@ -25,8 +25,15 @@ public final class EmailTemplates {
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(\\w+)}}");
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm 'UTC'", Locale.ENGLISH);
     private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
+    /** Shown in the footer of every email. Set at startup from SUPPORT_EMAIL, the same setting the auth service reads. */
+    private static volatile String supportEmail = "thepeacemakerske@gmail.com";
 
     private EmailTemplates() {}
+
+    /** Called once at startup by EmailSupportConfig. A blank value keeps the default. */
+    public static void setSupportEmail(String value) {
+        if (value != null && !value.isBlank()) supportEmail = value.trim();
+    }
 
     public record Message(String subject, String html) {}
 
@@ -144,6 +151,8 @@ public final class EmailTemplates {
         layout.put("title", title);
         layout.put("preheader", preheader);
         layout.put("portalUrl", values.getOrDefault("portalUrl", ""));
+        layout.put("product", "Developers");
+        layout.put("supportEmail", supportEmail);
         layout.put("year", String.valueOf(java.time.Year.now(ZoneOffset.UTC).getValue()));
         layout.put("contentHtml", content);
         return fill(template("layout"), layout);

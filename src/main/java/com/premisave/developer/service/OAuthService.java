@@ -93,11 +93,23 @@ public class OAuthService {
      * Facebook's access token or GitHub's one time code.
      */
     public Map<String, Object> signIn(String providerName, String token, ClientInfo caller) {
+        return signIn(providerName, token, null, null, caller);
+    }
+
+    /**
+     * Same, with an authorization code in place of a token. The code is traded with the provider here, using the
+     * redirect address it was issued for.
+     */
+    public Map<String, Object> signIn(String providerName, String token, String code, String redirectUri, ClientInfo caller) {
         OAuthProvider p = enabled(providerName);
-        if (token == null || token.isBlank()) {
-            throw DeveloperException.validation("token", "is required");
+        boolean hasToken = token != null && !token.isBlank();
+        boolean hasCode = code != null && !code.isBlank();
+        if (!hasToken && !hasCode) {
+            throw DeveloperException.validation("token", "or code is required");
         }
-        OAuthProfile profile = client.fetchProfile(p, token.trim());
+        OAuthProfile profile = hasToken
+                ? client.fetchProfile(p, token.trim())
+                : client.fetchProfileFromCode(p, code.trim(), redirectUri == null ? null : redirectUri.trim());
         if (profile.subject() == null || profile.subject().isBlank()) {
             throw new DeveloperException(ErrorCode.OAUTH_FAILED, "The provider did not identify you. Start again.");
         }
